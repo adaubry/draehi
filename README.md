@@ -1,36 +1,128 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Draehi
 
-## Getting Started
+**Deploy your Logseq graph to the web in 60 seconds.**
 
-First, run the development server:
+A "Vercel for Logseq graphs" - Transform your personal knowledge base into a high-performance, SEO-optimized website.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Status
+
+🚧 **In Development** - Phase 2: Git Integration (Complete)
+
+See [ROADMAP.md](docs/ROADMAP.md) for development plan.
+
+## Features
+
+- ✅ **Authentication system** - Username/password with iron-session
+- ✅ **Workspace management** - One workspace per user, auto-created
+- ✅ **Git integration** - Connect GitHub repositories
+- ✅ **Repository sync** - Clone & sync on connection
+- ✅ **GitHub webhooks** - Auto-deploy on push
+- ✅ **Manual deployments** - Trigger sync manually
+- ✅ **Deployment history** - Track all deployments
+- ✅ **Git-based workflow** - Push to deploy foundation
+- 🚧 Logseq graph processing (Phase 3)
+- 🚧 Pre-rendered content using Rust export tool
+- 🚧 Public workspace viewer
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 20+
+- PostgreSQL database (Neon recommended)
+- Git
+
+### Setup
+
+1. **Clone repository**
+   ```bash
+   git clone <repo-url>
+   cd draehi
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment**
+   ```bash
+   cp .env.example .env.local
+   # Edit .env.local with your database URL and session secret
+   ```
+
+4. **Set up database**
+   ```bash
+   npm run db:push
+   ```
+
+5. **Run development server**
+   ```bash
+   npm run dev
+   ```
+
+6. **Open browser**
+   ```
+   http://localhost:3000
+   ```
+
+## Project Structure
+
+```
+draehi/
+├── modules/          # Modular monolith (auth, workspace, content, git, logseq)
+├── app/              # Next.js App Router
+├── components/       # React components
+├── lib/              # Shared utilities
+├── drizzle/          # Database migrations
+└── docs/             # Documentation
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+See [DIRECTORY.md](docs/DIRECTORY.md) for detailed structure.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev           # Run development server
+npm run build         # Build for production
+npm run type-check    # TypeScript type checking
+npm run lint          # ESLint
+npm run db:generate   # Generate migrations
+npm run db:push       # Push schema to database
+npm run db:studio     # Open Drizzle Studio
+```
 
-## Learn More
+## Documentation
 
-To learn more about Next.js, take a look at the following resources:
+- [CLAUDE.md](CLAUDE.md) - AI agent instructions
+- [ROADMAP.md](docs/ROADMAP.md) - Development roadmap
+- [DIRECTORY.md](docs/DIRECTORY.md) - Project structure guide
+- [CRUD_GUIDELINES.md](docs/CRUD_GUIDELINES.md) - CRUD patterns
+- [PERFORMANCE_GUIDELINES.md](docs/PERFORMANCE_GUIDELINES.md) - Performance patterns
+- [CHANGELOG.md](docs/CHANGELOG.md) - Version history
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tech Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Framework**: Next.js 16 with App Router
+- **Language**: TypeScript (strict mode)
+- **Database**: PostgreSQL + Drizzle ORM
+- **Styling**: Tailwind CSS v4
+- **Auth**: iron-session + bcryptjs
+- **Validation**: Zod
+- **Content Processing**: export-logseq-notes (Rust)
 
-## Deploy on Vercel
+## Architecture Principles
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Modular Monolith** - Organized modules, single deployable unit
+2. **Server Components** - Default to server-side rendering
+3. **Performance First** - PPR, caching, prefetching
+4. **Git as Source of Truth** - No manual CRUD, only deployments
+5. **Namespace Hierarchy** - O(1) lookups, no recursion
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Contributing
+
+See [ROADMAP.md](docs/ROADMAP.md) for current priorities.
+
+## License
+
+MIT

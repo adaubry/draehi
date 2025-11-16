@@ -11,9 +11,6 @@ type PageProps = {
   }>;
 };
 
-// Enable experimental PPR (Partial Pre-rendering)
-export const experimental_ppr = true;
-
 export default async function NodePage({ params }: PageProps) {
   const { workspaceSlug, path = [] } = await params;
 

@@ -6,17 +6,22 @@ import { createUser, verifyPassword } from "./actions";
 import { createWorkspace } from "@/modules/workspace/actions";
 import { slugify } from "@/lib/utils";
 
-export async function login(formData: FormData): Promise<void> {
+type ActionState = { error?: string };
+
+export async function login(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
   const username = formData.get("username") as string;
   const password = formData.get("password") as string;
 
   if (!username || !password) {
-    throw new Error("Username and password required");
+    return { error: "Username and password required" };
   }
 
   const result = await verifyPassword(username, password);
   if (result.error) {
-    throw new Error(result.error);
+    return { error: result.error };
   }
 
   const user = result.user!;
@@ -29,19 +34,22 @@ export async function login(formData: FormData): Promise<void> {
   redirect("/dashboard");
 }
 
-export async function signup(formData: FormData): Promise<void> {
+export async function signup(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
   const username = formData.get("username") as string;
   const password = formData.get("password") as string;
   const workspaceName = formData.get("workspaceName") as string;
 
   if (!username || !password || !workspaceName) {
-    throw new Error("All fields required");
+    return { error: "All fields required" };
   }
 
   // Create user
   const userResult = await createUser(username, password);
   if (userResult.error) {
-    throw new Error(userResult.error);
+    return { error: userResult.error };
   }
 
   const user = userResult.user!;
@@ -49,7 +57,7 @@ export async function signup(formData: FormData): Promise<void> {
   // Create workspace
   const workspaceResult = await createWorkspace(user.id, workspaceName);
   if (workspaceResult.error) {
-    throw new Error(workspaceResult.error);
+    return { error: workspaceResult.error };
   }
 
   // Log in
@@ -62,7 +70,7 @@ export async function signup(formData: FormData): Promise<void> {
   redirect("/dashboard");
 }
 
-export async function logout() {
+export async function logout(): Promise<void> {
   const session = await getSession();
   session.destroy();
   redirect("/");

@@ -229,6 +229,7 @@ export async function ingestLogseqGraph(
 
     // Update parentId for each block based on its parent UUID or page
     const updatePromises: Promise<any>[] = [];
+    const parentIdMap = new Map<number, number>(); // blockId -> parentId (for in-memory depth calc)
 
     for (const mdPage of markdownPages) {
       const pageId = pageNodeMap.get(mdPage.pageName);
@@ -250,6 +251,8 @@ export async function ingestLogseqGraph(
           parentId = pageId;
         }
 
+        parentIdMap.set(blockId, parentId); // Track in memory
+
         updatePromises.push(
           db
             .update(nodes)
@@ -263,12 +266,19 @@ export async function ingestLogseqGraph(
 
     buildLog.push("Recalculating block depths based on parent chain...");
 
-    // Recalculate depth for all blocks based on actual parent relationships
-    const depthUpdatePromises: Promise<any>[] = [];
+    // Build set of page IDs
+    const pageIds = new Set<number>();
+    for (const node of insertedNodes) {
+      if (node.nodeType === "page") {
+        pageIds.add(node.id);
+      }
+    }
 
+    // Calculate depths in-memory (no DB queries)
+    const depthUpdatePromises: Promise<any>[] = [];
     for (const node of insertedNodes) {
       if (node.nodeType === "block") {
-        const depth = await calculateBlockDepthFromParents(node.id, blockMap, pageNodeMap);
+        const depth = calculateBlockDepthInMemory(node.id, parentIdMap, pageIds);
         depthUpdatePromises.push(
           db.update(nodes).set({ depth }).where(eq(nodes.id, node.id))
         );
@@ -298,34 +308,22 @@ export async function ingestLogseqGraph(
   }
 }
 
-function calculateBlockDepth(
-  blockUuid: string | null,
-  allBlocks: Array<{ uuid: string | null; parentUuid: string | null }>
-): number {
-  if (!blockUuid) return 0;
-
-  const block = allBlocks.find((b) => b.uuid === blockUuid);
-  if (!block || !block.parentUuid) return 0;
-
-  return 1 + calculateBlockDepth(block.parentUuid, allBlocks);
-}
-
-async function calculateBlockDepthFromParents(
+/**
+ * Calculate block depth in-memory without DB queries
+ * Recursively traverses parent chain until reaching a page node
+ */
+function calculateBlockDepthInMemory(
   blockId: number,
-  blockMap: Map<string, number>,
-  pageNodeMap: Map<string, number>
-): Promise<number> {
-  // Query the node to get its parentId
-  const node = await db.query.nodes.findFirst({
-    where: eq(nodes.id, blockId),
-  });
+  parentIdMap: Map<number, number>,
+  pageIds: Set<number>
+): number {
+  const parentId = parentIdMap.get(blockId);
 
-  if (!node || !node.parentId) return 0;
+  if (!parentId) return 0;
 
-  // Check if parent is a page (depth = 0)
-  const isParentPage = Array.from(pageNodeMap.values()).includes(node.parentId);
-  if (isParentPage) return 0;
+  // If parent is a page, depth is 0
+  if (pageIds.has(parentId)) return 0;
 
-  // Parent is a block, recursively calculate depth
-  return 1 + (await calculateBlockDepthFromParents(node.parentId, blockMap, pageNodeMap));
+  // Parent is a block, add 1 to parent's depth
+  return 1 + calculateBlockDepthInMemory(parentId, parentIdMap, pageIds);
 }

@@ -20,11 +20,11 @@ async function WorkspaceIndexContent({
     notFound();
   }
 
-  // Get all nodes
-  const nodes = await getAllNodes(workspace.id);
+  // Get all page nodes (getAllNodes now only returns pages, not blocks)
+  const pages = await getAllNodes(workspace.id);
 
-  // If no nodes, show empty state
-  if (nodes.length === 0) {
+  // If no pages, show empty state
+  if (pages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
         <h1 className="text-4xl font-bold tracking-tight mb-4">
@@ -39,7 +39,7 @@ async function WorkspaceIndexContent({
   }
 
   // Find first non-journal page or first page
-  const firstPage = nodes.find((n) => !n.isJournal) || nodes[0];
+  const firstPage = pages.find((n) => !n.isJournal) || pages[0];
 
   // Redirect to first page
   const pathSegments = firstPage.namespace

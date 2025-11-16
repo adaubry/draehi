@@ -45,16 +45,22 @@ export const getNodeChildren = cache(
 
 export const getAllNodes = cache(async (workspaceId: number) => {
   "use cache";
+  // Only return page nodes for navigation (not individual blocks)
   return await db.query.nodes.findMany({
-    where: eq(nodes.workspaceId, workspaceId),
+    where: and(eq(nodes.workspaceId, workspaceId), eq(nodes.nodeType, "page")),
     orderBy: [nodes.namespace, nodes.slug],
   });
 });
 
 export const getJournalNodes = cache(async (workspaceId: number) => {
   "use cache";
+  // Only return journal page nodes (not blocks)
   return await db.query.nodes.findMany({
-    where: and(eq(nodes.workspaceId, workspaceId), eq(nodes.isJournal, true)),
+    where: and(
+      eq(nodes.workspaceId, workspaceId),
+      eq(nodes.nodeType, "page"),
+      eq(nodes.isJournal, true)
+    ),
     orderBy: [desc(nodes.journalDate)],
   });
 });
@@ -70,12 +76,12 @@ export const getPageBlocks = cache(async (pageId: number) => {
 export const getAllBlocksForPage = cache(
   async (workspaceId: number, pageName: string) => {
     "use cache";
-    // Get all blocks that belong to this page (by pageName)
+    // Get page node AND all blocks that belong to this page
+    // BlockTree needs the page node to identify top-level blocks
     return await db.query.nodes.findMany({
       where: and(
         eq(nodes.workspaceId, workspaceId),
-        eq(nodes.pageName, pageName),
-        eq(nodes.nodeType, "block")
+        eq(nodes.pageName, pageName)
       ),
       orderBy: [nodes.order],
     });

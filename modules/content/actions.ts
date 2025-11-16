@@ -133,9 +133,6 @@ export async function ingestLogseqGraph(
     const allNodes: NewNode[] = [];
     let totalBlocks = 0;
 
-    // Map to store page node IDs for parent references
-    const pageNodeMap = new Map<string, number>();
-
     for (const mdPage of markdownPages) {
       // Find corresponding HTML page for metadata
       const htmlPage = parseResult.pages.find((p) => p.name === mdPage.pageName);
@@ -215,19 +212,37 @@ export async function ingestLogseqGraph(
 
     buildLog.push("Updating parent-child relationships for blocks...");
 
-    // Now update parentId for blocks
-    // Build a map of blockUuid -> nodeId
+    // Build maps for lookups
+    // 1. blockUuid -> nodeId (for blocks WITH UUIDs)
     const blockMap = new Map<string, number>();
+    // 2. pageName -> pageId
+    const pageNodeMap = new Map<string, number>();
+    // 3. pageName -> array of block nodeIds in insertion order (for blocks WITHOUT UUIDs)
+    const pageBlocksMap = new Map<string, number[]>();
+
     for (const node of insertedNodes) {
       if (node.blockUuid) {
         blockMap.set(node.blockUuid, node.id);
       }
       if (node.nodeType === "page") {
         pageNodeMap.set(node.pageName, node.id);
+        pageBlocksMap.set(node.pageName, []);
       }
     }
 
-    // Update parentId for each block based on its parent UUID or page
+    // Populate pageBlocksMap with blocks in order
+    let nodeIndex = 0;
+    for (const node of insertedNodes) {
+      if (node.nodeType === "block") {
+        const blockArray = pageBlocksMap.get(node.pageName);
+        if (blockArray) {
+          blockArray.push(node.id);
+        }
+      }
+      nodeIndex++;
+    }
+
+    // Update parentId for each block based on its parent UUID or parent position
     const updatePromises: Promise<any>[] = [];
     const parentIdMap = new Map<number, number>(); // blockId -> parentId (for in-memory depth calc)
 
@@ -236,18 +251,52 @@ export async function ingestLogseqGraph(
       if (!pageId) continue;
 
       const flatBlocks = flattenBlocks(mdPage.blocks);
+      const pageBlocks = pageBlocksMap.get(mdPage.pageName) || [];
 
-      for (const block of flatBlocks) {
-        const blockId = blockMap.get(block.uuid || "");
+      for (let i = 0; i < flatBlocks.length; i++) {
+        const block = flatBlocks[i];
+
+        // Get block node ID - either by UUID or by position
+        let blockId: number | undefined;
+        if (block.uuid) {
+          blockId = blockMap.get(block.uuid);
+        } else {
+          // Use position in array (blocks are inserted in same order as flatBlocks)
+          blockId = pageBlocks[i];
+        }
+
         if (!blockId) continue;
 
         let parentId: number;
 
         if (block.parentUuid) {
-          // Has parent block
-          parentId = blockMap.get(block.parentUuid) || pageId;
+          // Has parent block with UUID
+          const parentBlockId = blockMap.get(block.parentUuid);
+          if (parentBlockId) {
+            parentId = parentBlockId;
+          } else {
+            // Parent UUID not found, fallback to page
+            parentId = pageId;
+          }
+        } else if (block.indent > 0) {
+          // Has parent but no UUID - find parent by indent level
+          // Look backwards to find most recent block with lower indent
+          let parentBlockId: number | undefined;
+          for (let j = i - 1; j >= 0; j--) {
+            const potentialParent = flatBlocks[j];
+            if (potentialParent.indent < block.indent) {
+              // Found parent - get its node ID
+              if (potentialParent.uuid) {
+                parentBlockId = blockMap.get(potentialParent.uuid);
+              } else {
+                parentBlockId = pageBlocks[j];
+              }
+              break;
+            }
+          }
+          parentId = parentBlockId || pageId;
         } else {
-          // Top-level block, parent is page
+          // Top-level block (indent === 0), parent is page
           parentId = pageId;
         }
 

@@ -5,7 +5,9 @@ import { nodes, type NewNode } from "./schema";
 import { extractNamespaceAndSlug } from "@/lib/utils";
 import { eq, and } from "drizzle-orm";
 import { exportLogseqNotes } from "../logseq/export";
-import { parseLogseqOutput, logseqPageToNode } from "../logseq/parse";
+import { parseLogseqOutput } from "../logseq/parse";
+import { parseLogseqDirectory, flattenBlocks } from "../logseq/markdown-parser";
+import path from "path";
 
 // Internal only - called during git sync/deployment
 export async function upsertNode(
@@ -73,7 +75,7 @@ export async function deleteAllNodes(workspaceId: number) {
 
 /**
  * Ingest Logseq graph from cloned repository
- * Called during deployment to process and store all pages
+ * Called during deployment to process and store pages AND blocks
  */
 export async function ingestLogseqGraph(
   workspaceId: number,
@@ -81,6 +83,7 @@ export async function ingestLogseqGraph(
 ): Promise<{
   success: boolean;
   pageCount?: number;
+  blockCount?: number;
   error?: string;
   buildLog?: string[];
 }> {
@@ -89,8 +92,14 @@ export async function ingestLogseqGraph(
   try {
     buildLog.push("Starting Logseq graph ingestion...");
 
-    // Step 1: Export with Rust tool
-    buildLog.push("Calling export-logseq-notes...");
+    // Step 1: Parse markdown files for block structure
+    buildLog.push("Parsing markdown files for block structure...");
+    const pagesDir = path.join(repoPath, "pages");
+    const markdownPages = await parseLogseqDirectory(pagesDir);
+    buildLog.push(`Found ${markdownPages.length} markdown pages`);
+
+    // Step 2: Export with Rust tool for HTML rendering
+    buildLog.push("Rendering HTML with export-logseq-notes...");
     const exportResult = await exportLogseqNotes(repoPath);
 
     if (!exportResult.success || !exportResult.outputDir) {
@@ -101,41 +110,157 @@ export async function ingestLogseqGraph(
       };
     }
 
-    buildLog.push("Export successful, parsing HTML files...");
+    buildLog.push("HTML rendering successful");
 
-    // Step 2: Parse HTML files from output directory
+    // Step 3: Parse HTML output for page-level metadata
     const parseResult = await parseLogseqOutput(exportResult.outputDir);
 
     if (!parseResult.success || !parseResult.pages) {
       return {
         success: false,
-        error: parseResult.error || "Parse failed",
+        error: parseResult.error || "HTML parse failed",
         buildLog,
       };
     }
 
-    buildLog.push(`Found ${parseResult.pages.length} pages`);
-
-    // Step 3: Delete existing nodes (idempotent)
+    // Step 4: Delete existing nodes (idempotent)
     buildLog.push("Clearing existing nodes...");
     await deleteAllNodes(workspaceId);
 
-    // Step 4: Convert pages to nodes and batch insert
-    buildLog.push("Processing pages and uploading assets...");
-    const nodePromises = parseResult.pages.map((page) =>
-      logseqPageToNode(page, workspaceId, repoPath)
+    // Step 5: Create page nodes AND block nodes
+    buildLog.push("Creating page and block nodes...");
+    const allNodes: NewNode[] = [];
+    let totalBlocks = 0;
+
+    // Map to store page node IDs for parent references
+    const pageNodeMap = new Map<string, number>();
+
+    for (const mdPage of markdownPages) {
+      // Find corresponding HTML page for metadata
+      const htmlPage = parseResult.pages.find((p) => p.name === mdPage.pageName);
+      if (!htmlPage) {
+        buildLog.push(`Warning: No HTML found for ${mdPage.pageName}, skipping`);
+        continue;
+      }
+
+      const { namespace, slug, depth } = extractNamespaceAndSlug(mdPage.pageName);
+
+      // Create page node (nodeType='page', html=null)
+      const pageNode: NewNode = {
+        workspaceId,
+        parentId: null,
+        order: 0,
+        nodeType: "page",
+        pageName: mdPage.pageName,
+        slug,
+        namespace,
+        depth,
+        blockUuid: null,
+        title: htmlPage.title,
+        html: null, // Pages don't have HTML
+        metadata: {
+          tags: htmlPage.metadata?.tags || [],
+          properties: {
+            ...mdPage.properties,
+            ...htmlPage.metadata?.properties,
+          },
+        },
+        isJournal: htmlPage.isJournal,
+        journalDate: htmlPage.journalDate,
+      };
+
+      allNodes.push(pageNode);
+
+      // Flatten block tree for this page
+      const flatBlocks = flattenBlocks(mdPage.blocks);
+      totalBlocks += flatBlocks.length;
+
+      // Create block nodes for each block
+      for (const block of flatBlocks) {
+        const blockNode: NewNode = {
+          workspaceId,
+          parentId: null, // Will be set after page insertion
+          order: block.order,
+          nodeType: "block",
+          pageName: mdPage.pageName,
+          slug,
+          namespace,
+          depth: calculateBlockDepth(block.uuid, flatBlocks),
+          blockUuid: block.uuid,
+          title: "", // Blocks don't have titles
+          html: `<p>${escapeHtml(block.content)}</p>`, // Simple HTML for now
+          metadata: {
+            properties: block.properties,
+          },
+          isJournal: false,
+          journalDate: undefined,
+        };
+
+        allNodes.push(blockNode);
+      }
+    }
+
+    buildLog.push(
+      `Inserting ${markdownPages.length} pages and ${totalBlocks} blocks...`
     );
 
-    const newNodes = await Promise.all(nodePromises);
+    // Insert all nodes at once
+    const insertedNodes = await db.insert(nodes).values(allNodes).returning();
 
-    buildLog.push(`Inserting ${newNodes.length} nodes into database...`);
-    await db.insert(nodes).values(newNodes);
+    buildLog.push("Updating parent-child relationships for blocks...");
+
+    // Now update parentId for blocks
+    // Build a map of blockUuid -> nodeId
+    const blockMap = new Map<string, number>();
+    for (const node of insertedNodes) {
+      if (node.blockUuid) {
+        blockMap.set(node.blockUuid, node.id);
+      }
+      if (node.nodeType === "page") {
+        pageNodeMap.set(node.pageName, node.id);
+      }
+    }
+
+    // Update parentId for each block based on its parent UUID or page
+    const updatePromises: Promise<any>[] = [];
+
+    for (const mdPage of markdownPages) {
+      const pageId = pageNodeMap.get(mdPage.pageName);
+      if (!pageId) continue;
+
+      const flatBlocks = flattenBlocks(mdPage.blocks);
+
+      for (const block of flatBlocks) {
+        const blockId = blockMap.get(block.uuid || "");
+        if (!blockId) continue;
+
+        let parentId: number;
+
+        if (block.parentUuid) {
+          // Has parent block
+          parentId = blockMap.get(block.parentUuid) || pageId;
+        } else {
+          // Top-level block, parent is page
+          parentId = pageId;
+        }
+
+        updatePromises.push(
+          db
+            .update(nodes)
+            .set({ parentId })
+            .where(eq(nodes.id, blockId))
+        );
+      }
+    }
+
+    await Promise.all(updatePromises);
 
     buildLog.push("Ingestion complete!");
 
     return {
       success: true,
-      pageCount: newNodes.length,
+      pageCount: markdownPages.length,
+      blockCount: totalBlocks,
       buildLog,
     };
   } catch (error) {
@@ -149,4 +274,25 @@ export async function ingestLogseqGraph(
       buildLog,
     };
   }
+}
+
+function calculateBlockDepth(
+  blockUuid: string | null,
+  allBlocks: Array<{ uuid: string | null; parentUuid: string | null }>
+): number {
+  if (!blockUuid) return 0;
+
+  const block = allBlocks.find((b) => b.uuid === blockUuid);
+  if (!block || !block.parentUuid) return 0;
+
+  return 1 + calculateBlockDepth(block.parentUuid, allBlocks);
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }

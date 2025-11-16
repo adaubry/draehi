@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getWorkspaceBySlug } from "@/modules/workspace/queries";
 import { getAllNodes } from "@/modules/content/queries";
@@ -8,9 +9,11 @@ type PageProps = {
   }>;
 };
 
-export default async function WorkspaceIndexPage({ params }: PageProps) {
-  const { workspaceSlug } = await params;
-
+async function WorkspaceIndexContent({
+  workspaceSlug,
+}: {
+  workspaceSlug: string;
+}) {
   // Get workspace by slug
   const workspace = await getWorkspaceBySlug(workspaceSlug);
   if (!workspace) {
@@ -44,4 +47,24 @@ export default async function WorkspaceIndexPage({ params }: PageProps) {
     : [firstPage.slug];
 
   redirect(`/${workspaceSlug}/${pathSegments.join("/")}`);
+}
+
+async function WorkspaceIndexWrapper({ params }: PageProps) {
+  const { workspaceSlug } = await params;
+  return <WorkspaceIndexContent workspaceSlug={workspaceSlug} />;
+}
+
+export default function WorkspaceIndexPage({ params }: PageProps) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="h-12 w-64 bg-gray-200 animate-pulse rounded mb-4" />
+          <div className="h-6 w-96 bg-gray-200 animate-pulse rounded" />
+        </div>
+      }
+    >
+      <WorkspaceIndexWrapper params={params} />
+    </Suspense>
+  );
 }

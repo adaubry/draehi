@@ -8,6 +8,7 @@ import type { Breadcrumb } from "@/lib/types";
 import { buildNodeHref } from "@/lib/utils";
 
 export const getNodeById = cache(async (id: number) => {
+  "use cache";
   return await db.query.nodes.findFirst({
     where: eq(nodes.id, id),
   });
@@ -15,6 +16,7 @@ export const getNodeById = cache(async (id: number) => {
 
 export const getNodeByPath = cache(
   async (workspaceId: number, pathSegments: string[]) => {
+    "use cache";
     const slug = pathSegments.at(-1) || "";
     const namespace = pathSegments.slice(0, -1).join("/");
 
@@ -30,6 +32,7 @@ export const getNodeByPath = cache(
 
 export const getNodeChildren = cache(
   async (workspaceId: number, namespace: string) => {
+    "use cache";
     return await db.query.nodes.findMany({
       where: and(
         eq(nodes.workspaceId, workspaceId),
@@ -41,6 +44,7 @@ export const getNodeChildren = cache(
 );
 
 export const getAllNodes = cache(async (workspaceId: number) => {
+  "use cache";
   return await db.query.nodes.findMany({
     where: eq(nodes.workspaceId, workspaceId),
     orderBy: [nodes.namespace, nodes.slug],
@@ -48,6 +52,7 @@ export const getAllNodes = cache(async (workspaceId: number) => {
 });
 
 export const getJournalNodes = cache(async (workspaceId: number) => {
+  "use cache";
   return await db.query.nodes.findMany({
     where: and(eq(nodes.workspaceId, workspaceId), eq(nodes.isJournal, true)),
     orderBy: [desc(nodes.journalDate)],

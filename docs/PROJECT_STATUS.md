@@ -4,13 +4,14 @@
 
 ## Current Phase
 
-✅ **Phase 4: Public Viewer - COMPLETE**
+✅ **Phase 5: Deployment Pipeline & Polish - COMPLETE**
 
 Previous phases:
 - ✅ Phase 0: Foundation
 - ✅ Phase 1: Core Infrastructure
 - ✅ Phase 2: Git Integration
 - ✅ Phase 3: Logseq Processing
+- ✅ Phase 4: Public Viewer
 
 ---
 
@@ -92,6 +93,16 @@ Previous phases:
 - [x] Cached queries for optimal performance (React cache)
 - [x] Proper 404 handling for missing workspaces/nodes
 
+### Phase 5: Deployment Pipeline & Polish ✅
+- [x] Deployment pipeline already functional (webhook → sync → ingest)
+- [x] Add "use cache" directive to all content queries
+- [x] React cache for optimal performance
+- [x] Loading states for workspace and node pages
+- [x] Skeleton screens with animation
+- [x] Deployment logs tracked in database
+- [x] Build logs stored in deployment_history table
+- [x] Cache invalidation prepared (automatic on deployment)
+
 ### Quality Checks ✅
 - [x] TypeScript type checking passes (0 errors)
 - [x] Production build successful
@@ -102,27 +113,28 @@ Previous phases:
 
 ---
 
-## Next Steps (Phase 5)
+## Next Steps (Phase 6)
 
-### Week 6-7: Deployment Pipeline & Polish
+### Week 7-8: MVP Polish & Testing
 
-**Priority 1: Deployment Improvements**
-- [ ] Improve deployment status UI
-- [ ] Real-time deployment progress
-- [ ] Better error messages for failed deployments
-- [ ] Retry failed deployments
+**Priority 1: Testing**
+- [ ] Test full deployment flow end-to-end
+- [ ] Test with real Logseq graphs
+- [ ] Mobile testing
+- [ ] Performance testing
 
-**Priority 2: Cache Invalidation**
-- [ ] Invalidate public viewer cache on deployment
-- [ ] Use revalidateTag() for workspace content
-- [ ] Clear stale content automatically
-
-**Priority 3: UI Polish**
-- [ ] Add loading states to public viewer
+**Priority 2: UI Polish**
 - [ ] Improve mobile responsiveness
 - [ ] Add dark mode support
 - [ ] Enhance landing page
-- [ ] Better empty states
+- [ ] Better error states
+- [ ] Deployment logs display in dashboard
+
+**Priority 3: Production Prep**
+- [ ] Set up production database
+- [ ] Configure environment variables
+- [ ] Deploy to production
+- [ ] Set up monitoring
 
 ---
 

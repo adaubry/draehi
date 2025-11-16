@@ -250,8 +250,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - Removed `revalidateTag` from sync function (was causing "used during render" error)
-- Dashboard and settings pages now use `dynamic = "force-dynamic"` for live status updates
-- **Next.js 16 uncached data errors**: Added `dynamic = "force-dynamic"` to workspace layout and dashboard
+- **Next.js 16 uncached data errors**: Wrapped uncached data access in Suspense boundaries (cacheComponents compatible)
+- **cacheComponents compatibility**: Replaced `dynamic = "force-dynamic"` with proper Suspense pattern
 - **Block hierarchy broken (all depth 0)**: Fixed parentId assignment to use block→block relationships, not all→page
 - **Block depth incorrect**: Now calculated from actual database parent chain after parentId is set
 - **Block HTML not showing**: Switched from fragile HTML parsing to direct markdown rendering with `marked`

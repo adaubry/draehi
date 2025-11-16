@@ -129,6 +129,30 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - binaryExists() - Fast binary existence check
   - Fixes "command not found" errors in Next.js server environment
   - All execAsync usages migrated to execWithPath
+- **Phase 4 Complete**: Public Viewer
+  - Public viewer routing (app/[workspaceSlug]/[...path]/page.tsx)
+  - Workspace layout with sticky header (app/[workspaceSlug]/layout.tsx)
+  - Workspace index page with auto-redirect to first content
+  - Server-side rendering of pre-compiled HTML
+  - **Navigation Components** (components/viewer/):
+    - Sidebar with hierarchical tree navigation
+    - Breadcrumbs for nested page hierarchy
+    - Active page highlighting
+    - Journal pages section (10 most recent)
+  - **Content Rendering**:
+    - NodeContent component with Tailwind prose styling
+    - Comprehensive typography classes (headings, links, code, blockquotes)
+    - Tag display on pages (#hashtag style)
+    - Responsive layout with max-width constraints
+  - **Performance Optimizations**:
+    - Experimental PPR (Partial Pre-rendering) enabled
+    - React cache for all queries (workspace, nodes, breadcrumbs)
+    - Optimized database queries with proper indexes
+  - **User Experience**:
+    - Empty state for workspaces without content
+    - 404 handling for missing workspaces and nodes
+    - Mobile-responsive sidebar and content
+    - Clean, minimal design inspired by modern documentation sites
 
 ### Changed
 - README Quick Start now references automated scripts

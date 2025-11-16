@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { requireAuth, getSession } from "@/lib/session";
 import { getWorkspaceByUserId } from "@/modules/workspace/queries";
 import {
@@ -11,9 +12,7 @@ import { deleteUser } from "@/modules/auth/actions";
 import { redirect } from "next/navigation";
 import { DashboardClient } from "./dashboard-client";
 
-export const dynamic = "force-dynamic";
-
-export default async function DashboardPage() {
+async function DashboardContent() {
   const user = await requireAuth();
   const workspace = await getWorkspaceByUserId(user.id);
 
@@ -95,5 +94,13 @@ export default async function DashboardPage() {
       handleDeleteAccount={handleDeleteAccount}
       triggerDeployment={triggerDeployment}
     />
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

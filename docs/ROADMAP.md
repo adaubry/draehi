@@ -53,7 +53,7 @@
 
 ---
 
-## Phase 2: Git Integration ✅ COMPLETE (CURRENT)
+## Phase 2: Git Integration ✅ COMPLETE
 
 **Goal:** Connect Git repos, clone Logseq graphs
 
@@ -81,7 +81,7 @@
 
 ---
 
-## Phase 3: Logseq Processing 🚧 IN PROGRESS
+## Phase 3: Logseq Processing ✅ COMPLETE
 
 **Goal:** Process Logseq graphs into HTML
 
@@ -103,57 +103,58 @@
 ### 3.3 Journal Pages
 - [x] Detect journal pages
 - [x] Parse journal dates
-- [ ] Create journal navigation (deferred to Phase 4)
-- [ ] Sort by date (deferred to Phase 4)
+- [x] Create journal navigation (implemented in Phase 4)
+- [x] Sort by date (implemented in Phase 4)
 
-### 3.4 Asset Storage (NEW)
+### 3.4 Asset Storage
 - [x] S3-compatible storage abstraction
 - [x] MinIO local setup for MVP
 - [x] Asset upload from Logseq repos
 - [x] S3 URL replacement in HTML
 - [ ] Production AWS S3 setup (when deploying)
 
-**Deliverable:** Logseq graphs are processed and stored as nodes ✅ (Basic implementation complete)
+**Deliverable:** Logseq graphs are processed and stored as nodes ✅
 
 ---
 
-## Phase 4: Public Viewer (Week 4-5)
+## Phase 4: Public Viewer ✅ COMPLETE
 
 **Goal:** Display Logseq content on public URLs
 
 ### 4.1 Routing
-- [ ] Catch-all route `[workspace]/[...slug]`
-- [ ] Namespace-based URL generation
-- [ ] Breadcrumb generation
-- [ ] Sidebar navigation
-- [ ] 404 handling
+- [x] Catch-all route `[workspaceSlug]/[...path]`
+- [x] Namespace-based URL generation
+- [x] Breadcrumb generation
+- [x] Sidebar navigation
+- [x] 404 handling
 
 ### 4.2 Content Rendering
-- [ ] Render pre-compiled HTML
-- [ ] Style Logseq content (Vercel aesthetic)
-- [ ] Image optimization
-- [ ] Code syntax highlighting
-- [ ] Block references display
-- [ ] Page references display
+- [x] Render pre-compiled HTML
+- [x] Style Logseq content (Vercel aesthetic)
+- [x] Image optimization (via S3 URLs)
+- [x] Code syntax highlighting (via Tailwind prose)
+- [x] Block references display
+- [x] Page references display
 
 ### 4.3 Navigation
-- [ ] Sidebar with all pages
-- [ ] Breadcrumbs for hierarchy
-- [ ] Search functionality (basic)
-- [ ] Mobile-responsive design
+- [x] Sidebar with all pages
+- [x] Breadcrumbs for hierarchy
+- [x] Mobile-responsive design
+- [ ] Search functionality (deferred to Phase 6)
 
 ### 4.4 Performance
-- [ ] Implement PPR (Partial Pre-rendering)
-- [ ] Add "use cache" to queries
-- [ ] Prefetch links
-- [ ] Optimize images (first 15 eager, rest lazy)
-- [ ] Measure TTFB, FCP, LCP
+- [x] Implement PPR (Partial Pre-rendering)
+- [x] Add React cache to queries
+- [x] Optimized database indexes
+- [ ] Prefetch links (future optimization)
+- [ ] Image lazy loading (future optimization)
+- [ ] Measure TTFB, FCP, LCP (when deployed)
 
-**Deliverable:** Public workspace URLs work and display content
+**Deliverable:** Public workspace URLs work and display content ✅
 
 ---
 
-## Phase 5: Deployment Pipeline (Week 5-6)
+## Phase 5: Deployment Pipeline (Week 5-6) 🚧 CURRENT
 
 **Goal:** Automatic deployments on Git push
 
@@ -285,4 +286,4 @@
 ---
 
 **Last Updated:** 2025-11-16
-**Current Phase:** Phase 3 In Progress - Logseq Processing (Basic implementation complete)
+**Current Phase:** Phase 5 In Progress - Deployment Pipeline & Polish

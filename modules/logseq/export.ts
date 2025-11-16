@@ -37,8 +37,8 @@ const EXPORT_SCRIPT = `// Draehi export script for Logseq graphs
 page.include = true;
 page.allow_embedding = AllowEmbed::Yes;
 
-// Set URL base for internal links
-page.url_base = "/notes";
+// Set URL base for internal links (will be replaced with workspace slug during parsing)
+page.url_base = "";
 
 // Handle journal pages specially
 if page.is_journal {

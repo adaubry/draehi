@@ -161,7 +161,6 @@ export async function logseqPageToNode(
     depth,
     title: page.title,
     html,
-    content: page.markdown,
     metadata: page.metadata,
     isJournal: page.isJournal,
     journalDate: page.journalDate,

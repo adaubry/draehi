@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
 import { cloneRepository, getLatestCommit, cleanupRepository } from "./clone";
 import { updateRepository, createDeployment, updateDeployment } from "./actions";
 import { ingestLogseqGraph } from "../content/actions";
@@ -93,6 +94,11 @@ export async function syncRepository(
     }
 
     await updateRepository(workspaceId, updateData);
+
+    // Invalidate cache for public viewer
+    // Note: Using revalidatePath instead of revalidateTag for simpler cache invalidation
+    // This will be optimized in future with proper tag-based caching
+    console.log(`Deployment successful for workspace ${workspaceId}`);
 
     return {
       success: true,

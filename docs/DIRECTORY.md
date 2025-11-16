@@ -39,10 +39,11 @@ app/
 │   ├── actions.ts         # Manual deployment trigger
 │   └── settings/          # Workspace settings ✅
 │       └── page.tsx       # Repository connection form
-├── [workspace]/           # Public workspace viewer (Phase 4)
-│   └── [...slug]/         # Catch-all for pages at any depth
-│       ├── page.tsx       # Dynamic page renderer
-│       └── loading.tsx    # Loading skeleton (PPR)
+├── [workspaceSlug]/       # Public workspace viewer ✅ Phase 4
+│   ├── layout.tsx         # Workspace layout with sidebar
+│   ├── page.tsx           # Index page with auto-redirect
+│   └── [...path]/         # Catch-all for nested pages ✅
+│       └── page.tsx       # Dynamic page renderer
 ├── api/                   # API routes
 │   └── webhooks/          # Git webhook handlers
 │       └── github/        # GitHub webhooks ✅
@@ -60,8 +61,8 @@ app/
 - `/dashboard` - User dashboard (protected) ✅
 - `/dashboard/settings` - Repository connection ✅
 - `/api/webhooks/github` - GitHub webhook handler ✅
-- `/:workspace` - Public workspace home (Phase 4)
-- `/:workspace/:slug1/:slug2/...` - Nested pages (unlimited depth) (Phase 4)
+- `/:workspaceSlug` - Public workspace home ✅ Phase 4
+- `/:workspaceSlug/:path1/:path2/...` - Nested pages (unlimited depth) ✅ Phase 4
 
 ---
 
@@ -102,11 +103,13 @@ modules/
 │   ├── actions.ts         # connectRepository, updateRepository, createDeployment
 │   ├── clone.ts           # Git clone/cleanup logic (shell commands)
 │   └── sync.ts            # Repository sync orchestration
-└── logseq/                # Logseq graph processing (Phase 3)
-    ├── export.ts          # Call Rust export-logseq-notes
-    ├── parse.ts           # Parse Rust output
-    ├── ingest.ts          # Store nodes in database
-    └── types.ts           # Logseq-specific types
+├── logseq/                # Logseq graph processing ✅ Phase 3
+│   ├── export.ts          # Call Rust export-logseq-notes
+│   ├── parse.ts           # Parse Rust output
+│   └── types.ts           # Logseq-specific types
+└── storage/               # Asset storage ✅ Phase 3
+    ├── s3.ts              # S3 client (MinIO/AWS)
+    └── upload.ts          # Asset upload logic
 ```
 
 **Module Dependencies:**
@@ -130,16 +133,17 @@ components/
 │   ├── card.tsx           # Card component
 │   ├── skeleton.tsx       # Loading skeleton
 │   └── ...                # Other primitives
-├── workspace/             # Workspace-specific components
-│   ├── sidebar.tsx        # Workspace navigation
-│   ├── breadcrumbs.tsx    # Breadcrumb navigation
+├── viewer/                # Public viewer components ✅ Phase 4
+│   ├── Sidebar.tsx        # Hierarchical tree navigation
+│   ├── Breadcrumbs.tsx    # Path breadcrumb navigation
+│   └── NodeContent.tsx    # HTML renderer with prose styling
+├── workspace/             # Workspace-specific components (future)
 │   ├── page-list.tsx      # List of pages
 │   └── search.tsx         # Search component
-├── content/               # Content rendering components
-│   ├── html-renderer.tsx  # Render pre-compiled HTML
+├── content/               # Content rendering components (future)
 │   ├── code-block.tsx     # Syntax-highlighted code
 │   └── image-viewer.tsx   # Optimized image display
-└── dashboard/             # Dashboard components
+└── dashboard/             # Dashboard components (future)
     ├── deployment-card.tsx
     ├── repo-connection.tsx
     └── settings-form.tsx
@@ -296,4 +300,4 @@ public/
 ---
 
 **Last Updated:** 2025-11-16
-**Status:** Phase 2 Complete - Auth, Dashboard, Git Integration live
+**Status:** Phase 4 Complete - Public Viewer live, Phases 0-4 done

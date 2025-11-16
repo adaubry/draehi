@@ -8,9 +8,6 @@ type PageProps = {
   }>;
 };
 
-// Enable experimental PPR (Partial Pre-rendering)
-export const experimental_ppr = true;
-
 export default async function WorkspaceIndexPage({ params }: PageProps) {
   const { workspaceSlug } = await params;
 

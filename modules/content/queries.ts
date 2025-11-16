@@ -59,6 +59,29 @@ export const getJournalNodes = cache(async (workspaceId: number) => {
   });
 });
 
+export const getPageBlocks = cache(async (pageId: number) => {
+  "use cache";
+  return await db.query.nodes.findMany({
+    where: and(eq(nodes.parentId, pageId), eq(nodes.nodeType, "block")),
+    orderBy: [nodes.order],
+  });
+});
+
+export const getAllBlocksForPage = cache(
+  async (workspaceId: number, pageName: string) => {
+    "use cache";
+    // Get all blocks that belong to this page (by pageName)
+    return await db.query.nodes.findMany({
+      where: and(
+        eq(nodes.workspaceId, workspaceId),
+        eq(nodes.pageName, pageName),
+        eq(nodes.nodeType, "block")
+      ),
+      orderBy: [nodes.order],
+    });
+  }
+);
+
 export async function getNodeBreadcrumbs(
   node: { workspaceId: number; namespace: string },
   workspaceSlug: string

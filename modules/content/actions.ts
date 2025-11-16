@@ -7,7 +7,7 @@ import { eq, and } from "drizzle-orm";
 import { exportLogseqNotes } from "../logseq/export";
 import { parseLogseqOutput } from "../logseq/parse";
 import { parseLogseqDirectory, flattenBlocks } from "../logseq/markdown-parser";
-import { extractAllBlocksFromOutput } from "../logseq/extract-blocks";
+import { marked } from "marked";
 import path from "path";
 
 // Internal only - called during git sync/deployment
@@ -128,17 +128,7 @@ export async function ingestLogseqGraph(
     buildLog.push("Clearing existing nodes...");
     await deleteAllNodes(workspaceId);
 
-    // Step 5: Extract block-level HTML from Rust tool output
-    buildLog.push("Extracting block-level HTML from Rust output...");
-    const blockHTMLData = await extractAllBlocksFromOutput(
-      exportResult.outputDir,
-      markdownPages.map((p) => ({
-        pageName: p.pageName,
-        blocks: flattenBlocks(p.blocks),
-      }))
-    );
-
-    // Step 6: Create page nodes AND block nodes
+    // Step 5: Create page nodes AND block nodes
     buildLog.push("Creating page and block nodes...");
     const allNodes: NewNode[] = [];
     let totalBlocks = 0;
@@ -182,28 +172,29 @@ export async function ingestLogseqGraph(
 
       allNodes.push(pageNode);
 
-      // Get extracted block HTML for this page
+      // Create block nodes with markdown-rendered HTML
       const flatBlocks = flattenBlocks(mdPage.blocks);
-      const pageBlockHTMLs = blockHTMLData.get(mdPage.pageName) || [];
       totalBlocks += flatBlocks.length;
 
-      // Create block nodes with extracted HTML
-      for (let i = 0; i < flatBlocks.length; i++) {
-        const block = flatBlocks[i];
-        const blockHTML = pageBlockHTMLs[i];
+      for (const block of flatBlocks) {
+        // Render markdown to HTML for this block
+        const blockHTML = await marked.parse(block.content, {
+          async: true,
+          gfm: true,
+        });
 
         const blockNode: NewNode = {
           workspaceId,
-          parentId: null, // Will be set after page insertion
+          parentId: null, // Will be set after insertion based on parent relationships
           order: block.order,
           nodeType: "block",
           pageName: mdPage.pageName,
           slug,
           namespace,
-          depth: calculateBlockDepth(block.uuid, flatBlocks),
+          depth: 0, // Will be recalculated after parentId is set
           blockUuid: block.uuid,
           title: "", // Blocks don't have titles
-          html: blockHTML?.html || "", // Extracted HTML from Rust output
+          html: blockHTML.trim(),
           metadata: {
             properties: block.properties,
           },
@@ -270,6 +261,22 @@ export async function ingestLogseqGraph(
 
     await Promise.all(updatePromises);
 
+    buildLog.push("Recalculating block depths based on parent chain...");
+
+    // Recalculate depth for all blocks based on actual parent relationships
+    const depthUpdatePromises: Promise<any>[] = [];
+
+    for (const node of insertedNodes) {
+      if (node.nodeType === "block") {
+        const depth = await calculateBlockDepthFromParents(node.id, blockMap, pageNodeMap);
+        depthUpdatePromises.push(
+          db.update(nodes).set({ depth }).where(eq(nodes.id, node.id))
+        );
+      }
+    }
+
+    await Promise.all(depthUpdatePromises);
+
     buildLog.push("Ingestion complete!");
 
     return {
@@ -301,4 +308,24 @@ function calculateBlockDepth(
   if (!block || !block.parentUuid) return 0;
 
   return 1 + calculateBlockDepth(block.parentUuid, allBlocks);
+}
+
+async function calculateBlockDepthFromParents(
+  blockId: number,
+  blockMap: Map<string, number>,
+  pageNodeMap: Map<string, number>
+): Promise<number> {
+  // Query the node to get its parentId
+  const node = await db.query.nodes.findFirst({
+    where: eq(nodes.id, blockId),
+  });
+
+  if (!node || !node.parentId) return 0;
+
+  // Check if parent is a page (depth = 0)
+  const isParentPage = Array.from(pageNodeMap.values()).includes(node.parentId);
+  if (isParentPage) return 0;
+
+  // Parent is a block, recursively calculate depth
+  return 1 + (await calculateBlockDepthFromParents(node.parentId, blockMap, pageNodeMap));
 }

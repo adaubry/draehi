@@ -167,6 +167,65 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     - Build logs stored with each deployment
     - Automatic cache invalidation on successful deployment
     - Console logging for deployment status
+- **Logseq Block-Level Integration** (Complete Revamp):
+  - **Database Schema Evolution**:
+    - Added parentId to nodes table (self-referential foreign key for hierarchy)
+    - Added order field (block ordering within siblings)
+    - Added nodeType field ('page' | 'block' discriminator)
+    - Added blockUuid field (Logseq block UUID from id:: property)
+    - Pages have html=null, blocks have rendered HTML
+    - Composite indexes for (parentId, order) and (blockUuid)
+  - **Markdown Parser** (modules/logseq/markdown-parser.ts):
+    - Parses Logseq .md files to extract block structure
+    - Extracts block UUIDs from id:: properties
+    - Builds parent-child relationships from indentation
+    - Flattens block tree for database insertion
+    - Preserves block order and hierarchy
+  - **HTML Extraction** (modules/logseq/extract-blocks.ts):
+    - Parses Rust tool HTML output with node-html-parser
+    - Extracts individual block HTML from combined page HTML
+    - Matches blocks by UUID (top-level) and content similarity (nested)
+    - Cleans up id:: text artifacts from nested blocks
+    - Fallback to escaped text for unmatched blocks
+  - **Rust Tool Integration**:
+    - Forked export-logseq-notes to modules/logseq/export-tool/
+    - Vendored as part of codebase (removed .git directory)
+    - Built and installed to ~/.cargo/bin/ (108MB release binary)
+    - Updated dependencies (cargo update) to fix time crate compatibility
+    - Tool outputs full page HTML used for metadata + block extraction
+  - **Sync Integration** (modules/content/actions.ts):
+    - ingestLogseqGraph() now creates both page and block nodes
+    - Step 1: Parse markdown for block structure
+    - Step 2: Run Rust tool for HTML rendering
+    - Step 3: Parse HTML for page metadata
+    - Step 4: Extract block-level HTML from Rust output
+    - Step 5: Create page nodes (html=null)
+    - Step 6: Create block nodes with extracted HTML
+    - Step 7: Update parentId relationships (blocks → blocks/pages)
+    - Batch insertion + Promise.all for parent updates
+  - **BlockTree UI Component** (components/viewer/BlockTree.tsx):
+    - Client-side React component for Logseq-style block tree
+    - Clickable bullets for navigation (navigate to block via #hash)
+    - Collapsible blocks (click bullet with children to expand/collapse)
+    - Recursive rendering of block hierarchy
+    - Block state management with useState
+    - Links to blocks via blockUuid hash
+  - **Logseq-Style CSS** (app/blocks.css):
+    - Hover effects on blocks (gray-100 background)
+    - Bullet point hover effects (blue-500 color, scale transform)
+    - Target block highlighting (:target with yellow-100 background)
+    - Smooth animations and transitions
+    - Indentation for nested blocks
+  - **Query Layer**:
+    - getAllBlocksForPage() query (modules/content/queries.ts)
+    - Fetches all blocks for a page by pageName
+    - Ordered by order field
+    - Cached with "use cache" directive
+  - **Page Viewer Integration**:
+    - app/[workspaceSlug]/[...path]/page.tsx now fetches blocks
+    - Renders BlockTree if blocks exist
+    - Shows "No blocks yet" if empty
+    - blocks.css imported in layout.tsx
 
 ### Changed
 - README Quick Start now references automated scripts
@@ -177,12 +236,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Git clone now validates branch exists before attempting clone
 - Settings page placeholder updated from "ghp_..." to "github_pat_..." for fine-grained tokens
 - **Auto-correction behavior**: Git sync now automatically detects and uses default branch if specified branch doesn't exist, then persists correct branch (no manual user intervention required per CRUD guidelines)
+- **Block HTML rendering approach**: Switched from TypeScript markdown rendering to parsing Rust tool HTML output (complex route for higher fidelity)
+- **Content storage model**: Pages now have html=null (blocks contain the content), following true Logseq architecture
 
 ### Deprecated
 - N/A
 
 ### Removed
-- N/A
+- lib/markdown.ts (markdown rendering utility - replaced with HTML parsing)
+- Markdown rendering dependencies (unified, remark-parse, remark-rehype, rehype-stringify, remark-gfm)
+- backend-services/export-logseq-notes (git submodule - replaced with vendored copy in modules/)
 
 ### Fixed
 - Removed `revalidateTag` from sync function (was causing "used during render" error)

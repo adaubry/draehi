@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getWorkspaceBySlug } from "@/modules/workspace/queries";
 import {
@@ -15,9 +16,13 @@ type PageProps = {
   }>;
 };
 
-export default async function NodePage({ params }: PageProps) {
-  const { workspaceSlug, path = [] } = await params;
-
+async function NodePageContent({
+  workspaceSlug,
+  path,
+}: {
+  workspaceSlug: string;
+  path: string[];
+}) {
   // Get workspace by slug
   const workspace = await getWorkspaceBySlug(workspaceSlug);
   if (!workspace) {
@@ -74,5 +79,25 @@ export default async function NodePage({ params }: PageProps) {
         <div className="text-gray-500 italic">No blocks yet</div>
       )}
     </div>
+  );
+}
+
+async function NodePageWrapper({ params }: PageProps) {
+  const { workspaceSlug, path = [] } = await params;
+  return <NodePageContent workspaceSlug={workspaceSlug} path={path} />;
+}
+
+export default function NodePage({ params }: PageProps) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col gap-6">
+          <div className="h-8 bg-gray-200 animate-pulse rounded" />
+          <div className="h-12 bg-gray-200 animate-pulse rounded" />
+        </div>
+      }
+    >
+      <NodePageWrapper params={params} />
+    </Suspense>
   );
 }

@@ -57,17 +57,19 @@ async function WorkspaceContent({
   );
 }
 
-export default async function WorkspaceLayout({
+async function WorkspaceLayoutWrapper({
   children,
   params,
 }: LayoutProps) {
   const { workspaceSlug } = await params;
 
+  return <WorkspaceContent workspaceSlug={workspaceSlug}>{children}</WorkspaceContent>;
+}
+
+export default function WorkspaceLayout({ children, params }: LayoutProps) {
   return (
     <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center">Loading...</div>}>
-      <WorkspaceContent workspaceSlug={workspaceSlug}>
-        {children}
-      </WorkspaceContent>
+      <WorkspaceLayoutWrapper params={params}>{children}</WorkspaceLayoutWrapper>
     </Suspense>
   );
 }

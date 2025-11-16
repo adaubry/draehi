@@ -4,12 +4,13 @@
 
 ## Current Phase
 
-✅ **Phase 3: Logseq Processing - COMPLETE**
+✅ **Phase 4: Public Viewer - COMPLETE**
 
 Previous phases:
 - ✅ Phase 0: Foundation
 - ✅ Phase 1: Core Infrastructure
 - ✅ Phase 2: Git Integration
+- ✅ Phase 3: Logseq Processing
 
 ---
 
@@ -73,6 +74,24 @@ Previous phases:
 - [x] Batch node insertion for performance
 - [x] Idempotent ingestion (delete + reinsert)
 
+### Phase 4: Public Viewer ✅
+- [x] Create public viewer route (app/[workspaceSlug]/[...path]/page.tsx)
+- [x] Implement workspace layout with header (app/[workspaceSlug]/layout.tsx)
+- [x] Workspace index page with auto-redirect to first page
+- [x] Server-side rendering for nodes with pre-rendered HTML
+- [x] Sidebar navigation component with hierarchical tree structure
+- [x] Namespace tree navigation with proper depth handling
+- [x] Journal pages section in sidebar (10 most recent)
+- [x] Breadcrumbs for nested pages
+- [x] Active page highlighting in navigation
+- [x] NodeContent component with Tailwind prose styling
+- [x] Style rendered Logseq content with comprehensive Tailwind classes
+- [x] Responsive typography and spacing
+- [x] Tag display on pages
+- [x] Performance optimizations with experimental PPR
+- [x] Cached queries for optimal performance (React cache)
+- [x] Proper 404 handling for missing workspaces/nodes
+
 ### Quality Checks ✅
 - [x] TypeScript type checking passes (0 errors)
 - [x] Production build successful
@@ -83,30 +102,27 @@ Previous phases:
 
 ---
 
-## Next Steps (Phase 4)
+## Next Steps (Phase 5)
 
-### Week 5-6: Public Viewer
+### Week 6-7: Deployment Pipeline & Polish
 
-**Priority 1: Public Routes**
-- [ ] Create public viewer route (app/[slug]/[...path]/page.tsx)
-- [ ] Implement server-side rendering for nodes
-- [ ] Style rendered Logseq content
-- [ ] Support namespace navigation
-- [ ] Handle internal wiki-style links
+**Priority 1: Deployment Improvements**
+- [ ] Improve deployment status UI
+- [ ] Real-time deployment progress
+- [ ] Better error messages for failed deployments
+- [ ] Retry failed deployments
 
-**Priority 2: Navigation**
-- [ ] Sidebar navigation component
-- [ ] Namespace tree structure
-- [ ] Journal calendar view
-- [ ] Breadcrumbs for nested pages
-- [ ] Search functionality
+**Priority 2: Cache Invalidation**
+- [ ] Invalidate public viewer cache on deployment
+- [ ] Use revalidateTag() for workspace content
+- [ ] Clear stale content automatically
 
-**Priority 3: Styling**
-- [ ] Apply Tailwind classes from export config
-- [ ] Syntax highlighting for code blocks
-- [ ] Responsive design
-- [ ] Dark mode support
-- [ ] Typography optimization
+**Priority 3: UI Polish**
+- [ ] Add loading states to public viewer
+- [ ] Improve mobile responsiveness
+- [ ] Add dark mode support
+- [ ] Enhance landing page
+- [ ] Better empty states
 
 ---
 

@@ -1,8 +1,12 @@
 import { notFound } from "next/navigation";
 import { getWorkspaceBySlug } from "@/modules/workspace/queries";
-import { getNodeByPath, getNodeBreadcrumbs } from "@/modules/content/queries";
+import {
+  getNodeByPath,
+  getNodeBreadcrumbs,
+  getAllBlocksForPage,
+} from "@/modules/content/queries";
 import { Breadcrumbs } from "@/components/viewer/Breadcrumbs";
-import { NodeContent } from "@/components/viewer/NodeContent";
+import { BlockTree } from "@/components/viewer/BlockTree";
 
 type PageProps = {
   params: Promise<{
@@ -26,8 +30,16 @@ export default async function NodePage({ params }: PageProps) {
     notFound();
   }
 
+  // Get all blocks for this page (if it's a page node)
+  const blocks =
+    node.nodeType === "page"
+      ? await getAllBlocksForPage(workspace.id, node.pageName)
+      : [];
+
   // Get breadcrumbs
   const breadcrumbs = await getNodeBreadcrumbs(node, workspaceSlug);
+
+  const pagePath = path.join("/");
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,8 +63,16 @@ export default async function NodePage({ params }: PageProps) {
         )}
       </div>
 
-      {/* Node Content */}
-      <NodeContent html={node.html || ""} />
+      {/* Logseq-style Block Tree */}
+      {blocks.length > 0 ? (
+        <BlockTree
+          blocks={blocks}
+          workspaceSlug={workspaceSlug}
+          pagePath={pagePath}
+        />
+      ) : (
+        <div className="text-gray-500 italic">No blocks yet</div>
+      )}
     </div>
   );
 }

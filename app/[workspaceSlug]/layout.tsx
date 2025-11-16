@@ -3,6 +3,8 @@ import { getWorkspaceBySlug } from "@/modules/workspace/queries";
 import { getAllNodes } from "@/modules/content/queries";
 import { Sidebar } from "@/components/viewer/Sidebar";
 
+export const dynamic = "force-dynamic";
+
 type LayoutProps = {
   children: React.ReactNode;
   params: Promise<{

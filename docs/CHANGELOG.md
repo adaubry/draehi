@@ -181,28 +181,27 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     - Builds parent-child relationships from indentation
     - Flattens block tree for database insertion
     - Preserves block order and hierarchy
-  - **HTML Extraction** (modules/logseq/extract-blocks.ts):
-    - Parses Rust tool HTML output with node-html-parser
-    - Extracts individual block HTML from combined page HTML
-    - Matches blocks by UUID (top-level) and content similarity (nested)
-    - Cleans up id:: text artifacts from nested blocks
-    - Fallback to escaped text for unmatched blocks
+  - **Block HTML Rendering**:
+    - Uses `marked` library for markdown to HTML conversion
+    - Renders each block's markdown independently
+    - Preserves formatting (bold, italic, links, code, lists)
+    - Simple, reliable, and maintainable approach
   - **Rust Tool Integration**:
     - Forked export-logseq-notes to modules/logseq/export-tool/
     - Vendored as part of codebase (removed .git directory)
     - Built and installed to ~/.cargo/bin/ (108MB release binary)
     - Updated dependencies (cargo update) to fix time crate compatibility
-    - Tool outputs full page HTML used for metadata + block extraction
+    - Tool used for page-level metadata extraction only
   - **Sync Integration** (modules/content/actions.ts):
-    - ingestLogseqGraph() now creates both page and block nodes
-    - Step 1: Parse markdown for block structure
-    - Step 2: Run Rust tool for HTML rendering
-    - Step 3: Parse HTML for page metadata
-    - Step 4: Extract block-level HTML from Rust output
-    - Step 5: Create page nodes (html=null)
-    - Step 6: Create block nodes with extracted HTML
-    - Step 7: Update parentId relationships (blocks → blocks/pages)
-    - Batch insertion + Promise.all for parent updates
+    - ingestLogseqGraph() creates both page and block nodes
+    - Step 1: Parse markdown for block structure (hierarchy + UUIDs)
+    - Step 2: Run Rust tool for page metadata
+    - Step 3: Create page nodes (html=null)
+    - Step 4: Create block nodes with markdown-rendered HTML
+    - Step 5: Update parentId for proper block→block and block→page relationships
+    - Step 6: Recalculate depth from actual parent chain in database
+    - **Critical Fix**: Blocks now properly linked to parent blocks, not all to page
+    - **Critical Fix**: Depth calculated from database parent chain, not markdown structure
   - **BlockTree UI Component** (components/viewer/BlockTree.tsx):
     - Client-side React component for Logseq-style block tree
     - Clickable bullets for navigation (navigate to block via #hash)
@@ -236,20 +235,26 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Git clone now validates branch exists before attempting clone
 - Settings page placeholder updated from "ghp_..." to "github_pat_..." for fine-grained tokens
 - **Auto-correction behavior**: Git sync now automatically detects and uses default branch if specified branch doesn't exist, then persists correct branch (no manual user intervention required per CRUD guidelines)
-- **Block HTML rendering approach**: Switched from TypeScript markdown rendering to parsing Rust tool HTML output (complex route for higher fidelity)
+- **Block HTML rendering approach**: Switched from HTML parsing to direct markdown rendering with `marked` library (simpler, more reliable)
 - **Content storage model**: Pages now have html=null (blocks contain the content), following true Logseq architecture
+- **Block hierarchy**: Fixed to use proper block→block parent relationships instead of all blocks pointing to page
+- **Depth calculation**: Now calculated from actual database parent chain instead of markdown structure
 
 ### Deprecated
 - N/A
 
 ### Removed
-- lib/markdown.ts (markdown rendering utility - replaced with HTML parsing)
-- Markdown rendering dependencies (unified, remark-parse, remark-rehype, rehype-stringify, remark-gfm)
+- modules/logseq/extract-blocks.ts (HTML extraction module - replaced with markdown rendering)
+- node-html-parser dependency (no longer needed)
 - backend-services/export-logseq-notes (git submodule - replaced with vendored copy in modules/)
 
 ### Fixed
 - Removed `revalidateTag` from sync function (was causing "used during render" error)
 - Dashboard and settings pages now use `dynamic = "force-dynamic"` for live status updates
+- **Next.js 16 uncached data errors**: Added `dynamic = "force-dynamic"` to workspace layout and dashboard
+- **Block hierarchy broken (all depth 0)**: Fixed parentId assignment to use block→block relationships, not all→page
+- **Block depth incorrect**: Now calculated from actual database parent chain after parentId is set
+- **Block HTML not showing**: Switched from fragile HTML parsing to direct markdown rendering with `marked`
 - Status badges (idle/syncing/success/error) now update in real-time when user refreshes page
 - Removed `revalidatePath` from async promise handlers to prevent render errors
 - Renamed middleware.ts to proxy.ts (Next.js 16 convention)

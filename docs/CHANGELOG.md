@@ -251,6 +251,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 - Removed `revalidateTag` from sync function (was causing "used during render" error)
 - **Next.js 16 uncached data errors**: Wrapped uncached data access in Suspense boundaries (cacheComponents compatible)
+  - Dashboard page: wrapped DashboardContent in Suspense
+  - Dashboard layout: wrapped DashboardLayoutContent in Suspense (requireAuth accesses cookies)
+  - Workspace layout: wrapped WorkspaceContent in Suspense (async params)
 - **cacheComponents compatibility**: Replaced `dynamic = "force-dynamic"` with proper Suspense pattern
 - **Block hierarchy broken (all depth 0)**: Fixed parentId assignment to use block→block relationships, not all→page
 - **Block depth incorrect**: Now calculated from actual database parent chain after parentId is set

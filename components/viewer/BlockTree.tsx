@@ -13,7 +13,7 @@ type BlockTreeProps = {
 
 type BlockItemProps = {
   block: Node;
-  children: Node[];
+  allBlocks: Node[];
   workspaceSlug: string;
   pagePath: string;
   depth: number;
@@ -21,14 +21,19 @@ type BlockItemProps = {
 
 function BlockItem({
   block,
-  children,
+  allBlocks,
   workspaceSlug,
   pagePath,
   depth,
 }: BlockItemProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const hasChildren = children.length > 0;
 
+  // Find children from ALL blocks
+  const children = allBlocks
+    .filter((b) => b.nodeType === "block" && b.parentId === block.id)
+    .sort((a, b) => a.order - b.order);
+
+  const hasChildren = children.length > 0;
   const blockId = block.blockUuid || `block-${block.id}`;
   const blockUrl = `/${workspaceSlug}/${pagePath}#${blockId}`;
 
@@ -71,24 +76,16 @@ function BlockItem({
       {/* Nested Children */}
       {hasChildren && !isCollapsed && (
         <ul className="block-children">
-          {children.map((childBlock) => {
-            // Find grandchildren
-            const grandchildren = getChildBlocks(childBlock, [
-              block,
-              ...children,
-            ]);
-
-            return (
-              <BlockItem
-                key={childBlock.id}
-                block={childBlock}
-                children={grandchildren}
-                workspaceSlug={workspaceSlug}
-                pagePath={pagePath}
-                depth={depth + 1}
-              />
-            );
-          })}
+          {children.map((childBlock) => (
+            <BlockItem
+              key={childBlock.id}
+              block={childBlock}
+              allBlocks={allBlocks}
+              workspaceSlug={workspaceSlug}
+              pagePath={pagePath}
+              depth={depth + 1}
+            />
+          ))}
         </ul>
       )}
     </li>
@@ -101,41 +98,31 @@ export function BlockTree({
   pagePath,
   depth = 0,
 }: BlockTreeProps) {
-  // Build tree structure: find top-level blocks (parentId = null or points to page)
-  const topLevelBlocks = blocks.filter(
-    (b) => b.nodeType === "block" && (!b.parentId || b.parentId === blocks[0]?.id)
-  );
+  // Find the page node
+  const pageNode = blocks.find((b) => b.nodeType === "page");
 
-  return (
-    <ul className="logseq-blocks">
-      {topLevelBlocks.map((block) => {
-        const children = getChildBlocks(block, blocks);
-
-        return (
-          <BlockItem
-            key={block.id}
-            block={block}
-            children={children}
-            workspaceSlug={workspaceSlug}
-            pagePath={pagePath}
-            depth={depth}
-          />
-        );
-      })}
-    </ul>
-  );
-}
-
-/**
- * Get direct children of a block
- */
-function getChildBlocks(parentBlock: Node, allBlocks: Node[]): Node[] {
-  return allBlocks
+  // Find top-level blocks (children of the page)
+  const topLevelBlocks = blocks
     .filter(
       (b) =>
         b.nodeType === "block" &&
-        (b.parentId === parentBlock.id ||
-          b.blockUuid === parentBlock.blockUuid)
+        pageNode &&
+        b.parentId === pageNode.id
     )
     .sort((a, b) => a.order - b.order);
+
+  return (
+    <ul className="logseq-blocks">
+      {topLevelBlocks.map((block) => (
+        <BlockItem
+          key={block.id}
+          block={block}
+          allBlocks={blocks}
+          workspaceSlug={workspaceSlug}
+          pagePath={pagePath}
+          depth={depth}
+        />
+      ))}
+    </ul>
+  );
 }

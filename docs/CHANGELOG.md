@@ -263,6 +263,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Block hierarchy broken (all depth 0)**: Fixed parentId assignment to use block→block relationships, not all→page
 - **Block depth incorrect**: Now calculated from actual database parent chain after parentId is set
 - **Block HTML not showing**: Switched from fragile HTML parsing to direct markdown rendering with `marked`
+- **Performance: N+1 query problem in depth calculation**:
+  - Replaced recursive DB queries with in-memory calculation (calculateBlockDepthInMemory)
+  - Built parentIdMap and pageIds Set during parentId updates
+  - Eliminated individual DB query per block (was causing slow page loads)
+  - modules/content/actions.ts: calculateBlockDepthFromParents removed
+- **Performance: Missing database index**:
+  - Added workspacePageNameNodeTypeIdx index on (workspaceId, pageName, nodeType)
+  - Optimizes getAllBlocksForPage query (common read path)
+- **BlockTree duplication bug**:
+  - Fixed getChildBlocks receiving subset instead of all blocks
+  - Removed double-match condition (parentId OR blockUuid)
+  - Fixed top-level detection to properly find page node
+  - components/viewer/BlockTree.tsx rewritten with simpler logic
+- **Query optimization**:
+  - getAllNodes now filters nodeType='page' (was returning ALL nodes including blocks)
+  - getJournalNodes now filters nodeType='page' (was returning blocks)
+  - getAllBlocksForPage now returns page node + blocks (BlockTree needs page node)
+  - Sidebar navigation no longer processes thousands of individual blocks
 - Status badges (idle/syncing/success/error) now update in real-time when user refreshes page
 - Removed `revalidatePath` from async promise handlers to prevent render errors
 - Renamed middleware.ts to proxy.ts (Next.js 16 convention)

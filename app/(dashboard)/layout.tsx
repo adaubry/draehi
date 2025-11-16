@@ -1,9 +1,10 @@
+import { Suspense } from "react";
 import { requireAuth } from "@/lib/session";
 import { getWorkspaceByUserId } from "@/modules/workspace/queries";
 import { logout } from "@/modules/auth/session-actions";
 import Link from "next/link";
 
-export default async function DashboardLayout({
+async function DashboardLayoutContent({
   children,
 }: {
   children: React.ReactNode;
@@ -55,5 +56,23 @@ export default async function DashboardLayout({
         {children}
       </main>
     </div>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </Suspense>
   );
 }

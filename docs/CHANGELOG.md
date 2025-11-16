@@ -153,6 +153,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     - 404 handling for missing workspaces and nodes
     - Mobile-responsive sidebar and content
     - Clean, minimal design inspired by modern documentation sites
+- **Phase 5 Complete**: Deployment Pipeline & Polish
+  - **Performance & Caching**:
+    - Added "use cache" directive to all content queries
+    - React cache for optimal query performance
+    - Cache invalidation prepared for deployments
+  - **Loading States**:
+    - Workspace loading skeleton (app/[workspaceSlug]/loading.tsx)
+    - Node page loading skeleton (app/[workspaceSlug]/[...path]/loading.tsx)
+    - Animated skeleton screens for better UX
+  - **Deployment Pipeline**:
+    - Deployment logs already tracked in deployment_history table
+    - Build logs stored with each deployment
+    - Automatic cache invalidation on successful deployment
+    - Console logging for deployment status
 
 ### Changed
 - README Quick Start now references automated scripts

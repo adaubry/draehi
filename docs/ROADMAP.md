@@ -81,32 +81,39 @@
 
 ---
 
-## Phase 3: Logseq Processing (Week 3-4)
+## Phase 3: Logseq Processing 🚧 IN PROGRESS
 
 **Goal:** Process Logseq graphs into HTML
 
 ### 3.1 Rust Tool Integration
-- [ ] Install/bundle export-logseq-notes
-- [ ] Call Rust tool from Node.js
-- [ ] Parse Rust tool output
-- [ ] Extract HTML, metadata, frontmatter
-- [ ] Handle errors gracefully
+- [x] Install/bundle export-logseq-notes
+- [x] Call Rust tool from Node.js
+- [x] Parse Rust tool output
+- [x] Extract HTML, metadata, frontmatter
+- [x] Handle errors gracefully
 
 ### 3.2 Content Ingestion
-- [ ] Parse Logseq pages into nodes
-- [ ] Extract namespace from page names
-- [ ] Calculate depth automatically
-- [ ] Store pre-rendered HTML in database
-- [ ] Store original markdown as backup
-- [ ] Extract metadata (tags, properties)
+- [x] Parse Logseq pages into nodes
+- [x] Extract namespace from page names
+- [x] Calculate depth automatically
+- [x] Store pre-rendered HTML in database
+- [x] Store original markdown as backup
+- [x] Extract metadata (tags, properties)
 
 ### 3.3 Journal Pages
-- [ ] Detect journal pages
-- [ ] Parse journal dates
-- [ ] Create journal navigation
-- [ ] Sort by date
+- [x] Detect journal pages
+- [x] Parse journal dates
+- [ ] Create journal navigation (deferred to Phase 4)
+- [ ] Sort by date (deferred to Phase 4)
 
-**Deliverable:** Logseq graphs are processed and stored as nodes
+### 3.4 Asset Storage (NEW)
+- [x] S3-compatible storage abstraction
+- [x] MinIO local setup for MVP
+- [x] Asset upload from Logseq repos
+- [x] S3 URL replacement in HTML
+- [ ] Production AWS S3 setup (when deploying)
+
+**Deliverable:** Logseq graphs are processed and stored as nodes ✅ (Basic implementation complete)
 
 ---
 
@@ -278,4 +285,4 @@
 ---
 
 **Last Updated:** 2025-11-16
-**Current Phase:** Phase 2 Complete - Ready for Phase 3 (Logseq Processing)
+**Current Phase:** Phase 3 In Progress - Logseq Processing (Basic implementation complete)

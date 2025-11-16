@@ -20,7 +20,7 @@ export async function triggerDeployment() {
     throw new Error("No repository connected");
   }
 
-  // Trigger sync
+  // Trigger sync in background (no revalidation in promise to avoid render errors)
   syncRepository(
     workspace.id,
     repository.repoUrl,
@@ -30,6 +30,7 @@ export async function triggerDeployment() {
     console.error("Manual deployment failed:", error);
   });
 
-  // Revalidate dashboard
+  // Immediate revalidation to show "syncing" status
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/settings");
 }

@@ -1,15 +1,83 @@
-import { exec } from "child_process";
-import { promisify } from "util";
 import { mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
-
-const execAsync = promisify(exec);
+import { execWithPath } from "@/lib/shell";
 
 export interface CloneResult {
   success: boolean;
   path?: string;
   error?: string;
+  branch?: string; // Actual branch used (may differ from requested)
+}
+
+export async function getDefaultBranch(
+  repoUrl: string,
+  accessToken: string
+): Promise<{ success: boolean; branch?: string; error?: string }> {
+  try {
+    const urlWithAuth = repoUrl.replace(
+      "https://",
+      `https://x-access-token:${accessToken}@`
+    );
+
+    // Use git ls-remote to get default branch
+    const { stdout } = await execWithPath(
+      `git ls-remote --symref ${urlWithAuth} HEAD`,
+      {
+        timeout: 30000,
+        maxBuffer: 1024 * 1024,
+      }
+    );
+
+    // Parse output: "ref: refs/heads/main	HEAD"
+    const match = stdout.match(/ref: refs\/heads\/(\S+)/);
+    if (match && match[1]) {
+      return { success: true, branch: match[1] };
+    }
+
+    return { success: false, error: "Could not determine default branch" };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+export async function validateBranch(
+  repoUrl: string,
+  branch: string,
+  accessToken: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const urlWithAuth = repoUrl.replace(
+      "https://",
+      `https://x-access-token:${accessToken}@`
+    );
+
+    // List all branches
+    const { stdout } = await execWithPath(
+      `git ls-remote --heads ${urlWithAuth} refs/heads/${branch}`,
+      {
+        timeout: 30000,
+        maxBuffer: 1024 * 1024,
+      }
+    );
+
+    if (!stdout.trim()) {
+      return {
+        success: false,
+        error: `Branch '${branch}' does not exist in repository`,
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
 }
 
 export async function cloneRepository(
@@ -18,6 +86,7 @@ export async function cloneRepository(
   accessToken: string
 ): Promise<CloneResult> {
   let tempDir: string | null = null;
+  let actualBranch = branch;
 
   try {
     // Create temp directory
@@ -29,9 +98,29 @@ export async function cloneRepository(
       `https://x-access-token:${accessToken}@`
     );
 
-    // Clone repository
-    const cloneCmd = `git clone --depth 1 --branch ${branch} ${urlWithAuth} ${tempDir}`;
-    await execAsync(cloneCmd, {
+    // Validate branch exists first
+    const validation = await validateBranch(repoUrl, branch, accessToken);
+    if (!validation.success) {
+      // Auto-detect and use default branch instead
+      const defaultBranch = await getDefaultBranch(repoUrl, accessToken);
+      if (defaultBranch.success && defaultBranch.branch) {
+        console.log(
+          `Branch '${branch}' not found. Auto-switching to default branch '${defaultBranch.branch}'`
+        );
+        actualBranch = defaultBranch.branch;
+      } else {
+        return {
+          success: false,
+          error:
+            validation.error ||
+            "Branch validation failed and could not detect default branch",
+        };
+      }
+    }
+
+    // Clone repository with detected branch
+    const cloneCmd = `git clone --depth 1 --branch ${actualBranch} ${urlWithAuth} ${tempDir}`;
+    await execWithPath(cloneCmd, {
       timeout: 60000, // 60 second timeout
       maxBuffer: 10 * 1024 * 1024, // 10MB buffer
     });
@@ -39,6 +128,8 @@ export async function cloneRepository(
     return {
       success: true,
       path: tempDir,
+      // Return actual branch used (may differ from requested)
+      branch: actualBranch,
     };
   } catch (error) {
     // Clean up temp dir if clone failed
@@ -50,9 +141,28 @@ export async function cloneRepository(
       }
     }
 
+    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+
+    // Provide helpful error messages
+    if (errorMsg.includes("authentication failed")) {
+      return {
+        success: false,
+        error:
+          "Authentication failed. Please check your GitHub Personal Access Token has correct permissions.",
+      };
+    }
+
+    if (errorMsg.includes("Repository not found")) {
+      return {
+        success: false,
+        error:
+          "Repository not found. Please check the URL and ensure your token has access to this repository.",
+      };
+    }
+
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: errorMsg,
     };
   }
 }
@@ -64,7 +174,7 @@ export async function pullRepository(
   try {
     // Pull latest changes
     const pullCmd = `cd ${repoPath} && git pull origin ${branch}`;
-    await execAsync(pullCmd, {
+    await execWithPath(pullCmd, {
       timeout: 60000,
       maxBuffer: 10 * 1024 * 1024,
     });
@@ -91,7 +201,7 @@ export async function cleanupRepository(repoPath: string): Promise<void> {
 
 export async function getLatestCommit(repoPath: string): Promise<string> {
   try {
-    const { stdout } = await execAsync(`cd ${repoPath} && git rev-parse HEAD`);
+    const { stdout } = await execWithPath(`cd ${repoPath} && git rev-parse HEAD`);
     return stdout.trim();
   } catch (error) {
     throw new Error(

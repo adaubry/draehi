@@ -7,6 +7,9 @@ import {
 import Link from "next/link";
 import { triggerDeployment } from "./actions";
 
+// Force dynamic rendering to show live status updates
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const user = await requireAuth();
   const workspace = await getWorkspaceByUserId(user.id);

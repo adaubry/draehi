@@ -80,13 +80,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Username confirmation required for deletion
   - Cascading deletes (workspace, repos, nodes, deployment history)
   - Session destruction and redirect on account deletion
-- **Phase 3: Logseq Processing** (In Progress):
+- **Phase 3 Complete**: Logseq Processing
   - Storage module with S3-compatible abstraction (modules/storage/)
   - S3 client for MinIO (local) and AWS S3 (prod)
   - Asset upload functionality for images/attachments
+  - **Proper export-logseq-notes integration** (inspired by dimfeld/website):
+    - Template file for HTML output with metadata (title, tags, dates)
+    - Comprehensive TOML configuration with Tailwind-compatible CSS classes
+    - Rhai script for page processing and custom HTML attributes
+    - Template specified in config (fixes "no default template" error)
   - Rust tool integration (modules/logseq/export.ts)
   - Shell execution wrapper for export-logseq-notes CLI
-  - JSON output parser (modules/logseq/parse.ts)
+  - HTML output parser with metadata extraction (modules/logseq/parse.ts)
+  - Meta tag parsing (title, tags, created/updated dates)
+  - Body content extraction (strips HTML wrapper)
   - LogseqPage to NewNode conversion
   - Namespace extraction and depth calculation
   - Journal page detection (YYYY_MM_DD pattern)
@@ -99,6 +106,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - AWS SDK client-s3 dependency added
   - Environment variables for S3 configuration
   - Last error timestamp in settings UI
+  - **Export Configuration Features**:
+    - Tag collection with omit list
+    - Link handling with base URL
+    - Code syntax highlighting with class prefix
+    - Em dash conversion
+    - Header promotion (h1 → h2, etc.)
+    - Block and page embeds support
+    - Custom wrapper elements and CSS classes via block attributes
 - **Setup Scripts Module**:
   - Automated setup scripts in scripts/ directory
   - install-rust-tools.sh (Rust + export-logseq-notes + CARGO_BIN_PATH config)
@@ -147,6 +162,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - setup-minio.sh Docker permissions refactored to use helper functions with proper error handling
 - BASH_GUIDELINES.md Docker pattern updated with complete error handling and platform detection
 - **Phase 3: Shell execution in Next.js server** - Fixed "export-logseq-notes not found" error
+- **Phase 3: Template error** - Fixed "Config has no default template" error by adding proper template file to TOML config
+- **Phase 3: Metadata extraction** - Now properly extracts tags, dates, and title from HTML meta tags
+- **Phase 3: Configuration** - Comprehensive TOML config with all export-logseq-notes options (inspired by dimfeld/website best practices)
   - Node.js doesn't inherit shell PATH, cargo bin directory not accessible
   - Created lib/shell.ts with execWithPath() and findBinary() utilities
   - All shell commands now use extended PATH (cargo, git, user binaries)

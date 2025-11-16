@@ -7,7 +7,7 @@ import { eq, and } from "drizzle-orm";
 import { exportLogseqNotes } from "../logseq/export";
 import { parseLogseqOutput } from "../logseq/parse";
 import { parseLogseqDirectory, flattenBlocks } from "../logseq/markdown-parser";
-import { markdownToHtml } from "@/lib/markdown";
+import { extractAllBlocksFromOutput } from "../logseq/extract-blocks";
 import path from "path";
 
 // Internal only - called during git sync/deployment
@@ -128,7 +128,17 @@ export async function ingestLogseqGraph(
     buildLog.push("Clearing existing nodes...");
     await deleteAllNodes(workspaceId);
 
-    // Step 5: Create page nodes AND block nodes
+    // Step 5: Extract block-level HTML from Rust tool output
+    buildLog.push("Extracting block-level HTML from Rust output...");
+    const blockHTMLData = await extractAllBlocksFromOutput(
+      exportResult.outputDir,
+      markdownPages.map((p) => ({
+        pageName: p.pageName,
+        blocks: flattenBlocks(p.blocks),
+      }))
+    );
+
+    // Step 6: Create page nodes AND block nodes
     buildLog.push("Creating page and block nodes...");
     const allNodes: NewNode[] = [];
     let totalBlocks = 0;
@@ -172,39 +182,37 @@ export async function ingestLogseqGraph(
 
       allNodes.push(pageNode);
 
-      // Flatten block tree for this page
+      // Get extracted block HTML for this page
       const flatBlocks = flattenBlocks(mdPage.blocks);
+      const pageBlockHTMLs = blockHTMLData.get(mdPage.pageName) || [];
       totalBlocks += flatBlocks.length;
 
-      // Create block nodes for each block (render markdown to HTML)
-      const blockNodes = await Promise.all(
-        flatBlocks.map(async (block) => {
-          const blockHtml = await markdownToHtml(block.content);
+      // Create block nodes with extracted HTML
+      for (let i = 0; i < flatBlocks.length; i++) {
+        const block = flatBlocks[i];
+        const blockHTML = pageBlockHTMLs[i];
 
-          const blockNode: NewNode = {
-            workspaceId,
-            parentId: null, // Will be set after page insertion
-            order: block.order,
-            nodeType: "block",
-            pageName: mdPage.pageName,
-            slug,
-            namespace,
-            depth: calculateBlockDepth(block.uuid, flatBlocks),
-            blockUuid: block.uuid,
-            title: "", // Blocks don't have titles
-            html: blockHtml,
-            metadata: {
-              properties: block.properties,
-            },
-            isJournal: false,
-            journalDate: undefined,
-          };
+        const blockNode: NewNode = {
+          workspaceId,
+          parentId: null, // Will be set after page insertion
+          order: block.order,
+          nodeType: "block",
+          pageName: mdPage.pageName,
+          slug,
+          namespace,
+          depth: calculateBlockDepth(block.uuid, flatBlocks),
+          blockUuid: block.uuid,
+          title: "", // Blocks don't have titles
+          html: blockHTML?.html || "", // Extracted HTML from Rust output
+          metadata: {
+            properties: block.properties,
+          },
+          isJournal: false,
+          journalDate: undefined,
+        };
 
-          return blockNode;
-        })
-      );
-
-      allNodes.push(...blockNodes);
+        allNodes.push(blockNode);
+      }
     }
 
     buildLog.push(

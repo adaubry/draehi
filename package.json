@@ -23,7 +23,12 @@
     "postgres": "^3.4.5",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "rehype-stringify": "^10.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
     "tailwind-merge": "^2.6.0",
+    "unified": "^11.0.5",
     "zod": "^3.24.1"
   },
   "devDependencies": {

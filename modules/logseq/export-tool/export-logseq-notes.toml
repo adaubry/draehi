@@ -1,0 +1,83 @@
+# The graph export to open.
+# For Roam, this should be an EDN file or a ZIP file containing it.
+# For Logseq, this should be the Logseq graph directory.
+data = "/home/user/logseq"
+
+# roam or logseq
+product = "logseq"
+
+# Write the rendered pages into this directory
+output = "pages"
+
+# The script to run against each page.
+script = "sample.rhai"
+
+# Use this template when rendering pages. See the `templates` directory for examples.
+template = "templates/front_matter.tmpl"
+
+# Use this file extension on the rendered pages
+extension = "html"
+
+# When performing syntax highlighting, prefix the classes with
+# this string. This is optional.
+highlight_class_prefix = "hljs-"
+
+
+##### Control Included Pages #####
+
+
+##### Tags Output ####
+
+# Use this attribute to gather tags for a page, which can be used in the
+# template to populate front matter for a CMS
+tags_attr = "Tags"
+
+# When gathering tags for a page template, ignore these tags
+# For example, your book note pages may have lines like this:
+# Tags:: #Books #[[In Progress]] #Finance
+# So you can add "Books" and "In Progress" here to prevent them from
+# being listed as tags for a page and cluttering up the tags.
+omit_attributes = [
+  "Progress",
+  "Tags"
+]
+
+##### Link Handling #####
+
+# If a block contains only tags and nothing else, don't render
+# any of the tags that reference unexported pages.
+filter_link_only_blocks = true
+
+# When rendering links, use this URL prefix (optional)
+base_url = "/notes"
+
+# Include page embeds of pages that don't otherwise qualify for inclusion.
+include_all_page_embeds = false
+
+# HTML classes for various elements
+class_bold = "rm-bold"
+class_italic = "rm-italic"
+class_strikethrough = "strike"
+class_highlight = "highlighted"
+class_blockquote = "bq"
+class_hr = ""
+class_block_embed = "block-embed"
+class_page_embed_container = "border border-gray-300"
+class_page_embed_title = "font-bold text-lg"
+class_page_embed_content = ""
+class_attr_name = "font-medium text-gray-800"
+class_attr_value = ""
+class_heading1 = "text-2xl"
+class_heading2 = "text-xl"
+class_heading3 = "text-lg"
+class_heading4 = "font-medium"
+
+##### Upcoming features #####
+
+# Write namespaced pages into nested directories.
+# A page with the title Books/Notes/A Book
+# would be written to books/notes/a_book
+# When false (the default), it will be
+# written to books_notes_a_book.
+namespace_dirs = false
+

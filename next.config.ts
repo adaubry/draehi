@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
+  // Disable cacheComponents for now to avoid prerendering issues with auth routes
+  cacheComponents: false,
 };
 
 export default nextConfig;

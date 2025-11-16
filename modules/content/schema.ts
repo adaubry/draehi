@@ -69,6 +69,13 @@ export const nodes = pgTable(
       table.namespace
     ),
 
+    // Block queries - get all blocks for a page (getAllBlocksForPage)
+    workspacePageNameNodeTypeIdx: index("workspace_pagename_nodetype_idx").on(
+      table.workspaceId,
+      table.pageName,
+      table.nodeType
+    ),
+
     // Journal queries
     journalDateIdx: index("journal_date_idx").on(table.journalDate),
   })

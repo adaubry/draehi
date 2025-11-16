@@ -29,7 +29,7 @@ export async function parseLogseqOutput(
     const pages: LogseqPage[] = await Promise.all(
       htmlFiles.map(async (filename) => {
         const filePath = path.join(outputDir, filename);
-        const html = await fs.readFile(filePath, "utf-8");
+        const fullHtml = await fs.readFile(filePath, "utf-8");
 
         // Extract page name from filename (remove .html extension)
         const pageName = filename.replace(/\.html$/, "");
@@ -37,14 +37,23 @@ export async function parseLogseqOutput(
         // Decode URL-encoded filename (e.g., "some%20page" -> "some page")
         const decodedName = decodeURIComponent(pageName);
 
+        // Extract metadata from HTML meta tags
+        const metadata = extractMetadata(fullHtml);
+
+        // Extract body content (strip HTML wrapper, keep only body content)
+        const html = extractBodyContent(fullHtml);
+
         return {
           name: decodedName,
-          title: decodedName,
+          title: metadata.title || decodedName,
           html,
           markdown: "", // We don't have markdown, only HTML
           metadata: {
-            tags: [], // Could extract from HTML if needed
-            properties: {},
+            tags: metadata.tags,
+            properties: {
+              created: metadata.created,
+              updated: metadata.updated,
+            },
           },
           isJournal: isJournalPage(decodedName),
           journalDate: extractJournalDate(decodedName),
@@ -62,6 +71,73 @@ export async function parseLogseqOutput(
       error: error instanceof Error ? error.message : "Parse failed",
     };
   }
+}
+
+/**
+ * Extract metadata from HTML meta tags
+ */
+function extractMetadata(html: string): {
+  title?: string;
+  tags: string[];
+  created?: string;
+  updated?: string;
+} {
+  const metadata: {
+    title?: string;
+    tags: string[];
+    created?: string;
+    updated?: string;
+  } = {
+    tags: [],
+  };
+
+  // Extract title
+  const titleMatch = html.match(/<title>(.*?)<\/title>/);
+  if (titleMatch) {
+    metadata.title = titleMatch[1];
+  }
+
+  // Extract tags from meta tag
+  const tagsMatch = html.match(
+    /<meta name="tags" content="(.*?)"(?:\s*\/)?>/
+  );
+  if (tagsMatch && tagsMatch[1]) {
+    metadata.tags = tagsMatch[1]
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+
+  // Extract created date
+  const createdMatch = html.match(
+    /<meta name="created" content="(.*?)"(?:\s*\/)?>/
+  );
+  if (createdMatch) {
+    metadata.created = createdMatch[1];
+  }
+
+  // Extract updated date
+  const updatedMatch = html.match(
+    /<meta name="updated" content="(.*?)"(?:\s*\/)?>/
+  );
+  if (updatedMatch) {
+    metadata.updated = updatedMatch[1];
+  }
+
+  return metadata;
+}
+
+/**
+ * Extract body content from full HTML document
+ * Strips the HTML wrapper and returns only the body content
+ */
+function extractBodyContent(html: string): string {
+  const bodyMatch = html.match(/<body>([\s\S]*)<\/body>/);
+  if (bodyMatch) {
+    return bodyMatch[1].trim();
+  }
+  // Fallback: return full HTML if body tag not found
+  return html;
 }
 
 /**

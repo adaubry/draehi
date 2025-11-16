@@ -6,7 +6,7 @@ A "Vercel for Logseq graphs" - Transform your personal knowledge base into a hig
 
 ## Status
 
-🚧 **In Development** - Phase 2: Git Integration (Complete)
+🚧 **In Development** - Phase 3: Logseq Processing (In Progress)
 
 See [ROADMAP.md](docs/ROADMAP.md) for development plan.
 
@@ -29,10 +29,30 @@ See [ROADMAP.md](docs/ROADMAP.md) for development plan.
 ### Prerequisites
 
 - Node.js 20+
-- PostgreSQL database (Neon recommended)
 - Git
+- PostgreSQL database (Neon recommended for free tier)
+- Docker (optional, for local S3 storage)
 
-### Setup
+### Automated Setup (Recommended)
+
+Run the master setup script:
+
+```bash
+./scripts/setup.sh
+```
+
+This automated script will:
+- Install npm dependencies
+- Set up environment variables
+- Install Rust + export-logseq-notes
+- Configure database schema
+- Optionally set up MinIO S3 storage
+
+See [docs/SCRIPTS.md](docs/SCRIPTS.md) for detailed documentation.
+
+### Manual Setup
+
+If you prefer manual setup or need to troubleshoot:
 
 1. **Clone repository**
    ```bash
@@ -40,28 +60,38 @@ See [ROADMAP.md](docs/ROADMAP.md) for development plan.
    cd draehi
    ```
 
-2. **Install dependencies**
+2. **Configure environment**
+   ```bash
+   cp .env.example .env.local
+   # Edit .env.local - set DATABASE_URL and SESSION_SECRET
+   ```
+
+3. **Install dependencies**
    ```bash
    npm install
    ```
 
-3. **Set up environment**
+4. **Install Rust tools**
    ```bash
-   cp .env.example .env.local
-   # Edit .env.local with your database URL and session secret
+   ./scripts/install-rust-tools.sh
    ```
 
-4. **Set up database**
+5. **Set up database**
    ```bash
-   npm run db:push
+   ./scripts/setup-database.sh
    ```
 
-5. **Run development server**
+6. **Optional: Set up MinIO S3**
+   ```bash
+   ./scripts/setup-minio.sh
+   ```
+
+7. **Start development server**
    ```bash
    npm run dev
    ```
 
-6. **Open browser**
+8. **Open browser**
    ```
    http://localhost:3000
    ```
@@ -92,14 +122,65 @@ npm run db:push       # Push schema to database
 npm run db:studio     # Open Drizzle Studio
 ```
 
+## GitHub Personal Access Token Setup
+
+**IMPORTANT**: Never use a token with full repository access. Always use fine-grained tokens with minimal permissions.
+
+### Creating a Secure Fine-Grained PAT
+
+1. **Go to GitHub Settings**
+   - Navigate to https://github.com/settings/tokens?type=beta
+   - Click "Generate new token" → "Fine-grained token"
+
+2. **Token Configuration**
+   - **Token name**: `draehi-logseq-graph` (or similar descriptive name)
+   - **Expiration**: 90 days (recommended) or custom
+   - **Resource owner**: Select your account
+   - **Repository access**: "Only select repositories"
+     - Choose ONLY your Logseq graph repository
+     - **DO NOT** select "All repositories"
+
+3. **Repository Permissions** (minimum required)
+   - **Contents**: Read-only (required to clone/pull)
+   - **Metadata**: Read-only (auto-selected)
+   - **DO NOT** grant write access unless you need push capabilities
+
+4. **Generate and Copy**
+   - Click "Generate token"
+   - Copy the token immediately (starts with `github_pat_`)
+   - Store it securely - you won't see it again
+
+5. **Security Best Practices**
+   - ✅ Use fine-grained tokens (not classic tokens)
+   - ✅ Limit to specific repositories only
+   - ✅ Use read-only permissions
+   - ✅ Set expiration dates
+   - ✅ Regenerate tokens periodically
+   - ❌ Never commit tokens to git
+   - ❌ Never share tokens publicly
+   - ❌ Never use tokens with write access unless absolutely needed
+
+### Troubleshooting
+
+**"Authentication failed"**
+- Token expired → Generate new token
+- Wrong permissions → Verify "Contents: Read" permission
+- Wrong repository selected → Check repository access settings
+
+**"Repository not found"**
+- Token doesn't have access to repository
+- Repository URL incorrect
+- Repository is private and token lacks access
+
 ## Documentation
 
-- [CLAUDE.md](CLAUDE.md) - AI agent instructions
+- [SCRIPTS.md](docs/SCRIPTS.md) - Setup scripts documentation
 - [ROADMAP.md](docs/ROADMAP.md) - Development roadmap
 - [DIRECTORY.md](docs/DIRECTORY.md) - Project structure guide
 - [CRUD_GUIDELINES.md](docs/CRUD_GUIDELINES.md) - CRUD patterns
 - [PERFORMANCE_GUIDELINES.md](docs/PERFORMANCE_GUIDELINES.md) - Performance patterns
 - [CHANGELOG.md](docs/CHANGELOG.md) - Version history
+- [CLAUDE.md](CLAUDE.md) - AI agent instructions
 
 ## Tech Stack
 
@@ -110,6 +191,7 @@ npm run db:studio     # Open Drizzle Studio
 - **Auth**: iron-session + bcryptjs
 - **Validation**: Zod
 - **Content Processing**: export-logseq-notes (Rust)
+- **Asset Storage**: S3-compatible (MinIO local, AWS S3 prod)
 
 ## Architecture Principles
 

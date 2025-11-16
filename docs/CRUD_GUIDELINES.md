@@ -597,6 +597,50 @@ if (workspace.user_id !== user.id) {
 }
 ```
 
+### No Manual CRUD for Users
+
+**CRITICAL PRINCIPLE**: Users cannot manually update resources after creation (except account deletion).
+
+✅ **Allowed Operations:**
+- CREATE: User signup (creates user + workspace)
+- DELETE: Account deletion (cascades to all data)
+
+❌ **Forbidden Operations:**
+- UPDATE: No manual editing of workspace, repository, or node data
+- No settings forms for updating existing data
+
+**Auto-Correction Pattern:**
+
+When the system detects incorrect configuration (e.g., wrong Git branch), it must **automatically fix** the issue, not show an error asking the user to update settings.
+
+```typescript
+// ❌ BAD - Asking user to fix
+if (branchNotFound) {
+  return { error: "Branch 'main' not found. Please update your settings." };
+}
+
+// ✅ GOOD - Auto-fixing
+if (branchNotFound) {
+  const defaultBranch = await getDefaultBranch(repoUrl, token);
+  if (defaultBranch.success) {
+    // Auto-correct and persist
+    await updateRepository(workspaceId, { branch: defaultBranch.branch });
+    console.log(`Auto-corrected branch to '${defaultBranch.branch}'`);
+    // Continue with correct branch
+  }
+}
+```
+
+**Git Sync Example:**
+
+When user connects repository with branch "main" but repository uses "master":
+1. System detects branch mismatch
+2. Auto-detects default branch ("master")
+3. Uses correct branch for clone
+4. Persists corrected branch to database
+5. Logs correction for transparency
+6. ✅ User never sees error or settings form
+
 ### Input Sanitization
 
 ```typescript

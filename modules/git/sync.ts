@@ -1,8 +1,8 @@
 "use server";
 
 import { cloneRepository, getLatestCommit, cleanupRepository } from "./clone";
-import { updateRepository, createDeployment } from "./actions";
-import { revalidateTag } from "next/cache";
+import { updateRepository, createDeployment, updateDeployment } from "./actions";
+import { ingestLogseqGraph } from "../content/actions";
 
 export async function syncRepository(
   workspaceId: number,
@@ -19,7 +19,7 @@ export async function syncRepository(
       errorLog: undefined,
     });
 
-    // Clone repository
+    // Clone repository (may auto-detect different branch)
     const cloneResult = await cloneRepository(repoUrl, branch, accessToken);
     if (!cloneResult.success || !cloneResult.path) {
       await updateRepository(workspaceId, {
@@ -38,20 +38,61 @@ export async function syncRepository(
     const commitSha = await getLatestCommit(repoPath);
 
     // Create deployment record
-    await createDeployment(workspaceId, commitSha, "building");
+    const deployment = await createDeployment(
+      workspaceId,
+      commitSha,
+      "building"
+    );
 
-    // TODO: Process Logseq graph (Phase 3)
-    // For now, just mark as success
+    // Process Logseq graph (Phase 3)
+    const ingestionResult = await ingestLogseqGraph(workspaceId, repoPath);
 
-    // Update repository status
-    await updateRepository(workspaceId, {
+    if (!ingestionResult.success) {
+      // Update deployment as failed
+      await updateDeployment(deployment.deployment.id, {
+        status: "failed",
+        errorLog: ingestionResult.error,
+        buildLog: ingestionResult.buildLog,
+      });
+
+      await updateRepository(workspaceId, {
+        syncStatus: "error",
+        errorLog: ingestionResult.error || "Ingestion failed",
+      });
+
+      return {
+        success: false,
+        error: ingestionResult.error || "Ingestion failed",
+      };
+    }
+
+    // Update deployment as success
+    await updateDeployment(deployment.deployment.id, {
+      status: "success",
+      buildLog: ingestionResult.buildLog,
+    });
+
+    // Update repository status (including auto-detected branch)
+    const updateData: {
+      syncStatus: string;
+      lastSync: Date;
+      errorLog?: string;
+      branch?: string;
+    } = {
       syncStatus: "success",
       lastSync: new Date(),
       errorLog: undefined,
-    });
+    };
 
-    // Invalidate cache (optional tag parameter)
-    revalidateTag(`workspace-${workspaceId}`, "page");
+    // If branch was auto-detected, persist it
+    if (cloneResult.branch && cloneResult.branch !== branch) {
+      updateData.branch = cloneResult.branch;
+      console.log(
+        `Auto-corrected branch from '${branch}' to '${cloneResult.branch}' for workspace ${workspaceId}`
+      );
+    }
+
+    await updateRepository(workspaceId, updateData);
 
     return {
       success: true,

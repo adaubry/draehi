@@ -41,3 +41,20 @@ export async function verifyPassword(username: string, password: string) {
 
   return { user };
 }
+
+export async function deleteUser(userId: number) {
+  try {
+    // Cascading deletes will handle:
+    // - workspaces (via ON DELETE CASCADE)
+    // - git_repositories (via workspace cascade)
+    // - deployment_history (via workspace cascade)
+    // - nodes (via workspace cascade)
+    await db.delete(users).where(eq(users.id, userId));
+
+    return { success: true };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Failed to delete user",
+    };
+  }
+}

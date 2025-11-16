@@ -9,6 +9,7 @@ import {
 } from "./schema";
 import { getRepositoryByWorkspaceId } from "./queries";
 import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 
 export async function connectRepository(
   workspaceId: number,
@@ -33,10 +34,9 @@ export async function connectRepository(
     })
     .returning();
 
-  // Trigger initial sync
+  // Trigger initial sync in background (no revalidation in promise to avoid render errors)
   const { syncRepository } = await import("./sync");
   if (deployKey) {
-    // Run sync in background (don't await)
     syncRepository(workspaceId, repoUrl, branch, deployKey).catch((error) => {
       console.error("Initial sync failed:", error);
     });
@@ -51,6 +51,7 @@ export async function updateRepository(
     syncStatus?: string;
     lastSync?: Date;
     errorLog?: string;
+    branch?: string; // Allow auto-correction of branch
   }
 ) {
   const [repo] = await db

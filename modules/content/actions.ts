@@ -7,6 +7,7 @@ import { eq, and } from "drizzle-orm";
 import { exportLogseqNotes } from "../logseq/export";
 import { parseLogseqOutput } from "../logseq/parse";
 import { parseLogseqDirectory, flattenBlocks } from "../logseq/markdown-parser";
+import { markdownToHtml } from "@/lib/markdown";
 import path from "path";
 
 // Internal only - called during git sync/deployment
@@ -175,29 +176,35 @@ export async function ingestLogseqGraph(
       const flatBlocks = flattenBlocks(mdPage.blocks);
       totalBlocks += flatBlocks.length;
 
-      // Create block nodes for each block
-      for (const block of flatBlocks) {
-        const blockNode: NewNode = {
-          workspaceId,
-          parentId: null, // Will be set after page insertion
-          order: block.order,
-          nodeType: "block",
-          pageName: mdPage.pageName,
-          slug,
-          namespace,
-          depth: calculateBlockDepth(block.uuid, flatBlocks),
-          blockUuid: block.uuid,
-          title: "", // Blocks don't have titles
-          html: `<p>${escapeHtml(block.content)}</p>`, // Simple HTML for now
-          metadata: {
-            properties: block.properties,
-          },
-          isJournal: false,
-          journalDate: undefined,
-        };
+      // Create block nodes for each block (render markdown to HTML)
+      const blockNodes = await Promise.all(
+        flatBlocks.map(async (block) => {
+          const blockHtml = await markdownToHtml(block.content);
 
-        allNodes.push(blockNode);
-      }
+          const blockNode: NewNode = {
+            workspaceId,
+            parentId: null, // Will be set after page insertion
+            order: block.order,
+            nodeType: "block",
+            pageName: mdPage.pageName,
+            slug,
+            namespace,
+            depth: calculateBlockDepth(block.uuid, flatBlocks),
+            blockUuid: block.uuid,
+            title: "", // Blocks don't have titles
+            html: blockHtml,
+            metadata: {
+              properties: block.properties,
+            },
+            isJournal: false,
+            journalDate: undefined,
+          };
+
+          return blockNode;
+        })
+      );
+
+      allNodes.push(...blockNodes);
     }
 
     buildLog.push(
@@ -286,13 +293,4 @@ function calculateBlockDepth(
   if (!block || !block.parentUuid) return 0;
 
   return 1 + calculateBlockDepth(block.parentUuid, allBlocks);
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 }

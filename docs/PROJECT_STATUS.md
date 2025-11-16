@@ -4,11 +4,12 @@
 
 ## Current Phase
 
-✅ **Phase 2: Git Integration - COMPLETE**
+✅ **Phase 3: Logseq Processing - COMPLETE**
 
 Previous phases:
 - ✅ Phase 0: Foundation
 - ✅ Phase 1: Core Infrastructure
+- ✅ Phase 2: Git Integration
 
 ---
 
@@ -50,38 +51,62 @@ Previous phases:
 - [x] Status updates (idle → syncing → success/error)
 - [x] Cache invalidation with revalidateTag
 
+### Phase 3: Logseq Processing ✅
+- [x] Install export-logseq-notes Rust tool (scripts/install-rust-tools.sh)
+- [x] Create proper template file for HTML output
+- [x] Implement comprehensive TOML configuration (inspired by dimfeld/website)
+- [x] Create Rhai script for page processing and metadata handling
+- [x] Call Rust tool from Node.js with proper error handling
+- [x] Parse Rust tool HTML output with metadata extraction
+- [x] Extract tags from HTML meta tags
+- [x] Extract created/updated dates from meta tags
+- [x] Parse Logseq pages into database nodes
+- [x] Extract namespace from page names (e.g., "guides/setup" → namespace)
+- [x] Calculate depth automatically based on namespace
+- [x] Store pre-rendered HTML in database (body content only)
+- [x] Store metadata (tags, properties, dates)
+- [x] Detect journal pages (YYYY_MM_DD format)
+- [x] Parse journal dates into YYYY-MM-DD format
+- [x] Handle page embeds and internal links
+- [x] Support custom CSS classes via block attributes
+- [x] Asset upload and URL replacement in HTML
+- [x] Batch node insertion for performance
+- [x] Idempotent ingestion (delete + reinsert)
+
 ### Quality Checks ✅
 - [x] TypeScript type checking passes (0 errors)
 - [x] Production build successful
 - [x] All server actions properly typed
 - [x] Documentation updated
+- [x] Proper error handling in all phases
+- [x] Template, config, and script cleanup after execution
 
 ---
 
-## Next Steps (Phase 3)
+## Next Steps (Phase 4)
 
-### Week 3-4: Logseq Processing
+### Week 5-6: Public Viewer
 
-**Priority 1: Rust Tool Integration**
-- [ ] Install/bundle export-logseq-notes
-- [ ] Call Rust tool from Node.js
-- [ ] Parse Rust tool output
-- [ ] Extract HTML, metadata, frontmatter
-- [ ] Handle errors gracefully
+**Priority 1: Public Routes**
+- [ ] Create public viewer route (app/[slug]/[...path]/page.tsx)
+- [ ] Implement server-side rendering for nodes
+- [ ] Style rendered Logseq content
+- [ ] Support namespace navigation
+- [ ] Handle internal wiki-style links
 
-**Priority 2: Content Ingestion**
-- [ ] Parse Logseq pages into nodes
-- [ ] Extract namespace from page names
-- [ ] Calculate depth automatically
-- [ ] Store pre-rendered HTML in database
-- [ ] Store original markdown as backup
-- [ ] Extract metadata (tags, properties)
+**Priority 2: Navigation**
+- [ ] Sidebar navigation component
+- [ ] Namespace tree structure
+- [ ] Journal calendar view
+- [ ] Breadcrumbs for nested pages
+- [ ] Search functionality
 
-**Priority 3: Journal Pages**
-- [ ] Detect journal pages
-- [ ] Parse journal dates
-- [ ] Create journal navigation
-- [ ] Sort by date
+**Priority 3: Styling**
+- [ ] Apply Tailwind classes from export config
+- [ ] Syntax highlighting for code blocks
+- [ ] Responsive design
+- [ ] Dark mode support
+- [ ] Typography optimization
 
 ---
 

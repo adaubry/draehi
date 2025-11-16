@@ -250,11 +250,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - Removed `revalidateTag` from sync function (was causing "used during render" error)
-- **Next.js 16 uncached data errors**: Wrapped uncached data access in Suspense boundaries (cacheComponents compatible)
-  - Dashboard page: wrapped DashboardContent in Suspense
-  - Dashboard layout: wrapped DashboardLayoutContent in Suspense (requireAuth accesses cookies)
-  - Workspace layout: wrapped WorkspaceContent in Suspense (async params)
+- **Next.js 16 uncached data errors**: Wrapped ALL async params access in Suspense (cacheComponents compatible)
+  - **Critical pattern**: `await params` MUST happen inside Suspense, not before
+  - Dashboard page: DashboardContent wrapper inside Suspense
+  - Dashboard layout: DashboardLayoutContent wrapper inside Suspense (requireAuth → cookies)
+  - Workspace layout: WorkspaceLayoutWrapper inside Suspense (await params)
+  - Workspace index: WorkspaceIndexWrapper inside Suspense (await params)
+  - Node page: NodePageWrapper inside Suspense (await params)
+  - All routes now use Partial Prerender (◐) with proper streaming
 - **cacheComponents compatibility**: Replaced `dynamic = "force-dynamic"` with proper Suspense pattern
+- **Build failures (Google Fonts)**: Removed Geist/Geist_Mono fonts (network errors), using system fonts
 - **Block hierarchy broken (all depth 0)**: Fixed parentId assignment to use block→block relationships, not all→page
 - **Block depth incorrect**: Now calculated from actual database parent chain after parentId is set
 - **Block HTML not showing**: Switched from fragile HTML parsing to direct markdown rendering with `marked`

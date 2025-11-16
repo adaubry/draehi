@@ -1,7 +1,12 @@
+"use client";
+
 import { login } from "@/modules/auth/session-actions";
 import Link from "next/link";
+import { useActionState } from "react";
 
 export default function LoginPage() {
+  const [state, formAction, isPending] = useActionState(login, {});
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full space-y-8 p-8">
@@ -12,7 +17,13 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form action={login} className="mt-8 space-y-6">
+        {state?.error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-800">{state.error}</p>
+          </div>
+        )}
+
+        <form action={formAction} className="mt-8 space-y-6">
           <div className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium">
@@ -23,7 +34,8 @@ export default function LoginPage() {
                 name="username"
                 type="text"
                 required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black"
+                disabled={isPending}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black disabled:opacity-50"
               />
             </div>
 
@@ -36,16 +48,18 @@ export default function LoginPage() {
                 name="password"
                 type="password"
                 required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black"
+                disabled={isPending}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black disabled:opacity-50"
               />
             </div>
           </div>
 
           <button
             type="submit"
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
+            disabled={isPending}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Sign in
+            {isPending ? "Signing in..." : "Sign in"}
           </button>
 
           <div className="text-center text-sm">

@@ -1,9 +1,8 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getWorkspaceBySlug } from "@/modules/workspace/queries";
 import { getAllNodes } from "@/modules/content/queries";
 import { Sidebar } from "@/components/viewer/Sidebar";
-
-export const dynamic = "force-dynamic";
 
 type LayoutProps = {
   children: React.ReactNode;
@@ -12,12 +11,13 @@ type LayoutProps = {
   }>;
 };
 
-export default async function WorkspaceLayout({
+async function WorkspaceContent({
+  workspaceSlug,
   children,
-  params,
-}: LayoutProps) {
-  const { workspaceSlug } = await params;
-
+}: {
+  workspaceSlug: string;
+  children: React.ReactNode;
+}) {
   // Get workspace by slug
   const workspace = await getWorkspaceBySlug(workspaceSlug);
   if (!workspace) {
@@ -54,5 +54,20 @@ export default async function WorkspaceLayout({
         </div>
       </div>
     </div>
+  );
+}
+
+export default async function WorkspaceLayout({
+  children,
+  params,
+}: LayoutProps) {
+  const { workspaceSlug } = await params;
+
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center">Loading...</div>}>
+      <WorkspaceContent workspaceSlug={workspaceSlug}>
+        {children}
+      </WorkspaceContent>
+    </Suspense>
   );
 }

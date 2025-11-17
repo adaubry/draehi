@@ -9,6 +9,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Testing Infrastructure Improvements**:
+  - tsx dev dependency for running TypeScript scripts
+  - scripts/validate-content.ts - TypeScript validation script replacing inline Node.js code
+  - Fixed test-e2e.sh module resolution error (Cannot find module './lib/db.js')
 - **Logseq Reference Processing** (Phase 4.5):
   - Page references `[[page]]` → clickable internal links
   - Block references `((uuid))` → hash links to blocks

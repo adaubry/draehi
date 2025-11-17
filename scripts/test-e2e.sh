@@ -145,49 +145,8 @@ validate_content() {
 
     cd "$PROJECT_ROOT"
 
-    # Run validation queries via Node.js
-    node << 'EOF'
-const { db } = require('./lib/db.js');
-
-async function validate() {
-    // Count pages
-    const pages = await db.query.nodes.findMany({
-        where: (nodes, { eq }) => eq(nodes.nodeType, 'page'),
-    });
-
-    console.log(`✓ Pages: ${pages.length}`);
-
-    // Count blocks
-    const blocks = await db.query.nodes.findMany({
-        where: (nodes, { eq }) => eq(nodes.nodeType, 'block'),
-    });
-
-    console.log(`✓ Blocks: ${blocks.length}`);
-
-    // Check for specific features
-    const tasksPage = pages.find(p => p.pageName === 'Task Management');
-    if (tasksPage) {
-        console.log('✓ Task Management page found');
-    }
-
-    const refsPage = pages.find(p => p.pageName === 'Block References');
-    if (refsPage) {
-        console.log('✓ Block References page found');
-    }
-
-    const namespacePage = pages.find(p => p.pageName === 'guides/getting-started');
-    if (namespacePage) {
-        console.log('✓ Namespaced page found');
-    }
-
-    process.exit(0);
-}
-
-validate().catch(err => {
-    console.error('Validation error:', err);
-    process.exit(1);
-});
-EOF
+    # Run validation script via tsx
+    npx tsx scripts/validate-content.ts
 
     log_success "Content validation complete"
 }

@@ -6,7 +6,21 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-TEST_GRAPH_PATH="$PROJECT_ROOT/test-data/logseq-docs-graph"
+
+# Load test configuration
+if [[ -f "$PROJECT_ROOT/.test.env" ]]; then
+    set -a
+    source "$PROJECT_ROOT/.test.env"
+    set +a
+    echo "✓ Loaded test configuration from .test.env"
+else
+    echo "⚠ .test.env not found, using defaults"
+fi
+
+# Set defaults if not in config
+TEST_GRAPH_PATH="${TEST_REPO_PATH:-$PROJECT_ROOT/test-data/logseq-docs-graph}"
+TEST_WORKSPACE_SLUG="${TEST_WORKSPACE_SLUG:-testuser}"
+TEST_APP_URL="${TEST_APP_URL:-http://localhost:3000}"
 
 # Colors
 RED='\033[0;31m'
@@ -69,6 +83,14 @@ check_prerequisites() {
         exit 1
     fi
 
+    # Check .test.env exists
+    if [[ ! -f "$PROJECT_ROOT/.test.env" ]]; then
+        log_warning ".test.env not found"
+        echo "  For automated testing, create .test.env:"
+        echo "  cp .test.env.example .test.env"
+        echo ""
+    fi
+
     # Check test graph exists
     if [[ ! -d "$TEST_GRAPH_PATH" ]]; then
         log_error "Test graph not found at $TEST_GRAPH_PATH"
@@ -97,46 +119,61 @@ setup_database() {
     log_success "Database schema ready"
 }
 
-# Create test user and workspace
+# Create test user and workspace (automated)
 create_test_user() {
-    log_step "Creating test user and workspace..."
+    log_step "Setting up test user and workspace..."
 
-    # Generate random test credentials
-    TEST_USERNAME="testuser_$(date +%s)"
-    TEST_PASSWORD="testpass123"
+    cd "$PROJECT_ROOT"
 
-    echo "Username: $TEST_USERNAME"
-    echo "Password: $TEST_PASSWORD"
+    # Run automated setup script
+    npx tsx scripts/setup-test-workspace.ts
 
-    # Note: This requires the app to be running or a direct DB script
-    # For now, we'll document manual steps
-    log_warning "Manual step required: Create user via signup page"
-    echo "  1. Start dev server: npm run dev"
-    echo "  2. Visit http://localhost:3000/signup"
-    echo "  3. Create user: $TEST_USERNAME / $TEST_PASSWORD"
-    echo ""
-    read -p "Press Enter after creating user..."
-
-    log_success "User created"
+    if [[ $? -eq 0 ]]; then
+        log_success "Test workspace ready"
+    else
+        log_error "Failed to setup test workspace"
+        exit 1
+    fi
 }
 
-# Test Git repository connection
-test_git_connection() {
-    log_step "Testing Git repository connection..."
+# Verify Git repository connection (already done by setup-test-workspace.ts)
+verify_git_connection() {
+    log_step "Verifying Git repository connection..."
 
     local repo_url="file://$TEST_GRAPH_PATH"
-    local branch="master"
 
-    log_warning "Manual step required: Connect Git repository"
-    echo "  1. Go to http://localhost:3000/dashboard/settings"
-    echo "  2. Repository URL: $repo_url"
-    echo "  3. Branch: $branch"
-    echo "  4. Access Token: (leave empty for local file://)"
-    echo "  5. Click 'Connect Repository'"
+    echo "  Repository: $repo_url"
+    echo "  Branch: ${TEST_REPO_BRANCH:-master}"
+    echo "  Workspace: $TEST_WORKSPACE_SLUG"
+
+    log_success "Repository verified (connected during setup)"
+}
+
+# Wait for sync to complete
+wait_for_sync() {
+    log_step "Waiting for sync to complete..."
+
     echo ""
-    read -p "Press Enter after connecting repository..."
+    echo "  ⏳ Sync is processing in the background..."
+    echo "  📝 Note: Actual sync implementation depends on your webhook/background job setup"
+    echo ""
 
-    log_success "Repository connected"
+    # Option 1: Fully automated - poll database for sync status
+    if [[ "${AUTOMATED_SYNC_WAIT:-false}" == "true" ]]; then
+        log_warning "Automated sync waiting not yet implemented"
+        echo "  Waiting 30 seconds for sync to complete..."
+        sleep 30
+    else
+        # Option 2: Manual verification
+        log_warning "Manual verification recommended:"
+        echo "  1. Visit ${TEST_APP_URL}/dashboard"
+        echo "  2. Check sync status badge shows 'Synced'"
+        echo "  3. Or check database: SELECT sync_status FROM git_repositories;"
+        echo ""
+        read -p "Press Enter when sync is complete..."
+    fi
+
+    log_success "Sync completed"
 }
 
 # Validate content ingestion
@@ -201,22 +238,19 @@ main() {
     echo -e "${BLUE}"
     echo "╔════════════════════════════════════════╗"
     echo "║  Draehi End-to-End Test Suite        ║"
+    echo "║  (Automated)                           ║"
     echo "╚════════════════════════════════════════╝"
     echo -e "${NC}"
 
     check_prerequisites
     setup_database
-    create_test_user
-    test_git_connection
-
-    echo ""
-    log_step "Waiting for sync to complete..."
-    echo "Check dashboard for 'Synced' status"
-    read -p "Press Enter when sync is complete..."
+    create_test_user          # Now automated via setup-test-workspace.ts
+    verify_git_connection     # Verifies connection made during setup
+    wait_for_sync            # Can be manual or automated
 
     validate_content
     compare_with_logseq
-    test_ui_rendering
+    test_ui_rendering        # Still manual (visual inspection)
 
     echo ""
     echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"

@@ -20,11 +20,13 @@ export const getNodeByPath = cache(
     const slug = pathSegments.at(-1) || "";
     const namespace = pathSegments.slice(0, -1).join("/");
 
+    // Only return page nodes (blocks also have namespace/slug but shouldn't be returned here)
     return await db.query.nodes.findFirst({
       where: and(
         eq(nodes.workspaceId, workspaceId),
         eq(nodes.namespace, namespace),
-        eq(nodes.slug, slug)
+        eq(nodes.slug, slug),
+        eq(nodes.nodeType, "page")
       ),
     });
   }

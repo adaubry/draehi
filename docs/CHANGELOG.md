@@ -308,6 +308,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - backend-services/export-logseq-notes (git submodule - replaced with vendored copy in modules/)
 
 ### Fixed
+- **Frontend Display: "No blocks yet" Error** (Critical Fix):
+  - **Root Cause**: getNodeByPath() missing `nodeType='page'` filter
+  - Query was randomly returning block nodes instead of page nodes
+  - Both page and block nodes have namespace/slug fields (caused confusion)
+  - **Fix**: Added `eq(nodes.nodeType, "page")` to [modules/content/queries.ts:29](modules/content/queries.ts#L29)
+  - **Impact**: Pages now display correctly (462 blocks on /contents, 319 on /Queries)
+  - **Test Infrastructure**: Created scripts/test-frontend-e2e.sh for browser-based E2E tests
+  - **Diagnostic Tool**: Created scripts/diagnose-frontend.ts (found root cause in 30 seconds)
+  - **Documentation**: Complete fix log in [docs/FRONTEND_FIX_LOG.md](docs/FRONTEND_FIX_LOG.md)
+  - **Cache Clearing**: Must clear .next/ directory after query changes (React "use cache" caching)
 - **journals/ directory requirement**: export-logseq-notes expects journals/ to exist
   - Auto-create journals/ directory during export (modules/logseq/export.ts)
   - Prevents "No such file or directory" error

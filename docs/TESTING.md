@@ -29,11 +29,14 @@ cp .test.env.example .test.env
 **Run tests:**
 
 ```bash
-# Fully automated test suite
+# Backend E2E test suite (ingestion & database)
 ./scripts/test-e2e.sh
+
+# Frontend E2E test suite (display & rendering)
+./scripts/test-frontend-e2e.sh
 ```
 
-**What it automates:**
+**Backend test automates:**
 - ✅ Database schema setup
 - ✅ Test user creation (via direct DB insert)
 - ✅ Test workspace creation
@@ -41,7 +44,15 @@ cp .test.env.example .test.env
 - ✅ Content validation
 - ✅ Structure comparison with Logseq docs
 - ⚠️  Sync wait (manual confirmation still required)
-- ⚠️  UI verification (manual checklist)
+
+**Frontend test validates:**
+- ✅ Pages load correctly (HTTP 200)
+- ✅ Blocks display (no "No blocks yet" errors)
+- ✅ URL encoding for spaces works
+- ✅ Page references render as clickable links
+- ✅ Block hierarchy displays with nesting
+- ✅ Task markers styled correctly
+- ✅ CSS stylesheets loaded
 
 ### Test Configuration
 

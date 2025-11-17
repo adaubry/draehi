@@ -17,12 +17,41 @@ Validates Phase 4 implementation without requiring a running server or database.
 ### Manual E2E Test (5 minutes)
 
 ```bash
-# 1. Run automated test suite
+# 1. Run full automated test suite
 ./scripts/test-e2e.sh
 
-# 2. Validate content after sync
-node scripts/validate-content.js
+# Includes:
+# - Content validation (database queries)
+# - Logseq emulation comparison (live site comparison)
+# - UI verification checklist
 ```
+
+### Logseq Structure Comparison (NEW!)
+
+**Validate database structure matches Logseq docs:**
+
+```bash
+# Requires database with synced content
+npx tsx scripts/compare-with-logseq.ts
+```
+
+**What it checks:**
+- ✅ Total page count matches (~917 pages)
+- ✅ Non-journal page count (~695 pages)
+- ✅ Journal count matches (~222 journals)
+- ✅ Key pages exist (contents, Tutorial, Queries, etc.)
+- ✅ Pages have meaningful content (not empty placeholders)
+- ✅ Blocks have UUIDs (>90%)
+- ✅ Blocks have HTML rendered (>90%)
+- ✅ Block parent relationships (>80%)
+
+**Content validation:**
+- Detects empty pages (no blocks)
+- Detects placeholder content (minimal text, "TODO", "coming soon")
+- Validates critical pages (contents, Tutorial, FAQ) have substantial content
+- Checks blocks have meaningful HTML (>50 chars per block)
+
+**Expected:** All checks pass with 10% tolerance
 
 ## Test Data
 
@@ -363,6 +392,193 @@ export-logseq-notes --help
     npm run build
     npm run test:e2e
 ```
+
+## Logseq Structure Comparison
+
+### Overview
+
+The comparison test validates that Draehi correctly imports Logseq graph structure into the database by checking against the official Logseq docs stats.
+
+### How It Works
+
+```
+Database Query
+    ↓
+Count pages, blocks, journals
+Check key pages exist
+Validate block quality (UUIDs, HTML, hierarchy)
+    ↓
+Compare to expected Logseq docs stats:
+  - ~917 total pages
+  - ~695 non-journal pages
+  - ~222 journals
+  - Key pages: contents, Tutorial, FAQ, etc.
+```
+
+### Metrics Validated
+
+1. **Total Page Count** - All pages (expected ~917)
+2. **Non-Journal Pages** - Regular pages (expected ~695)
+3. **Journal Count** - Date-based pages (expected ~222)
+4. **Key Pages** - Important docs pages exist
+5. **Block UUIDs** - >90% blocks have UUID
+6. **Block HTML** - >90% blocks have rendered HTML
+7. **Block Hierarchy** - >80% blocks have parent relationships
+
+### Test Pages Checked
+
+- **contents** - Homepage
+- **Tutorial** - Getting started guide
+- **Queries** - Advanced queries doc
+- **Shortcuts** - Keyboard shortcuts
+- **Term Portal** - Glossary
+- **FAQ** - Frequently asked questions
+- **Publishing (Desktop App Only)** - Publishing guide
+
+### Tolerance
+
+**10% difference allowed** - Some variability in parsing is acceptable.
+
+### Running Standalone
+
+```bash
+# After syncing test graph
+npx tsx scripts/compare-with-logseq.ts
+```
+
+### Expected Output
+
+```
+╔════════════════════════════════════════╗
+║  Logseq Structure Comparison Test     ║
+╚════════════════════════════════════════╝
+
+Reference: https://docs.logseq.com
+Testing:   Database content
+
+📊 Database Statistics:
+   Total pages: 917
+   Total blocks: 12458
+   Journal pages: 222
+   Namespaced pages: 87
+
+🧱 Block Quality:
+   Blocks with UUID: 12458/12458
+   Blocks with HTML: 12458/12458
+   Blocks with parent: 11980/12458
+   Sample blocks with page refs: 2/5
+   Sample blocks with block refs: 1/5
+
+📈 Expected vs Actual:
+   Total pages:    Expected ~917, Got 917
+   Non-journals:   Expected ~695, Got 695
+   Journals:       Expected ~222, Got 222
+
+📋 Key Pages Check:
+[checks each page...]
+
+╔════════════════════════════════════════╗
+║  Summary                               ║
+╚════════════════════════════════════════╝
+
+📊 Statistics:
+   ✅ Total pages: 917
+   ✅ Total blocks: 12458
+   ✅ Journals: 222
+   ✅ Namespaced: 87
+
+🧱 Block Quality:
+   ✅ Blocks with UUID: 100.0%
+   ✅ Blocks with HTML: 100.0%
+   ✅ Blocks with parent: 96.2%
+
+📄 Key Pages:
+   ✅ Found: 7/7
+
+🎉 Draehi successfully imported Logseq structure!
+   All key pages present with expected counts
+```
+
+## Future Test Improvements
+
+To achieve complete emulation of https://docs.logseq.com, we should implement:
+
+### 1. Link Integrity Tests
+- ✅ **Broken link detection**: Check all `[[page]]` references point to existing pages
+- ✅ **Block reference validation**: Verify all `((uuid))` references resolve to real blocks
+- ✅ **Circular reference detection**: Find any circular page references
+- ✅ **External link validation**: Check external URLs are preserved (optional: verify they work)
+
+### 2. Content Structure Tests
+- ✅ **Hierarchy validation**: Verify parent-child block relationships are correct
+- ✅ **Namespace integrity**: Check namespace pages (guides/advanced/tips) have correct depth
+- ✅ **Journal date parsing**: Validate journal pages have correct dates (YYYY_MM_DD format)
+- ✅ **Ordering validation**: Verify blocks maintain source order
+
+### 3. Feature Preservation Tests
+- ✅ **TODO markers**: Check TODO/DOING/DONE/LATER/NOW are styled correctly
+- ✅ **Priority badges**: Verify [#A]/[#B]/[#C] render with correct colors
+- ✅ **Tags extraction**: If supported, validate #tags are extracted
+- ✅ **Properties**: Check page properties/frontmatter are preserved
+- ✅ **Code blocks**: Verify syntax highlighting preserved
+
+### 4. Visual Comparison Tests (Future)
+- ⏸️ **Screenshot comparison**: Compare rendered pages vs docs.logseq.com
+- ⏸️ **CSS validation**: Check styling matches Logseq appearance
+- ⏸️ **Responsive design**: Test mobile/desktop layouts
+- ⏸️ **Dark mode**: Verify dark mode styling
+
+### 5. Performance Tests
+- ⏸️ **Page load time**: Measure TTFB < 100ms
+- ⏸️ **Query performance**: Validate DB queries < 50ms
+- ⏸️ **Memory usage**: Check memory doesn't leak during sync
+- ⏸️ **Large graph handling**: Test with 1000+ pages
+
+### 6. Edge Cases
+- ✅ **Empty pages**: Handle pages with no blocks gracefully
+- ✅ **Special characters**: Test pages with unicode, emoji, special chars
+- ✅ **Very long pages**: Pages with 1000+ blocks
+- ✅ **Nested references**: `[[page with [[nested]] ref]]`
+- ✅ **Malformed markdown**: Handle parse errors gracefully
+
+### Implementation Priority
+
+**Phase 1 (Current):**
+- ✅ Page count validation
+- ✅ Block quality checks
+- ✅ Content validation (placeholders)
+
+**Phase 2 (Next):**
+- Link integrity (broken links, missing blocks)
+- Hierarchy validation
+- Feature preservation (TODOs, priorities)
+
+**Phase 3 (Later):**
+- Visual comparison tests
+- Performance benchmarks
+- Edge case handling
+
+### Troubleshooting
+
+**"Page count off by >10%"**
+- Check Git sync completed
+- Verify all .md files in test-data/logseq-docs-graph/pages/
+- Check export-logseq-notes ran successfully
+
+**"Missing key pages"**
+- Verify page naming matches Logseq (case-sensitive)
+- Check namespace calculation (guides/advanced/tips)
+- Review sync logs for errors
+
+**"Blocks missing UUIDs"**
+- Check markdown parser extracts `id::` property
+- Verify parseLogseqMarkdown() in modules/logseq/markdown-parser.ts
+- Some blocks naturally lack UUIDs (acceptable if >90%)
+
+**"Blocks missing HTML"**
+- Check processLogseqReferences() runs after parse
+- Verify marked + cheerio dependencies installed
+- Review block ingestion in modules/logseq/export.ts
 
 ## Test Coverage
 

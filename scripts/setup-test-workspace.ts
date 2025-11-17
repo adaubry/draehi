@@ -144,6 +144,22 @@ async function setupTestWorkspace() {
       );
     }
 
+    // Trigger initial sync (await it for test environment)
+    console.log("\n🔄 Triggering initial sync...");
+    console.log("   This will take 30-60 seconds for the Logseq docs graph...");
+
+    const { syncRepository } = await import("../modules/git/sync");
+
+    // Use empty string for accessToken since file:// doesn't need auth
+    const syncResult = await syncRepository(workspace!.id, repoUrl, TEST_REPO_BRANCH, "");
+
+    if (syncResult.success) {
+      console.log(`   ✅ Sync completed successfully (commit: ${syncResult.commitSha?.slice(0, 7)})`);
+    } else {
+      console.error(`   ❌ Sync failed: ${syncResult.error}`);
+      process.exit(1);
+    }
+
     // Summary
     console.log("\n╔════════════════════════════════════════╗");
     console.log("║  Setup Complete                        ║");

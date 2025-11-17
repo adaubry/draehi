@@ -109,11 +109,18 @@ export async function ingestLogseqGraph(
 
     const workspaceSlug = workspace.slug;
 
-    // Step 1: Parse markdown files for block structure
+    // Step 1: Parse markdown files for block structure (pages + journals)
     buildLog.push("Parsing markdown files for block structure...");
     const pagesDir = path.join(repoPath, "pages");
-    const markdownPages = await parseLogseqDirectory(pagesDir);
-    buildLog.push(`Found ${markdownPages.length} markdown pages`);
+    const journalsDir = path.join(repoPath, "journals");
+
+    const [regularPages, journalPages] = await Promise.all([
+      parseLogseqDirectory(pagesDir),
+      parseLogseqDirectory(journalsDir).catch(() => []), // journals/ might not exist
+    ]);
+
+    const markdownPages = [...regularPages, ...journalPages];
+    buildLog.push(`Found ${regularPages.length} pages and ${journalPages.length} journals`);
 
     // Step 2: Export with Rust tool for HTML rendering
     buildLog.push("Rendering HTML with export-logseq-notes...");
@@ -151,7 +158,40 @@ export async function ingestLogseqGraph(
 
     for (const mdPage of markdownPages) {
       // Find corresponding HTML page for metadata
-      const htmlPage = parseResult.pages.find((p) => p.name === mdPage.pageName);
+      // Normalize names to match export tool's transformation:
+      // 1. URL decode (e.g., %3F → ?)
+      // 2. Remove special chars like ? ! / \ : * ( ) , .
+      // 3. Replace spaces and hyphens with underscores
+      // 4. Collapse multiple underscores to single
+      // 5. Lowercase
+      let normalizedMdName = mdPage.pageName;
+      try {
+        normalizedMdName = decodeURIComponent(normalizedMdName);
+      } catch {
+        // If not valid URI component, use as-is
+      }
+      normalizedMdName = normalizedMdName
+        .replace(/[?!\/\\:*"<>|(),.]/g, "") // Remove special chars including parens, commas, dots
+        .replace(/[\s\-]+/g, "_") // Replace spaces/hyphens with underscore
+        .replace(/_{2,}/g, "_") // Collapse multiple underscores (___  → _)
+        .toLowerCase();
+
+      let htmlPage = parseResult.pages.find((p) => p.name.toLowerCase() === normalizedMdName);
+
+      // Fallback: fuzzy match if exact match fails
+      // Export tool has inconsistent transformations (removes underscores in numbers like 07_09 → 0709)
+      if (!htmlPage && normalizedMdName.includes("_")) {
+        // Try matching by removing all underscores (handles cases like changelog_07_09 → changelog0709)
+        const noUnderscores = normalizedMdName.replace(/_/g, "");
+        const candidates = parseResult.pages.filter((p) => p.name.toLowerCase().replace(/_/g, "") === noUnderscores);
+
+        // Only use fuzzy match if we get exactly 1 candidate (avoid false positives)
+        if (candidates.length === 1) {
+          htmlPage = candidates[0];
+          buildLog.push(`Fuzzy matched: ${mdPage.pageName} → ${htmlPage.name}`);
+        }
+      }
+
       if (!htmlPage) {
         buildLog.push(`Warning: No HTML found for ${mdPage.pageName}, skipping`);
         continue;
@@ -184,6 +224,12 @@ export async function ingestLogseqGraph(
       };
 
       allNodes.push(pageNode);
+
+      // Skip block processing if page has no blocks (property-only pages)
+      if (mdPage.blocks.length === 0) {
+        buildLog.push(`Page ${mdPage.pageName} has no blocks (property-only page)`);
+        continue;
+      }
 
       // Create block nodes with markdown-rendered HTML
       const flatBlocks = flattenBlocks(mdPage.blocks);
@@ -227,11 +273,20 @@ export async function ingestLogseqGraph(
     }
 
     buildLog.push(
-      `Inserting ${markdownPages.length} pages and ${totalBlocks} blocks...`
+      `Inserting ${allNodes.length} nodes (${markdownPages.length} pages and ${totalBlocks} blocks)...`
     );
 
-    // Insert all nodes at once
-    const insertedNodes = await db.insert(nodes).values(allNodes).returning();
+    // Insert in batches to avoid PostgreSQL parameter limit (65534)
+    // Each node has ~15 fields, so batch size of 1000 = ~15000 parameters
+    const BATCH_SIZE = 1000;
+    const insertedNodes: typeof allNodes = [];
+
+    for (let i = 0; i < allNodes.length; i += BATCH_SIZE) {
+      const batch = allNodes.slice(i, i + BATCH_SIZE);
+      const batchResult = await db.insert(nodes).values(batch).returning();
+      insertedNodes.push(...batchResult);
+      buildLog.push(`  Inserted batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(allNodes.length / BATCH_SIZE)}`);
+    }
 
     buildLog.push("Updating parent-child relationships for blocks...");
 

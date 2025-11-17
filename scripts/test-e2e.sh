@@ -149,31 +149,12 @@ verify_git_connection() {
     log_success "Repository verified (connected during setup)"
 }
 
-# Wait for sync to complete
+# Wait for sync to complete (now handled in setup-test-workspace.ts)
 wait_for_sync() {
-    log_step "Waiting for sync to complete..."
+    log_step "Verifying sync completion..."
 
-    echo ""
-    echo "  ⏳ Sync is processing in the background..."
-    echo "  📝 Note: Actual sync implementation depends on your webhook/background job setup"
-    echo ""
-
-    # Option 1: Fully automated - poll database for sync status
-    if [[ "${AUTOMATED_SYNC_WAIT:-false}" == "true" ]]; then
-        log_warning "Automated sync waiting not yet implemented"
-        echo "  Waiting 30 seconds for sync to complete..."
-        sleep 30
-    else
-        # Option 2: Manual verification
-        log_warning "Manual verification recommended:"
-        echo "  1. Visit ${TEST_APP_URL}/dashboard"
-        echo "  2. Check sync status badge shows 'Synced'"
-        echo "  3. Or check database: SELECT sync_status FROM git_repositories;"
-        echo ""
-        read -p "Press Enter when sync is complete..."
-    fi
-
-    log_success "Sync completed"
+    # Sync is now completed during setup, just verify
+    log_success "Sync already completed during setup"
 }
 
 # Validate content ingestion
@@ -208,6 +189,13 @@ compare_with_logseq() {
 test_ui_rendering() {
     log_step "Testing UI rendering..."
 
+    # Skip manual UI test if fully automated
+    if [[ "${AUTOMATED_SYNC_WAIT:-false}" == "true" ]]; then
+        log_warning "Skipping manual UI verification (automated mode)"
+        log_success "UI rendering check skipped"
+        return 0
+    fi
+
     log_warning "Manual UI test checklist:"
     echo ""
     echo "  Visit workspace pages and verify:"
@@ -233,6 +221,21 @@ test_ui_rendering() {
     log_success "UI rendering verified"
 }
 
+# Cleanup test user from previous run
+cleanup_test_user() {
+    log_step "Cleaning up previous test user..."
+
+    cd "$PROJECT_ROOT"
+    npx tsx scripts/cleanup-test-user.ts
+
+    if [[ $? -eq 0 ]]; then
+        log_success "Cleanup complete"
+    else
+        log_error "Cleanup failed"
+        exit 1
+    fi
+}
+
 # Main execution
 main() {
     echo -e "${BLUE}"
@@ -243,6 +246,7 @@ main() {
     echo -e "${NC}"
 
     check_prerequisites
+    cleanup_test_user         # Remove previous test user
     setup_database
     create_test_user          # Now automated via setup-test-workspace.ts
     verify_git_connection     # Verifies connection made during setup

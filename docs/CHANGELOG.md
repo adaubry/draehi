@@ -8,6 +8,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- **Phase 4 Status Update** (2025-11-17):
+  - Phase 4 marked INCOMPLETE - discovered 9 critical issues blocking production
+  - Created comprehensive repair roadmap (docs/PHASE4_ISSUES.md)
+  - Created test plan updates (docs/PHASE4_TEST_PLAN.md)
+  - Issues identified:
+    1. Collapsible blocks not clickable/redirectable
+    2. Blocks missing collapse functionality
+    3. Multi-word page slugs broken (404s)
+    4. Case-sensitive URLs (diverges from Logseq)
+    5. Empty pages (missing reference display)
+    6. Missing #hashtag links
+    7. No default "contents" page
+    8. Broken sidebar structure (should be TOC, not index)
+    9. No breadcrumbs
+  - Estimated repair time: 2-3 weeks (Phases 4.6-4.9)
+  - Blocks Phase 5 deployment pipeline work
+
 ### Added
 - **Automated E2E Testing**:
   - **.test.env configuration file** - Centralized test configuration (gitignored)

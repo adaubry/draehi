@@ -104,12 +104,16 @@ Phase 4 was marked complete but has critical issues preventing production use. T
 - Need proper slugification (like Google URLs)
 - Reference: https://thetexttool.com/blog/demystifying-slugification
 
-**Slugification Rules (Google-style):**
+**Slugification Rules (Based on industry best practices):**
 1. Lowercase everything
 2. Replace spaces with hyphens
-3. Remove special chars (keep alphanumeric + hyphens)
-4. Collapse multiple hyphens
-5. Trim leading/trailing hyphens
+3. Transliterate Unicode to ASCII (`café` → `cafe`)
+4. Remove special chars (keep alphanumeric + hyphens + `/`)
+5. Collapse multiple hyphens (`--` → `-`)
+6. Trim leading/trailing hyphens
+7. Preserve namespace separators (`/`)
+
+**Reference:** [Demystifying Slugification](https://thetexttool.com/blog/demystifying-slugification)
 
 **Examples:**
 ```
@@ -117,6 +121,8 @@ Phase 4 was marked complete but has critical issues preventing production use. T
 "FAQ & Help" → "faq-help"
 "Getting Started!" → "getting-started"
 "guides/Quick Start" → "guides/quick-start"
+"Café Guide" → "cafe-guide"
+"C++ Tutorial" → "c-tutorial"
 ```
 
 **Success Criteria:**
@@ -225,26 +231,26 @@ Page: "Queries"
 - [ ] Empty pages (no content) still show refs
 - [ ] Performance: efficient backlink queries
 
-**Database Changes Needed:**
-- Add `page_references` table or compute dynamically
-- Track bidirectional links (from → to)
-- Store mention count per page
-
-**Files to Create/Modify:**
-- `modules/content/references.ts` - Backlink computation
-- `components/viewer/CitedBySection.tsx` - +1 refs UI
-- `components/viewer/RelatedSection.tsx` - +2 refs UI
-- `app/[workspaceSlug]/[...path]/page.tsx` - Integrate refs
-- `modules/content/queries.ts` - Backlink queries
-- Database migration - page_references table
+**Architecture Decision:**
+- ✅ **Compute dynamically** - No page_references table
+- ✅ **Real-time queries** - Use PPR + indexes for performance
+- ✅ **Show page links only** - No context snippets (simplified)
 
 **Implementation Plan:**
-1. Design reference tracking (table vs computed)
-2. Implement backlink queries (+1, +2)
-3. Build CitedBySection component
-4. Build RelatedSection component
-5. Integrate into page layout
-6. Test with Logseq docs (compare reference counts)
+1. Create backlink query functions (+1, +2)
+2. Add composite indexes (workspace_id, page_name)
+3. Build CitedBySection component (collapsible, open by default)
+4. Build RelatedSection component (collapsible, closed by default)
+5. Use PPR skeleton for loading state
+6. Integrate into page layout
+7. Test with Logseq docs (compare reference counts)
+
+**Files to Create/Modify:**
+- `modules/content/queries.ts` - Add `getCitedByReferences()`, `getRelatedReferences()`
+- `components/viewer/CitedBySection.tsx` - +1 refs UI (page links only)
+- `components/viewer/RelatedSection.tsx` - +2 refs UI (page links only)
+- `app/[workspaceSlug]/[...path]/page.tsx` - Integrate ref sections
+- Database migration - Add composite index on (workspace_id, page_name)
 
 ---
 
@@ -310,16 +316,22 @@ Page: "Queries"
 - `docs.logseq.com` → shows `#/page/contents`
 - Most graphs have a "contents" or "index" page
 
+**Design Decision:**
+- ✅ **User configurable** - Set default page in repo setup
+- ✅ **Fallback to "contents"** - If user choice doesn't exist
+- ❌ **No complex fallback chain** - Just user choice → contents → 404
+
 **Success Criteria:**
-- [ ] `/{workspace}` → redirect to `/contents`
-- [ ] If no "contents", try "index", "readme", "home"
-- [ ] If none exist, show page list
-- [ ] Configurable default page in workspace settings
+- [ ] `/{workspace}` → redirect to user's default page
+- [ ] If default doesn't exist, fallback to `/contents`
+- [ ] If "contents" doesn't exist, show 404
+- [ ] Configurable in workspace settings
 
 **Files to Fix:**
-- `app/[workspaceSlug]/page.tsx` - Create default page logic
-- `modules/workspace/schema.ts` - Add defaultPage field
-- Dashboard settings - UI to set default page
+- `app/[workspaceSlug]/page.tsx` - Redirect logic
+- `modules/workspace/schema.ts` - Add `defaultPage` field (default: 'contents')
+- `app/(dashboard)/dashboard/settings/page.tsx` - UI to set default page
+- Database migration - Add defaultPage column
 
 ---
 
@@ -343,33 +355,40 @@ Page: "Queries"
 ┌─────────────────────────┐
 │ [Placeholder Area]      │ ← Empty div (graph logo? search?)
 ├─────────────────────────┤
-│ ← Back to Tutorial      │ ← Last visited page
+│ ← Back to Tutorial      │ ← Last visited page (n-1)
+├─────────────────────────┤
+│ 📄 All Pages            │ ← Button to show full page index
 ├─────────────────────────┤
 │ Table of Contents       │
-│ ▾ Getting Started       │ ← Current page
-│   ▸ Installation        │ ← H2 heading
-│   ▾ Quick Start         │ ← H2 heading (expanded)
-│     • Step 1            │ ← H3 or block
-│     • Step 2            │
-│   ▸ Configuration       │
+│ ▾ Getting Started       │ ← Current page headings
+│   • Installation        │ ← H2 heading
+│   • Quick Start         │ ← H2 heading
+│   • Configuration       │
 └─────────────────────────┘
 ```
 
+**Design Decision:**
+- ✅ **4-section layout** - Placeholder, back, all pages button, TOC
+- ✅ **Persist n-1 only** - Last visited page (sessionStorage)
+- ✅ **"All Pages" button** - Opens modal/panel with full index
+- ✅ **Client-side TOC** - Extract from rendered HTML
+
 **Success Criteria:**
-- [ ] 3-section layout
-- [ ] Top: Empty div with placeholder content
-- [ ] Middle: Back button (disabled if no history)
-- [ ] Bottom: Current page TOC
-- [ ] TOC auto-generated from headings
+- [ ] 4-section layout as shown
+- [ ] Top: Empty div with placeholder
+- [ ] Section 2: Back button (shows last page, disabled if none)
+- [ ] Section 3: "All Pages" button → shows modal with full index
+- [ ] Bottom: Current page TOC (auto-generated)
 - [ ] TOC collapsible sections
-- [ ] Click TOC item → scroll to section
+- [ ] Click TOC item → smooth scroll to heading
 - [ ] Mobile: Hamburger menu, swipe gestures
 
 **Files to Fix:**
-- `components/viewer/Sidebar.tsx` - Complete rewrite
-- `components/viewer/TableOfContents.tsx` - New component
+- `components/viewer/Sidebar.tsx` - 4-section layout
+- `components/viewer/TableOfContents.tsx` - Client-side TOC (extract h1-h6)
+- `components/viewer/AllPagesModal.tsx` - Full page index modal
 - `app/[workspaceSlug]/[...path]/layout.tsx` - Pass page data
-- Client-side routing for history tracking
+- Use sessionStorage for back button state
 
 ---
 
@@ -510,30 +529,28 @@ Home / guides / getting-started / installation
 
 ### Phase 4.7: References System (Week 1-2)
 
-**Goal:** Implement Logseq-style backlinks
+**Goal:** Implement Logseq-style backlinks (dynamic computation)
 
 **Tasks:**
-1. **Database Design**
-   - [ ] Create `page_references` table
-   - [ ] Track from→to relationships
-   - [ ] Store mention counts
-   - [ ] Compute +1 and +2 refs
+1. **Database Optimization**
+   - [ ] Add composite index on (workspace_id, page_name)
+   - [ ] No page_references table needed (compute dynamically)
 
 2. **Backlink Queries**
-   - [ ] Query +1 refs (cited by)
-   - [ ] Query +2 refs (related)
-   - [ ] Optimize performance (indexes)
+   - [ ] Create `getCitedByReferences()` - +1 refs query
+   - [ ] Create `getRelatedReferences()` - +2 refs query
+   - [ ] Use Server Components for rendering
+   - [ ] Add PPR skeleton for loading state
 
 3. **UI Components**
-   - [ ] CitedBySection component
-   - [ ] RelatedSection component
-   - [ ] Collapsible sections
-   - [ ] Context snippets
+   - [ ] CitedBySection - Collapsible, open by default, page links only
+   - [ ] RelatedSection - Collapsible, closed by default, page links only
+   - [ ] No context snippets (simplified UX)
 
 4. **Integration**
-   - [ ] Add to page layout
+   - [ ] Add reference sections to page layout
    - [ ] Test with Logseq docs
-   - [ ] Validate reference counts
+   - [ ] Validate reference counts vs live site
 
 **Deliverable:** All pages show references, no empty pages
 
@@ -550,13 +567,13 @@ Home / guides / getting-started / installation
    - [ ] Style as tags
    - [ ] Test in context
 
-2. **Sidebar Rebuild**
-   - [ ] 3-section layout
-   - [ ] Placeholder area
-   - [ ] Back button with history
-   - [ ] Table of Contents component
-   - [ ] Auto-generate from headings
-   - [ ] Collapsible sections
+2. **Sidebar Rebuild (4-section layout)**
+   - [ ] Section 1: Placeholder area
+   - [ ] Section 2: Back button (sessionStorage n-1)
+   - [ ] Section 3: "All Pages" button
+   - [ ] Section 4: Table of Contents (client-side, from headings)
+   - [ ] AllPagesModal component (full page index)
+   - [ ] Collapsible TOC sections
 
 3. **Breadcrumbs**
    - [ ] Create Breadcrumbs component
@@ -565,9 +582,10 @@ Home / guides / getting-started / installation
    - [ ] Responsive design
 
 4. **Default Page**
-   - [ ] Root redirect logic
-   - [ ] Fallback hierarchy
-   - [ ] Workspace settings field
+   - [ ] Add `defaultPage` field to workspace schema
+   - [ ] Root redirect logic (user choice → contents → 404)
+   - [ ] Settings UI to configure default page
+   - [ ] Database migration
 
 **Deliverable:** Complete navigation UX matching Logseq
 
@@ -645,36 +663,153 @@ Home / guides / getting-started / installation
 
 ---
 
-## Open Questions
+## Design Decisions ✅
 
-**Slugification:**
-1. Namespace separator: `/` or `-`? (e.g., `guides/start` vs `guides-start`)
-2. Unicode handling: Keep or transliterate? (e.g., `café` → `cafe` or `café`)
-3. Max slug length limit?
+All open questions resolved. Implementation can proceed.
 
-**References:**
-1. Store refs in table or compute dynamically?
-2. Cache ref counts or real-time?
-3. Show ref context: full block or snippet?
+### Slugification Strategy
 
-**Sidebar:**
-1. Persist collapse state across pages?
-2. Show page list anywhere?
-3. Mobile: Always collapsed or configurable?
+**Reference:** [Demystifying Slugification](https://thetexttool.com/blog/demystifying-slugification)
 
-**Default Page:**
-1. Fallback order: contents → index → readme → home → first?
-2. Allow custom default per workspace?
+**Rules:**
+1. **Lowercase everything** - Avoid routing issues on case-sensitive systems
+2. **Hyphens as separators** - Replace spaces with `-`, avoid underscores
+3. **Transliterate Unicode to ASCII** - Better portability (`café` → `cafe`)
+4. **Remove special chars** - Keep only alphanumeric + hyphens
+5. **Collapse multiple hyphens** - `--` → `-`
+6. **Trim edge hyphens** - No leading/trailing `-`
+7. **Preserve namespace separators** - Keep `/` for folder structure
 
-**Performance:**
-1. Backlink queries expensive - pagination needed?
-2. TOC generation server-side or client-side?
+**Examples:**
+```
+"Advanced Features" → "advanced-features"
+"FAQ & Help" → "faq-help"
+"What's Next?" → "whats-next"
+"guides/Getting Started" → "guides/getting-started"
+"Café Guide" → "cafe-guide"
+"C++ Tutorial" → "c-tutorial"
+```
+
+**Implementation:**
+- No length limit initially (add 60-80 char limit if needed)
+- Remove common stopwords only if they don't damage meaning
+- Treat slugs as permanent (add redirects if changes needed)
+- CI guardrails: Block spaces, uppercase, stray punctuation
+
+**Files:**
+- `lib/slugify.ts` - Core slugification function
+- `lib/slugify.test.ts` - Edge case tests
+- Migration to re-slug all existing pages
 
 ---
 
-**Status:** 🚧 Ready for Implementation
+### References System
+
+**Architecture:**
+- ✅ **Compute dynamically** - No page_references table
+- ✅ **Real-time queries** - No caching (rely on PPR + indexes)
+- ✅ **Show page link only** - No context snippets (simplified UX)
+
+**Implementation:**
+```typescript
+// Query +1 refs (Cited By)
+SELECT DISTINCT page_name
+FROM nodes
+WHERE html LIKE '%[[Target Page]]%'
+  AND workspace_id = ?
+
+// Query +2 refs (Related)
+SELECT DISTINCT n2.page_name
+FROM nodes n1
+JOIN nodes n2 ON n2.html LIKE '%[[' || n1.page_name || ']]%'
+WHERE n1.html LIKE '%[[Target Page]]%'
+  AND n1.workspace_id = ? AND n2.workspace_id = ?
+```
+
+**UI:**
+- CitedBySection: Collapsible, open by default, just page links
+- RelatedSection: Collapsible, closed by default, just page links
+- Use PPR skeleton for loading state
+
+**Performance:**
+- Composite indexes on (workspace_id, page_name)
+- No pagination (acceptable for Logseq graph sizes)
+- Server Component rendering
+
+---
+
+### Sidebar Structure
+
+**Layout:**
+```
+┌─────────────────────────┐
+│ [Placeholder Area]      │ ← Empty div (graph logo? search?)
+├─────────────────────────┤
+│ ← Back to Tutorial      │ ← Last visited page (n-1)
+├─────────────────────────┤
+│ 📄 All Pages            │ ← Button to show all pages
+├─────────────────────────┤
+│ Table of Contents       │ ← Current page TOC
+│ ▾ Getting Started       │
+│   • Installation        │
+│   • Quick Start         │
+└─────────────────────────┘
+```
+
+**Decisions:**
+- ✅ **Persist n-1 only** - Just last visited page (session storage)
+- ✅ **"All Pages" button** - Shows modal/panel with old sidebar index
+- ✅ **TOC by default** - Sidebar shows current page TOC, not index
+- ✅ **Client-side TOC** - Extract headings from rendered HTML
+
+**Implementation:**
+- `components/viewer/Sidebar.tsx` - 4-section layout
+- `components/viewer/AllPagesModal.tsx` - Full page index
+- `components/viewer/TableOfContents.tsx` - Auto-generated from headings
+- Use sessionStorage for back button state
+
+---
+
+### Default Page
+
+**Decisions:**
+- ✅ **User configurable** - Set in repo setup/settings
+- ✅ **Fallback to "contents"** - If user choice doesn't exist
+- ❌ **No complex fallback chain** - Just user choice → contents → 404
+
+**Implementation:**
+```typescript
+// app/[workspaceSlug]/page.tsx
+const defaultPage = workspace.defaultPage || 'contents';
+redirect(`/${workspaceSlug}/${defaultPage}`);
+```
+
+**Database:**
+- Add `defaultPage` field to workspaces table
+- Default value: `'contents'`
+- UI in repo setup: "Default homepage" input
+
+---
+
+### Performance Strategy
+
+**Decisions:**
+- ✅ **No pagination** - Logseq graphs small enough (<1000 pages)
+- ✅ **Client-side TOC** - Extract from DOM, no server processing
+- ✅ **Server Components** - References computed server-side
+- ✅ **PPR skeletons** - Loading states for dynamic content
+
+**Optimizations:**
+- Composite indexes: `(workspace_id, page_name)`, `(workspace_id, slug)`
+- React cache() for request deduplication
+- "use cache" for static queries
+- No N+1 queries (batch fetches)
+
+---
+
+**Status:** ✅ Decisions Finalized - Implementation Starting
 **Estimated Time:** 2-3 weeks
-**Next Step:** Answer open questions, start Phase 4.6
+**Next Step:** Start Phase 4.6 - Slugification
 
 ---
 

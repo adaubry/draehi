@@ -281,6 +281,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - getJournalNodes now filters nodeType='page' (was returning blocks)
   - getAllBlocksForPage now returns page node + blocks (BlockTree needs page node)
   - Sidebar navigation no longer processes thousands of individual blocks
+- **Block ID mapping broken (blocks not displaying)**:
+  - Root cause: Blocks without explicit `id::` property have uuid=null
+  - Previous code skipped blocks without UUIDs when setting parentId
+  - Fix: Map blocks by position in insertion order (pageBlocksMap)
+  - Blocks without UUIDs now correctly linked to parents via indent level
+  - modules/content/actions.ts: Enhanced parentId mapping (lines 218-315)
 - Status badges (idle/syncing/success/error) now update in real-time when user refreshes page
 - Removed `revalidatePath` from async promise handlers to prevent render errors
 - Renamed middleware.ts to proxy.ts (Next.js 16 convention)

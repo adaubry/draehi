@@ -9,6 +9,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Changed
+- **Phase 4 Design Decisions Finalized** (2025-11-17):
+  - All open questions resolved, ready for implementation
+  - **Slugification:** Follow industry best practices
+    - Lowercase, hyphens, ASCII transliteration, preserve `/` for namespaces
+    - Reference: https://thetexttool.com/blog/demystifying-slugification
+    - Example: "guides/Getting Started" → "guides/getting-started"
+  - **References:** Compute dynamically, no table
+    - Use PPR + indexes for performance
+    - Real-time queries, page links only (no context snippets)
+    - CitedBySection (+1 refs): open by default
+    - RelatedSection (+2 refs): closed by default
+  - **Sidebar:** 4-section layout
+    - Section 1: Placeholder (future: logo/search)
+    - Section 2: Back button (sessionStorage, n-1 page)
+    - Section 3: "All Pages" button (opens modal with index)
+    - Section 4: Table of Contents (client-side, from headings)
+  - **Default Page:** User configurable
+    - Set in repo setup/settings
+    - Fallback: user choice → "contents" → 404
+    - No complex fallback chain
+  - **Performance:** No pagination, client-side TOC
+  - Updated PHASE4_ISSUES.md with decisions
 - **Phase 4 Status Update** (2025-11-17):
   - Phase 4 marked INCOMPLETE - discovered 9 critical issues blocking production
   - Created comprehensive repair roadmap (docs/PHASE4_ISSUES.md)

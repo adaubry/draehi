@@ -14,19 +14,57 @@ Complete guide for testing Draehi end-to-end with all Logseq features.
 
 Validates Phase 4 implementation without requiring a running server or database.
 
-### Manual E2E Test (5 minutes)
+### Automated E2E Test (NEW!)
+
+**One-time setup:**
 
 ```bash
-# 1. Run full automated test suite
-./scripts/test-e2e.sh
+# 1. Copy test config template
+cp .test.env.example .test.env
 
-# Includes:
-# - Content validation (database queries)
-# - Logseq emulation comparison (live site comparison)
-# - UI verification checklist
+# 2. (Optional) Edit .test.env to customize test credentials
+#    Default values work fine for local testing
 ```
 
-### Logseq Structure Comparison (NEW!)
+**Run tests:**
+
+```bash
+# Fully automated test suite
+./scripts/test-e2e.sh
+```
+
+**What it automates:**
+- ✅ Database schema setup
+- ✅ Test user creation (via direct DB insert)
+- ✅ Test workspace creation
+- ✅ Git repository connection
+- ✅ Content validation
+- ✅ Structure comparison with Logseq docs
+- ⚠️  Sync wait (manual confirmation still required)
+- ⚠️  UI verification (manual checklist)
+
+### Test Configuration
+
+The `.test.env` file configures automated testing:
+
+```bash
+# Test user credentials (auto-created in DB)
+TEST_USER_EMAIL=testuser@example.com
+TEST_USER_PASSWORD=testpass123
+TEST_USER_NAME=Test User
+TEST_WORKSPACE_SLUG=testuser
+
+# Git repository (points to test data)
+TEST_REPO_PATH=/home/user/draehi/test-data/logseq-docs-graph
+TEST_REPO_BRANCH=master
+
+# Application URL
+TEST_APP_URL=http://localhost:3000
+```
+
+**Security:** `.test.env` is gitignored. Safe to use any test credentials.
+
+### Logseq Structure Comparison
 
 **Validate database structure matches Logseq docs:**
 

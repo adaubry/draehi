@@ -11,8 +11,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - **Testing Infrastructure Improvements**:
   - tsx dev dependency for running TypeScript scripts
+  - jsdom + @types/jsdom dev dependencies for HTML parsing
   - scripts/validate-content.ts - TypeScript validation script replacing inline Node.js code
+  - scripts/compare-with-logseq.ts - Database structure comparison against official Logseq docs
+    - Validates: page count (~238), journal count (~75), key pages exist
+    - Checks block quality: UUIDs (>90%), HTML rendered (>90%), parent relationships (>80%)
+    - Integrated into test-e2e.sh workflow
   - Fixed test-e2e.sh module resolution error (Cannot find module './lib/db.js')
+  - Updated TESTING.md with comprehensive comparison test documentation
 - **Logseq Reference Processing** (Phase 4.5):
   - Page references `[[page]]` → clickable internal links
   - Block references `((uuid))` → hash links to blocks

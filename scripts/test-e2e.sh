@@ -151,6 +151,22 @@ validate_content() {
     log_success "Content validation complete"
 }
 
+# Compare with Logseq docs
+compare_with_logseq() {
+    log_step "Comparing structure against official Logseq docs..."
+
+    cd "$PROJECT_ROOT"
+
+    # Run comparison (checks database directly)
+    npx tsx scripts/compare-with-logseq.ts
+
+    if [[ $? -eq 0 ]]; then
+        log_success "Draehi structure matches Logseq!"
+    else
+        log_warning "Some differences found - review output above"
+    fi
+}
+
 # Test UI rendering
 test_ui_rendering() {
     log_step "Testing UI rendering..."
@@ -199,6 +215,7 @@ main() {
     read -p "Press Enter when sync is complete..."
 
     validate_content
+    compare_with_logseq
     test_ui_rendering
 
     echo ""

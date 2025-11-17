@@ -17,12 +17,33 @@ Validates Phase 4 implementation without requiring a running server or database.
 ### Manual E2E Test (5 minutes)
 
 ```bash
-# 1. Run automated test suite
+# 1. Run full automated test suite
 ./scripts/test-e2e.sh
 
-# 2. Validate content after sync
-node scripts/validate-content.js
+# Includes:
+# - Content validation (database queries)
+# - Logseq emulation comparison (live site comparison)
+# - UI verification checklist
 ```
+
+### Logseq Structure Comparison (NEW!)
+
+**Validate database structure matches Logseq docs:**
+
+```bash
+# Requires database with synced content
+npx tsx scripts/compare-with-logseq.ts
+```
+
+**What it checks:**
+- ✅ Page count matches (~238 pages)
+- ✅ Journal count matches (~75 journals)
+- ✅ Key pages exist (contents, Tutorial, Queries, etc.)
+- ✅ Blocks have UUIDs (>90%)
+- ✅ Blocks have HTML rendered (>90%)
+- ✅ Block parent relationships (>80%)
+
+**Expected:** All checks pass with 10% tolerance
 
 ## Test Data
 
@@ -363,6 +384,131 @@ export-logseq-notes --help
     npm run build
     npm run test:e2e
 ```
+
+## Logseq Structure Comparison
+
+### Overview
+
+The comparison test validates that Draehi correctly imports Logseq graph structure into the database by checking against the official Logseq docs stats.
+
+### How It Works
+
+```
+Database Query
+    ↓
+Count pages, blocks, journals
+Check key pages exist
+Validate block quality (UUIDs, HTML, hierarchy)
+    ↓
+Compare to expected Logseq docs stats:
+  - ~238 pages
+  - ~75 journals
+  - Key pages: contents, Tutorial, FAQ, etc.
+```
+
+### Metrics Validated
+
+1. **Page Count** - Total pages (expected ~238)
+2. **Journal Count** - Date-based pages (expected ~75)
+3. **Key Pages** - Important docs pages exist
+4. **Block UUIDs** - >90% blocks have UUID
+5. **Block HTML** - >90% blocks have rendered HTML
+6. **Block Hierarchy** - >80% blocks have parent relationships
+
+### Test Pages Checked
+
+- **contents** - Homepage
+- **Tutorial** - Getting started guide
+- **Queries** - Advanced queries doc
+- **Shortcuts** - Keyboard shortcuts
+- **Term Portal** - Glossary
+- **FAQ** - Frequently asked questions
+- **Publishing (Desktop App Only)** - Publishing guide
+
+### Tolerance
+
+**10% difference allowed** - Some variability in parsing is acceptable.
+
+### Running Standalone
+
+```bash
+# After syncing test graph
+npx tsx scripts/compare-with-logseq.ts
+```
+
+### Expected Output
+
+```
+╔════════════════════════════════════════╗
+║  Logseq Structure Comparison Test     ║
+╚════════════════════════════════════════╝
+
+Reference: https://docs.logseq.com
+Testing:   Database content
+
+📊 Database Statistics:
+   Total pages: 238
+   Total blocks: 4521
+   Journal pages: 75
+   Namespaced pages: 45
+
+🧱 Block Quality:
+   Blocks with UUID: 4521/4521
+   Blocks with HTML: 4521/4521
+   Blocks with parent: 4350/4521
+   Sample blocks with page refs: 2/5
+   Sample blocks with block refs: 1/5
+
+📈 Expected vs Actual:
+   Pages:    Expected ~238, Got 238
+   Journals: Expected ~75, Got 75
+
+📋 Key Pages Check:
+[checks each page...]
+
+╔════════════════════════════════════════╗
+║  Summary                               ║
+╚════════════════════════════════════════╝
+
+📊 Statistics:
+   ✅ Total pages: 238
+   ✅ Total blocks: 4521
+   ✅ Journals: 75
+   ✅ Namespaced: 45
+
+🧱 Block Quality:
+   ✅ Blocks with UUID: 100.0%
+   ✅ Blocks with HTML: 100.0%
+   ✅ Blocks with parent: 96.2%
+
+📄 Key Pages:
+   ✅ Found: 7/7
+
+🎉 Draehi successfully imported Logseq structure!
+   All key pages present with expected counts
+```
+
+### Troubleshooting
+
+**"Page count off by >10%"**
+- Check Git sync completed
+- Verify all .md files in test-data/logseq-docs-graph/pages/
+- Check export-logseq-notes ran successfully
+
+**"Missing key pages"**
+- Verify page naming matches Logseq (case-sensitive)
+- Check namespace calculation (guides/advanced/tips)
+- Review sync logs for errors
+
+**"Blocks missing UUIDs"**
+- Check markdown parser extracts `id::` property
+- Verify parseLogseqMarkdown() in modules/logseq/markdown-parser.ts
+- Some blocks naturally lack UUIDs (acceptable if >90%)
+
+**"Blocks missing HTML"**
+- Check processLogseqReferences() runs after parse
+- Verify marked + cheerio dependencies installed
+- Review block ingestion in modules/logseq/export.ts
 
 ## Test Coverage
 

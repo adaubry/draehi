@@ -7,6 +7,7 @@ import { eq, and } from "drizzle-orm";
 import { exportLogseqNotes } from "../logseq/export";
 import { parseLogseqOutput } from "../logseq/parse";
 import { parseLogseqDirectory, flattenBlocks } from "../logseq/markdown-parser";
+import { processLogseqReferences } from "../logseq/process-references";
 import { marked } from "marked";
 import path from "path";
 
@@ -93,6 +94,21 @@ export async function ingestLogseqGraph(
   try {
     buildLog.push("Starting Logseq graph ingestion...");
 
+    // Get workspace to access slug for reference links
+    const workspace = await db.query.workspaces.findFirst({
+      where: (workspaces, { eq }) => eq(workspaces.id, workspaceId),
+    });
+
+    if (!workspace) {
+      return {
+        success: false,
+        error: "Workspace not found",
+        buildLog,
+      };
+    }
+
+    const workspaceSlug = workspace.slug;
+
     // Step 1: Parse markdown files for block structure
     buildLog.push("Parsing markdown files for block structure...");
     const pagesDir = path.join(repoPath, "pages");
@@ -175,10 +191,17 @@ export async function ingestLogseqGraph(
 
       for (const block of flatBlocks) {
         // Render markdown to HTML for this block
-        const blockHTML = await marked.parse(block.content, {
+        let blockHTML = await marked.parse(block.content, {
           async: true,
           gfm: true,
         });
+
+        // Process Logseq references ([[page]], ((uuid)), TODO markers)
+        blockHTML = processLogseqReferences(
+          blockHTML,
+          workspaceSlug,
+          mdPage.pageName
+        );
 
         const blockNode: NewNode = {
           workspaceId,

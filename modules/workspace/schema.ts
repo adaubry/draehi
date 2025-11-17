@@ -10,6 +10,7 @@ export const workspaces = pgTable("workspaces", {
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   domain: text("domain"), // Custom domain (future)
+  embedDepth: integer("embed_depth").notNull().default(5), // Max depth for embeds
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

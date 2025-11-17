@@ -97,6 +97,10 @@ export async function exportLogseqNotes(
     const outputDir = path.join(repoPath, ".draehi-output");
     await fs.mkdir(outputDir, { recursive: true });
 
+    // Ensure journals directory exists (export-logseq-notes requires it)
+    const journalsDir = path.join(repoPath, "journals");
+    await fs.mkdir(journalsDir, { recursive: true });
+
     // Write template file
     const templatePath = path.join(repoPath, ".draehi-template.tmpl");
     await fs.writeFile(templatePath, EXPORT_TEMPLATE);

@@ -144,3 +144,176 @@
     border-left-color: rgb(234 179 8); /* yellow-500 */
   }
 }
+
+/* Page references */
+.page-reference {
+  color: rgb(59 130 246); /* blue-500 */
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px dashed rgb(191 219 254); /* blue-200 */
+  transition: all 0.15s ease;
+}
+
+.page-reference:hover {
+  border-bottom-color: rgb(59 130 246); /* blue-500 */
+  border-bottom-style: solid;
+}
+
+/* Block references */
+.block-reference {
+  color: rgb(107 114 128); /* gray-500 */
+  text-decoration: none;
+  font-family: ui-monospace, monospace;
+  font-size: 0.875rem;
+  padding: 0.125rem 0.375rem;
+  background-color: rgb(243 244 246); /* gray-100 */
+  border-radius: 0.25rem;
+  transition: all 0.15s ease;
+}
+
+.block-reference:hover {
+  background-color: rgb(229 231 235); /* gray-200 */
+  color: rgb(59 130 246); /* blue-500 */
+}
+
+/* Task markers */
+.task-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.15s ease;
+}
+
+.task-marker input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: not-allowed;
+}
+
+.task-todo {
+  background-color: rgb(254 249 195); /* yellow-100 */
+  color: rgb(161 98 7); /* yellow-700 */
+}
+
+.task-doing {
+  background-color: rgb(219 234 254); /* blue-100 */
+  color: rgb(29 78 216); /* blue-700 */
+}
+
+.task-done {
+  background-color: rgb(220 252 231); /* green-100 */
+  color: rgb(21 128 61); /* green-700 */
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+.task-later {
+  background-color: rgb(243 244 246); /* gray-100 */
+  color: rgb(55 65 81); /* gray-700 */
+}
+
+.task-now {
+  background-color: rgb(254 226 226); /* red-100 */
+  color: rgb(185 28 28); /* red-700 */
+  font-weight: 600;
+}
+
+/* Priority levels */
+.priority {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.375rem;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.priority-A {
+  background-color: rgb(254 226 226); /* red-100 */
+  color: rgb(185 28 28); /* red-700 */
+  border: 1px solid rgb(248 113 113); /* red-400 */
+}
+
+.priority-B {
+  background-color: rgb(254 249 195); /* yellow-100 */
+  color: rgb(161 98 7); /* yellow-700 */
+  border: 1px solid rgb(250 204 21); /* yellow-400 */
+}
+
+.priority-C {
+  background-color: rgb(219 234 254); /* blue-100 */
+  color: rgb(29 78 216); /* blue-700 */
+  border: 1px solid rgb(147 197 253); /* blue-300 */
+}
+
+/* Dark mode support for new elements */
+@media (prefers-color-scheme: dark) {
+  .page-reference {
+    color: rgb(96 165 250); /* blue-400 */
+    border-bottom-color: rgb(30 58 138); /* blue-900 */
+  }
+
+  .page-reference:hover {
+    border-bottom-color: rgb(96 165 250); /* blue-400 */
+  }
+
+  .block-reference {
+    color: rgb(156 163 175); /* gray-400 */
+    background-color: rgb(31 41 55); /* gray-800 */
+  }
+
+  .block-reference:hover {
+    background-color: rgb(55 65 81); /* gray-700 */
+    color: rgb(96 165 250); /* blue-400 */
+  }
+
+  .task-todo {
+    background-color: rgb(113 63 18); /* yellow-900 */
+    color: rgb(253 224 71); /* yellow-300 */
+  }
+
+  .task-doing {
+    background-color: rgb(30 58 138); /* blue-900 */
+    color: rgb(147 197 253); /* blue-300 */
+  }
+
+  .task-done {
+    background-color: rgb(20 83 45); /* green-900 */
+    color: rgb(134 239 172); /* green-300 */
+  }
+
+  .task-later {
+    background-color: rgb(31 41 55); /* gray-800 */
+    color: rgb(209 213 219); /* gray-300 */
+  }
+
+  .task-now {
+    background-color: rgb(127 29 29); /* red-900 */
+    color: rgb(252 165 165); /* red-300 */
+  }
+
+  .priority-A {
+    background-color: rgb(127 29 29); /* red-900 */
+    color: rgb(252 165 165); /* red-300 */
+    border-color: rgb(185 28 28); /* red-700 */
+  }
+
+  .priority-B {
+    background-color: rgb(113 63 18); /* yellow-900 */
+    color: rgb(253 224 71); /* yellow-300 */
+    border-color: rgb(161 98 7); /* yellow-700 */
+  }
+
+  .priority-C {
+    background-color: rgb(30 58 138); /* blue-900 */
+    color: rgb(147 197 253); /* blue-300 */
+    border-color: rgb(29 78 216); /* blue-700 */
+  }
+}

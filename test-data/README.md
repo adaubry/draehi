@@ -12,9 +12,10 @@ Official Logseq documentation graph - real-world, production-grade test data.
 
 ### Statistics
 
-- **Pages:** 238 (complete documentation)
-- **Journals:** 75 (real journal entries)
-- **Blocks:** Thousands (comprehensive coverage)
+- **Total Pages:** 917 (complete documentation)
+- **Non-Journal Pages:** 695 (regular documentation pages)
+- **Journals:** 222 (real journal entries)
+- **Blocks:** ~12,000+ (comprehensive coverage)
 - **Block References:** Extensive
 - **Page References:** Throughout documentation
 - **Real-world structure:** Actual production Logseq graph
@@ -76,9 +77,10 @@ node scripts/validate-content.js
 ```
 
 **Expected:**
-- Pages: ~238
-- Journals: ~75
-- Blocks: Thousands
+- Total Pages: ~917
+- Non-Journals: ~695
+- Journals: ~222
+- Blocks: ~12,000+
 - Page references: Hundreds
 - Block references: Many throughout docs
 

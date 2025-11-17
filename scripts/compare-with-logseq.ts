@@ -16,6 +16,9 @@ interface PageCheck {
   logseqUrl: string;
   found: boolean;
   hasBlocks: boolean;
+  blockCount: number;
+  hasContent: boolean;
+  contentIssues: string[];
 }
 
 // Key pages from Logseq docs that should exist
@@ -36,6 +39,8 @@ async function checkPageExists(
   console.log(`\n📄 Checking: ${pageName}`);
   console.log(`   Reference: ${LOGSEQ_DOCS_BASE}/${logseqUrl}`);
 
+  const contentIssues: string[] = [];
+
   try {
     // Check if page exists in database
     const page = await db.query.nodes.findFirst({
@@ -53,29 +58,80 @@ async function checkPageExists(
         logseqUrl,
         found: false,
         hasBlocks: false,
+        blockCount: 0,
+        hasContent: false,
+        contentIssues: ["Page not found in database"],
       };
     }
 
     console.log(`   ✅ Page found (slug: ${page.slug})`);
 
-    // Check if page has blocks
+    // Get all blocks for this page
     const blocks = await db.query.nodes.findMany({
       where: (nodes, { and, eq }) =>
         and(
           eq(nodes.nodeType, "block"),
           eq(nodes.pageName, pageName)
         ),
-      limit: 1,
     });
 
-    const hasBlocks = blocks.length > 0;
-    console.log(`   ${hasBlocks ? "✅" : "⚠️"} Has blocks: ${hasBlocks ? "yes" : "no"}`);
+    const blockCount = blocks.length;
+    const hasBlocks = blockCount > 0;
+
+    console.log(`   ${hasBlocks ? "✅" : "❌"} Block count: ${blockCount}`);
+
+    if (!hasBlocks) {
+      contentIssues.push("No blocks found");
+    } else {
+      // Check for meaningful content
+      const blocksWithHTML = blocks.filter((b) => b.html && b.html.trim().length > 0);
+      const blocksWithSubstantialContent = blocks.filter(
+        (b) => b.html && b.html.trim().length > 50
+      );
+
+      if (blocksWithHTML.length === 0) {
+        contentIssues.push("No blocks have HTML content");
+        console.log(`   ❌ Empty content: no blocks with HTML`);
+      } else if (blocksWithSubstantialContent.length === 0) {
+        contentIssues.push("All blocks have minimal content (<50 chars)");
+        console.log(`   ⚠️  Minimal content: all blocks <50 chars`);
+      } else {
+        // Check for placeholder patterns
+        const placeholderPatterns = [
+          /^\s*placeholder\s*$/i,
+          /^\s*todo\s*$/i,
+          /^\s*coming soon\s*$/i,
+          /^\s*\[.*\]\s*$/,
+          /^\s*-\s*$/,
+        ];
+
+        const allBlocksArePlaceholders = blocks.every((b) => {
+          if (!b.html) return true;
+          const text = b.html.replace(/<[^>]*>/g, "").trim();
+          return (
+            text.length < 20 || placeholderPatterns.some((pattern) => pattern.test(text))
+          );
+        });
+
+        if (allBlocksArePlaceholders && blockCount < 5) {
+          contentIssues.push("Appears to be placeholder content");
+          console.log(`   ⚠️  Placeholder detected: minimal blocks with generic content`);
+        } else {
+          console.log(`   ✅ Meaningful content: ${blocksWithSubstantialContent.length} blocks with >50 chars`);
+        }
+      }
+    }
+
+    const hasContent = contentIssues.length === 0;
 
     return {
       name: pageName,
       logseqUrl,
       found: true,
       hasBlocks,
+      blockCount,
+      hasContent,
+      contentIssues,
     };
   } catch (error) {
     console.error(`   ❌ Error checking page: ${error}`);
@@ -84,6 +140,9 @@ async function checkPageExists(
       logseqUrl,
       found: false,
       hasBlocks: false,
+      blockCount: 0,
+      hasContent: false,
+      contentIssues: [`Error: ${error}`],
     };
   }
 }
@@ -168,22 +227,27 @@ async function main() {
   const stats = await checkDatabaseStats();
 
   // Expected stats (Logseq docs graph)
-  const expectedPages = 238;
-  const expectedJournals = 75;
+  // Source: https://docs.logseq.com
+  const expectedTotalPages = 917;
+  const expectedNonJournalPages = 695;
+  const expectedJournals = expectedTotalPages - expectedNonJournalPages; // ~222
+
+  const nonJournalPages = stats.totalPages - stats.totalJournals;
 
   console.log("\n📈 Expected vs Actual:");
-  console.log(`   Pages:    Expected ~${expectedPages}, Got ${stats.totalPages}`);
-  console.log(`   Journals: Expected ~${expectedJournals}, Got ${stats.totalJournals}`);
+  console.log(`   Total pages:    Expected ~${expectedTotalPages}, Got ${stats.totalPages}`);
+  console.log(`   Non-journals:   Expected ~${expectedNonJournalPages}, Got ${nonJournalPages}`);
+  console.log(`   Journals:       Expected ~${expectedJournals}, Got ${stats.totalJournals}`);
 
-  const pageMatch = Math.abs(stats.totalPages - expectedPages) / expectedPages;
+  const totalPageMatch = Math.abs(stats.totalPages - expectedTotalPages) / expectedTotalPages;
   const journalMatch = Math.abs(stats.totalJournals - expectedJournals) / expectedJournals;
 
   const issues: string[] = [];
 
-  if (pageMatch > 0.1) {
+  if (totalPageMatch > 0.1) {
     // 10% tolerance
     issues.push(
-      `Page count off by ${(pageMatch * 100).toFixed(1)}% (expected ~${expectedPages}, got ${stats.totalPages})`
+      `Total page count off by ${(totalPageMatch * 100).toFixed(1)}% (expected ~${expectedTotalPages}, got ${stats.totalPages})`
     );
   }
 
@@ -201,6 +265,7 @@ async function main() {
 
   const missingPages = pageChecks.filter((p) => !p.found);
   const pagesWithoutBlocks = pageChecks.filter((p) => p.found && !p.hasBlocks);
+  const pagesWithoutContent = pageChecks.filter((p) => p.found && !p.hasContent);
 
   // Summary
   console.log("\n╔════════════════════════════════════════╗");
@@ -240,6 +305,26 @@ async function main() {
   if (pagesWithoutBlocks.length > 0) {
     console.log(`   ⚠️  Pages without blocks:`);
     pagesWithoutBlocks.forEach((p) => console.log(`      - ${p.name}`));
+  }
+
+  if (pagesWithoutContent.length > 0) {
+    console.log(`\n📝 Content Quality Issues:`);
+    pagesWithoutContent.forEach((p) => {
+      console.log(`   ❌ ${p.name} (${p.blockCount} blocks):`);
+      p.contentIssues.forEach((issue) => console.log(`      - ${issue}`));
+    });
+
+    // Add to issues for critical pages
+    const criticalPages = ["contents", "Tutorial", "FAQ"];
+    const criticalWithoutContent = pagesWithoutContent.filter((p) =>
+      criticalPages.includes(p.name)
+    );
+
+    if (criticalWithoutContent.length > 0) {
+      criticalWithoutContent.forEach((p) => {
+        issues.push(`Critical page "${p.name}" has content issues: ${p.contentIssues.join(", ")}`);
+      });
+    }
   }
 
   if (issues.length > 0) {

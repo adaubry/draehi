@@ -14,11 +14,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - jsdom + @types/jsdom dev dependencies for HTML parsing
   - scripts/validate-content.ts - TypeScript validation script replacing inline Node.js code
   - scripts/compare-with-logseq.ts - Database structure comparison against official Logseq docs
-    - Validates: page count (~238), journal count (~75), key pages exist
+    - Validates: total pages (~917), non-journals (~695), journals (~222), key pages exist
+    - **Content validation**: Detects empty/placeholder pages, validates critical pages have meaningful content
+    - Checks blocks have substantial HTML (>50 chars), detects "TODO", "placeholder", "coming soon" patterns
+    - Fails tests if critical pages (contents, Tutorial, FAQ) lack real content
     - Checks block quality: UUIDs (>90%), HTML rendered (>90%), parent relationships (>80%)
     - Integrated into test-e2e.sh workflow
   - Fixed test-e2e.sh module resolution error (Cannot find module './lib/db.js')
   - Updated TESTING.md with comprehensive comparison test documentation
+  - Documented future test improvements roadmap (link integrity, visual comparison, performance tests)
 - **Logseq Reference Processing** (Phase 4.5):
   - Page references `[[page]]` → clickable internal links
   - Block references `((uuid))` → hash links to blocks

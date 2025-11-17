@@ -9,6 +9,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Automated E2E Testing**:
+  - **.test.env configuration file** - Centralized test configuration (gitignored)
+  - **scripts/setup-test-workspace.ts** - Automated test user/workspace creation via direct DB operations
+    - Creates user with bcrypt password hash
+    - Creates workspace with configured slug
+    - Connects Git repository automatically
+    - Idempotent (safe to run multiple times)
+  - **scripts/trigger-sync.ts** - Trigger Git sync programmatically
+  - **Updated test-e2e.sh** - Now fully automated (except sync wait & UI verification)
+    - Reads configuration from .test.env
+    - Auto-creates test user via DB (no manual signup needed)
+    - Auto-connects Git repository (no dashboard interaction needed)
+    - Only manual steps: sync wait confirmation + UI visual checks
 - **Testing Infrastructure Improvements**:
   - tsx dev dependency for running TypeScript scripts
   - jsdom + @types/jsdom dev dependencies for HTML parsing

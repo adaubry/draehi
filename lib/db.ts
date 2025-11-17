@@ -17,7 +17,9 @@ if (!connectionString && process.env.NODE_ENV !== "production") {
 // Create postgres client (will fail at runtime if not set)
 const client = connectionString
   ? postgres(connectionString)
-  : postgres("postgresql://placeholder");
+  : postgres(
+      "postgresql://neondb_owner:npg_S1aynVWIiv3Q@ep-blue-tree-ab902y4r-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+    );
 
 // Create drizzle instance with all schemas
 export const db = drizzle(client, {

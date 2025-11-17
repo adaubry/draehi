@@ -26,12 +26,16 @@ A "Vercel for Logseq graphs" that transforms your personal knowledge base into a
 ### Initial Setup
 
 ```bash
-# Scaffold the project with all modern features
-npx create-next-app@latest draehi --typescript --tailwind --eslint --app --src-dir --turbopack
+# Automated setup (recommended)
+./scripts/setup.sh
 
-#TODO create a relevant setup
+# OR manual setup
+npm install
+./scripts/install-rust-tools.sh
+./scripts/setup-database.sh
+./scripts/setup-minio.sh  # Optional: local S3 storage
 
-
+# See docs/SCRIPTS.md for details
 ```
 
 ### Development
@@ -80,17 +84,21 @@ git push origin main
 - Never push without updating CHANGELOG.md
 - **ALWAYS update all affected markdown documentation after making changes**
 
-### Testing (when implemented)
+### Testing (Implemented - Phase 4)
 
 ```bash
-# Run tests
-npm test
+# End-to-end test suite
+./scripts/test-e2e.sh
 
-# Run tests in watch mode
-npm test:watch
+# Content validation (after sync)
+node scripts/validate-content.js
 
-# E2E tests with Puppeteer (via MCP server)
-# Use Puppeteer MCP server for browser automation testing
+# Manual testing
+# 1. Start dev server: npm run dev
+# 2. Connect test graph: file:///path/to/test-data/logseq-docs-graph
+# 3. Compare with: https://docs.logseq.com
+
+# See TEST_SUMMARY.md and docs/TESTING.md for full guide
 ```
 
 ## Architecture Overview
@@ -130,9 +138,10 @@ draehi/
 ├── app/                        # Next.js App Router
 │   ├── (auth)/                # Auth routes (login, signup)
 │   ├── (dashboard)/           # Dashboard after login
-│   ├── [workspace]/           # Public workspace viewer
-│   │   └── [...slug]/         # Catch-all for unlimited depth
+│   ├── [workspaceSlug]/       # Public workspace viewer
+│   │   └── [...path]/         # Catch-all for unlimited depth
 │   ├── api/                   # API routes
+│   ├── blocks.css             # Logseq block tree styling
 │   └── layout.tsx             # Root layout
 ├── modules/                   # Modular Monolith Architecture
 │   ├── auth/                  # Authentication module
@@ -150,28 +159,53 @@ draehi/
 │   ├── git/                   # Git integration module
 │   │   ├── clone.ts           # Clone repos
 │   │   ├── sync.ts            # Sync changes
-│   │   ├── webhook.ts         # Handle webhooks
+│   │   ├── actions.ts         # Git operations
 │   │   └── schema.ts          # Git repo tracking
-│   └── logseq/                # Logseq processing module
-│       ├── export.ts          # Call Rust tool
-│       ├── parse.ts           # Parse output
-│       └── types.ts           # Logseq types
+│   ├── logseq/                # Logseq processing module
+│   │   ├── export.ts          # Call Rust tool
+│   │   ├── parse.ts           # Parse HTML output
+│   │   ├── markdown-parser.ts # Parse block structure
+│   │   ├── process-references.ts # Process [[page]] and ((uuid))
+│   │   ├── export-tool/       # Vendored Rust tool
+│   │   └── types.ts           # Logseq types
+│   └── storage/               # S3-compatible storage
+│       ├── client.ts          # S3 client abstraction
+│       └── upload.ts          # Asset uploads
 ├── components/                # React components
 │   ├── ui/                    # shadcn/ui components
-│   └── workspace/             # Workspace-specific
+│   ├── viewer/                # Workspace viewer components
+│   │   ├── BlockTree.tsx      # Logseq block tree
+│   │   ├── Breadcrumbs.tsx    # Navigation breadcrumbs
+│   │   └── Sidebar.tsx        # Page navigation
+│   └── dashboard/             # Dashboard components
 ├── lib/                       # Shared utilities
 │   ├── db.ts                  # Database client
-│   ├── queries.ts             # Centralized queries
-│   └── cache.ts               # Caching utilities
+│   ├── utils.ts               # Shared utilities
+│   ├── shell.ts               # Shell execution (PATH handling)
+│   └── session.ts             # iron-session wrapper
+├── scripts/                   # Setup & test scripts
+│   ├── setup.sh               # Master setup script
+│   ├── install-rust-tools.sh  # Install export-logseq-notes
+│   ├── setup-database.sh      # DB schema setup
+│   ├── setup-minio.sh         # Local S3 setup
+│   ├── test-e2e.sh            # End-to-end tests
+│   └── validate-content.js    # Content validation
+├── test-data/                 # Test fixtures
+│   ├── logseq-docs-graph/     # Official Logseq docs (238 pages)
+│   └── README.md              # Test data documentation
 ├── drizzle/                   # Database migrations
 ├── docs/                      # Documentation
-│   ├── CHANGELOG.md
-│   ├── ROADMAP.md
-│   ├── DIRECTORY.md
-│   ├── CRUD_GUIDELINES.md
-│   └── PERFORMANCE_GUIDELINES.md
-├── CLAUDE.md                  # AI agent instructions
-└── README.md                  # User-facing docs
+│   ├── CHANGELOG.md           # Change log (MANDATORY updates)
+│   ├── ROADMAP.md             # Development roadmap
+│   ├── TESTING.md             # Testing guide
+│   ├── DIRECTORY.md           # Project navigation
+│   ├── SCRIPTS.md             # Setup scripts docs
+│   ├── BASH_GUIDELINES.md     # Bash best practices
+│   ├── CRUD_GUIDELINES.md     # Data operations
+│   └── PERFORMANCE_GUIDELINES.md # Performance patterns
+├── CLAUDE.md                  # AI agent instructions (this file)
+├── README.md                  # User-facing docs
+└── TEST_SUMMARY.md            # Quick test reference
 ```
 
 ### Database Schema
@@ -185,18 +219,21 @@ The database uses Drizzle PostgreSQL with the following main tables:
    - One user → One workspace (simplified model)
 
 2. **workspaces** - Top-level container
-   - `id`, `user_id`, `slug`, `name`, `domain`, `created_at`
+   - `id`, `user_id`, `slug`, `name`, `domain`, `embed_depth`, `created_at`
    - One workspace per user
+   - `embed_depth` (default 5) - Max depth for page/block embeds
 
 3. **git_repositories** - Git repo tracking
    - `id`, `workspace_id`, `repo_url`, `branch`, `deploy_key`, `last_sync`, `sync_status`
    - Source of truth for content
 
-4. **nodes** - Unified content (pages + virtual folders)
+4. **nodes** - Unified content (pages + blocks)
    - `id`, `workspace_id`, `page_name`, `slug`, `namespace`, `depth`
-   - `html` (pre-rendered), `content` (markdown backup), `metadata` (JSONB)
+   - `parent_id` (self-referential for block hierarchy), `order`, `node_type` (page|block)
+   - `block_uuid` (Logseq block UUID from id:: property)
+   - `html` (pre-rendered for blocks, NULL for pages), `metadata` (JSONB)
    - `is_journal`, `journal_date`, `created_at`, `updated_at`
-   - **Virtual namespace hierarchy** - no parent_id foreign keys
+   - **Block hierarchy with parent_id** - Pages contain blocks, blocks can contain blocks
 
 5. **deployment_history** - Track deployments
    - `id`, `workspace_id`, `commit_sha`, `status`, `deployed_at`, `error_log`
@@ -211,10 +248,11 @@ The database uses Drizzle PostgreSQL with the following main tables:
 
 # Database
 
-1. Virtual Namespace Hierarchy
-   No parent_id foreign keys - use namespace strings
-   O(1) indexed lookups via (workspace_id, namespace, slug)
-   No recursive CTEs or depth limits
+1. Block Hierarchy (Updated - Phase 4)
+   Pages + blocks unified in nodes table
+   parent_id self-referential FK for block→block, block→page relationships
+   Namespace still used for O(1) page lookups
+   Block depth calculated from parent chain (in-memory during ingestion)
 
 2. JSONB for Flexibility
    metadata field with TypeScript types via .$type<T>()
@@ -222,8 +260,9 @@ The database uses Drizzle PostgreSQL with the following main tables:
    No JSON validation at DB level
 
 3. Pre-Rendered Content
-   Store html in database
-   Process during ingestion with unified/remark
+   Store html in database (blocks only, pages have html=NULL)
+   Process during ingestion: marked (markdown→HTML) + cheerio (reference processing)
+   Logseq references processed: [[page]], ((uuid)), TODO markers, priorities
    Read-optimized storage
 
 4. Cascading Deletes (User → Workspace → Nodes → Links)

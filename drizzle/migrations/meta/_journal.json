@@ -8,6 +8,13 @@
       "when": 1763317342528,
       "tag": "0000_simple_giant_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1763387856656,
+      "tag": "0001_special_fabian_cortez",
+      "breakpoints": true
     }
   ]
 }

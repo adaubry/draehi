@@ -9,6 +9,33 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Logseq Reference Processing** (Phase 4.5):
+  - Page references `[[page]]` → clickable internal links
+  - Block references `((uuid))` → hash links to blocks
+  - Task markers TODO/DOING/DONE/LATER/NOW → static checkboxes with color coding
+  - Priority levels [#A]/[#B]/[#C] → styled badges
+  - HTML post-processor (modules/logseq/process-references.ts)
+  - cheerio dependency for HTML parsing
+- **Workspace Configuration**:
+  - embedDepth field (default 5) for future embed rendering
+  - Migration 0001_special_fabian_cortez.sql
+- **CSS Styling** (app/blocks.css):
+  - .page-reference - dashed underline, blue color
+  - .block-reference - monospace, gray background
+  - .task-marker variants (todo/doing/done/later/now)
+  - .priority variants (A/B/C with colors)
+  - Dark mode support for all new elements
+- **Testing Infrastructure** (Production-Grade):
+  - Official Logseq docs graph (test-data/logseq-docs-graph/) - 238 pages, 75 journals
+  - Real-world test data from https://github.com/logseq/docs
+  - Benchmark against live site: https://docs.logseq.com
+  - **Source code verification** (scripts/verify-implementation.sh) - Checks actual implementation
+  - **Automated pre-flight test** (scripts/test-phase4.sh) - Validates Phase 4 before changes
+  - End-to-end test script (scripts/test-e2e.sh)
+  - Content validation script (scripts/validate-content.js)
+  - Comprehensive testing guide (docs/TESTING.md)
+  - UI verification checklist (15+ test cases)
+  - 75+ automated checks (35 source + 40 build/files)
 - Initial project scaffolding with Next.js 16, TypeScript, Tailwind CSS v4
 - Comprehensive documentation structure:
   - CLAUDE.md with AI agent instructions (completed with project overview, schema, structure)
@@ -227,6 +254,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     - blocks.css imported in layout.tsx
 
 ### Changed
+- **Test Data**: Replaced synthetic test graph with official Logseq documentation
+  - 238 production pages vs 7 synthetic pages
+  - 75 real journal entries
+  - Thousands of real-world blocks
+  - Can benchmark against docs.logseq.com
 - README Quick Start now references automated scripts
 - Documentation order prioritizes SCRIPTS.md
 - Landing page completely redesigned with Vercel-style UI
@@ -249,6 +281,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - backend-services/export-logseq-notes (git submodule - replaced with vendored copy in modules/)
 
 ### Fixed
+- **journals/ directory requirement**: export-logseq-notes expects journals/ to exist
+  - Auto-create journals/ directory during export (modules/logseq/export.ts)
+  - Prevents "No such file or directory" error
+  - Works with graphs that only have pages/ directory
 - Removed `revalidateTag` from sync function (was causing "used during render" error)
 - **Next.js 16 uncached data errors**: Wrapped ALL async params access in Suspense (cacheComponents compatible)
   - **Critical pattern**: `await params` MUST happen inside Suspense, not before

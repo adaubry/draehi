@@ -1,10 +1,13 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getWorkspaceBySlug } from "@/modules/workspace/queries";
 import {
   getNodeByPath,
   getNodeBreadcrumbs,
   getAllBlocksForPage,
+  getPageBacklinks,
+  getBlockBacklinks,
 } from "@/modules/content/queries";
 import { Breadcrumbs } from "@/components/viewer/Breadcrumbs";
 import { BlockTree } from "@/components/viewer/BlockTree";
@@ -44,6 +47,15 @@ async function NodePageContent({
   // Get breadcrumbs
   const breadcrumbs = await getNodeBreadcrumbs(node, workspaceSlug);
 
+  // Get backlinks (only for page nodes)
+  const citedBy = node.nodeType === "page"
+    ? await getPageBacklinks(workspace.id, node.pageName)
+    : [];
+
+  const related = node.nodeType === "page"
+    ? await getBlockBacklinks(workspace.id, node.pageName)
+    : [];
+
   const pagePath = path.join("/");
 
   return (
@@ -77,6 +89,67 @@ async function NodePageContent({
         />
       ) : (
         <div className="text-gray-500 italic">No blocks yet</div>
+      )}
+
+      {/* Backlinks Section */}
+      {(citedBy.length > 0 || related.length > 0) && (
+        <div className="mt-12 pt-8 border-t border-gray-200">
+          {/* Cited By (Direct Page References) */}
+          {citedBy.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold mb-4 text-gray-700">
+                Cited by ({citedBy.length})
+              </h2>
+              <div className="space-y-2">
+                {citedBy.map((page) => {
+                  const pageSegments = page.namespace
+                    ? [...page.namespace.split("/"), page.slug]
+                    : [page.slug];
+                  const href = `/${workspaceSlug}/${pageSegments.join("/")}`;
+                  return (
+                    <Link
+                      key={page.id}
+                      href={href}
+                      className="block px-4 py-2 rounded-md hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="text-blue-600 hover:text-blue-700">
+                        {page.title}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Related (Block References) */}
+          {related.length > 0 && (
+            <div>
+              <h2 className="text-lg font-semibold mb-4 text-gray-700">
+                Related ({related.length})
+              </h2>
+              <div className="space-y-2">
+                {related.map((page) => {
+                  const pageSegments = page.namespace
+                    ? [...page.namespace.split("/"), page.slug]
+                    : [page.slug];
+                  const href = `/${workspaceSlug}/${pageSegments.join("/")}`;
+                  return (
+                    <Link
+                      key={page.id}
+                      href={href}
+                      className="block px-4 py-2 rounded-md hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="text-blue-600 hover:text-blue-700">
+                        {page.title}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

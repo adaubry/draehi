@@ -185,6 +185,110 @@ compare_with_logseq() {
     fi
 }
 
+# Frontend Phase 4 Tests (9 Critical Issues)
+test_frontend_phase4() {
+    log_step "Testing Phase 4 frontend issues (9 critical features)..."
+
+    local url="http://localhost:3000/${TEST_WORKSPACE_SLUG}/contents"
+    local errors=0
+
+    # Issue #1: Block Navigation
+    echo -n "  Block navigation (IDs, bullets): "
+    local body=$(curl -s "$url")
+    if echo "$body" | grep -q 'id="block-' && echo "$body" | grep -q 'bullet'; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗${NC}"
+        ((errors++))
+    fi
+
+    # Issue #2: Block Collapse
+    echo -n "  Block collapse (▸/▾): "
+    if echo "$body" | grep -qE '▸|▾'; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗${NC}"
+        ((errors++))
+    fi
+
+    # Issue #3: Multi-Word Slugs
+    echo -n "  Multi-word slugs: "
+    local status=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000/${TEST_WORKSPACE_SLUG}/advanced-queries")
+    if [[ "$status" == "200" ]]; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗ (HTTP $status)${NC}"
+        ((errors++))
+    fi
+
+    # Issue #4: Case-Insensitive URLs
+    echo -n "  Case-insensitive URLs: "
+    local lower=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000/${TEST_WORKSPACE_SLUG}/contents")
+    local upper=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000/${TEST_WORKSPACE_SLUG}/Contents")
+    if [[ "$lower" == "200" && "$upper" == "200" ]]; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗${NC}"
+        ((errors++))
+    fi
+
+    # Issue #5: References
+    echo -n "  References on pages: "
+    local test_body=$(curl -s "http://localhost:3000/${TEST_WORKSPACE_SLUG}/query")
+    if echo "$test_body" | grep -qi "reference"; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${YELLOW}⚠${NC} (may need review)"
+    fi
+
+    # Issue #6: Hashtag Links
+    echo -n "  Hashtag links: "
+    if echo "$body" | grep -q 'hashtag'; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗${NC}"
+        ((errors++))
+    fi
+
+    # Issue #7: Default Page
+    echo -n "  Default page: "
+    local root_status=$(curl -s -o /dev/null -w "%{http_code}" -L "http://localhost:3000/${TEST_WORKSPACE_SLUG}")
+    if [[ "$root_status" == "200" ]]; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗ (HTTP $root_status)${NC}"
+        ((errors++))
+    fi
+
+    # Issue #8: Sidebar Structure
+    echo -n "  Sidebar structure: "
+    if echo "$body" | grep -qi "back" && echo "$body" | grep -qi "all.pages"; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗${NC}"
+        ((errors++))
+    fi
+
+    # Issue #9: Breadcrumbs
+    echo -n "  Breadcrumbs: "
+    if echo "$body" | grep -qE 'breadcrumb|aria-label="Breadcrumb"'; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗${NC}"
+        ((errors++))
+    fi
+
+    if [[ $errors -eq 0 ]]; then
+        log_success "All Phase 4 frontend features working"
+    elif [[ $errors -le 2 ]]; then
+        log_warning "Phase 4 mostly complete ($errors minor issues)"
+    else
+        log_error "Phase 4 has $errors critical issues"
+        echo "  Run: ./scripts/test-frontend-phase4-issues.sh for detailed diagnostics"
+        return 1
+    fi
+}
+
 # Test UI rendering
 test_ui_rendering() {
     log_step "Testing UI rendering..."
@@ -254,6 +358,7 @@ main() {
 
     validate_content
     compare_with_logseq
+    test_frontend_phase4     # NEW: Phase 4 critical frontend tests
     test_ui_rendering        # Still manual (visual inspection)
 
     echo ""

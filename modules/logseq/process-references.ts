@@ -55,6 +55,20 @@ export function processLogseqReferences(
         return `<span class="priority priority-${level}" data-priority="${level}">[#${level}]</span>`;
       });
 
+      // Hashtags: #tag → page link
+      // Match # followed by alphanumeric/underscore/dash, but not inside URLs or already processed HTML
+      processed = processed.replace(
+        /#([\w-]+)(?=\s|$|[^\w-])/g,
+        (match, tag) => {
+          // Skip if inside an href (basic check)
+          if (processed.includes(`href="#${tag}`)) {
+            return match;
+          }
+          const tagSlug = tag.toLowerCase();
+          return `<a href="/${workspaceSlug}/${tagSlug}" class="hashtag-link" data-tag="${tag}">#${tag}</a>`;
+        }
+      );
+
       // Replace text node if changed
       if (processed !== text) {
         $(this).replaceWith(processed);

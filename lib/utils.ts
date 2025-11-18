@@ -23,9 +23,11 @@ export function extractNamespaceAndSlug(pageName: string): {
   depth: number;
 } {
   const segments = pageName.split("/");
+  // Slugify each segment to ensure lowercase URLs
+  const slugifiedSegments = segments.map((s) => slugify(s));
   return {
-    slug: segments[segments.length - 1],
-    namespace: segments.slice(0, -1).join("/"),
+    slug: slugifiedSegments[slugifiedSegments.length - 1],
+    namespace: slugifiedSegments.slice(0, -1).join("/"),
     depth: segments.length - 1,
   };
 }

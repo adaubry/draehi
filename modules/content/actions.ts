@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { nodes, type NewNode } from "./schema";
+import { nodes, type NewNode, type Node } from "./schema";
 import { extractNamespaceAndSlug } from "@/lib/utils";
 import { eq, and } from "drizzle-orm";
 import { exportLogseqNotes } from "../logseq/export";
@@ -279,7 +279,7 @@ export async function ingestLogseqGraph(
     // Insert in batches to avoid PostgreSQL parameter limit (65534)
     // Each node has ~15 fields, so batch size of 1000 = ~15000 parameters
     const BATCH_SIZE = 1000;
-    const insertedNodes: typeof allNodes = [];
+    const insertedNodes: Node[] = [];
 
     for (let i = 0; i < allNodes.length; i += BATCH_SIZE) {
       const batch = allNodes.slice(i, i + BATCH_SIZE);

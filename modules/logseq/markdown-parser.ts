@@ -76,7 +76,11 @@ export async function parseLogseqMarkdown(
         order++;
       }
 
-      const indent = Math.floor(blockMatch[1].length / 2); // 2 spaces or 1 tab = 1 indent level
+      // Calculate indent: tabs count as 1 each, 2 spaces = 1 indent
+      const whitespace = blockMatch[1];
+      const tabCount = (whitespace.match(/\t/g) || []).length;
+      const spaceCount = (whitespace.match(/ /g) || []).length;
+      const indent = tabCount + Math.floor(spaceCount / 2);
       const content = blockMatch[2];
 
       // Start a new block

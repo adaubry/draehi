@@ -9,6 +9,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed - 2025-11-18
+- **Collapsible Blocks**: Fixed tab indentation parsing in markdown-parser.ts
+  - Tabs now correctly count as 1 indent level (previously calculated as 0)
+  - All blocks with children (h2, h3, etc.) now properly collapsible
+  - Fixes test failure: "Blocks with children are collapsible"
 - **Default Page**: Workspace root now redirects to /contents instead of first page
 - **Slugification**: All URL slugs now properly lowercase (e.g., "Advanced Queries" → "/advanced-queries")
 - **Block Navigation**: Collapsible blocks now support ctrl/cmd+click to navigate to block anchor

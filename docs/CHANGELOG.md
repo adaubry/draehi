@@ -8,8 +8,23 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Changed
-- **Phase 4 Design Decisions Finalized** (2025-11-17):
+### Fixed - 2025-11-18
+- **Default Page**: Workspace root now redirects to /contents instead of first page
+- **Slugification**: All URL slugs now properly lowercase (e.g., "Advanced Queries" → "/advanced-queries")
+- **Block Navigation**: Collapsible blocks now support ctrl/cmd+click to navigate to block anchor
+- **Backlinks**: Added "Cited by" section showing pages with [[page]] references
+- **Backlinks**: Added "Related" section showing pages with ((block-uuid)) references
+- **Type Safety**: Fixed TypeScript errors in content ingestion (Node vs NewNode types)
+- **Tests**: Comprehensive frontend test suite covering all display requirements
+
+### Changed - 2025-11-18
+- BlockTree component: Normal click toggles collapse, ctrl/cmd+click navigates
+- extractNamespaceAndSlug() now slugifies all path segments for lowercase URLs
+- Page template includes backlinks sections at bottom
+- Test suite expanded from 9 to 12 comprehensive tests
+
+### Changed - 2025-11-17
+- **Phase 4 Design Decisions Finalized**:
   - All open questions resolved, ready for implementation
   - **Slugification:** Follow industry best practices
     - Lowercase, hyphens, ASCII transliteration, preserve `/` for namespaces

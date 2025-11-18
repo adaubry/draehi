@@ -50,11 +50,17 @@ function BlockItem({
           href={blockUrl}
           className="block-bullet"
           onClick={(e) => {
-            // If has children, toggle collapse instead of navigating
+            // Ctrl/Cmd + Click: Navigate to block (allow default behavior)
+            if (e.ctrlKey || e.metaKey) {
+              return;
+            }
+
+            // Normal click with children: toggle collapse
             if (hasChildren) {
               e.preventDefault();
               setIsCollapsed(!isCollapsed);
             }
+            // Normal click without children: navigate (allow default)
           }}
         >
           <span

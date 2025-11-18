@@ -23,7 +23,7 @@ async function diagnosePage(filePath: string, pageName: string) {
   console.log(rawContent.slice(0, 200));
   if (rawContent.length > 200) console.log('...');
 
-  const parseResult = parseLogseqMarkdown(rawContent, pageName);
+  const parseResult = await parseLogseqMarkdown(filePath);
 
   console.log(`\n🔍 Parse Result:`);
   console.log(`   Blocks: ${parseResult.blocks.length}`);

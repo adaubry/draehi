@@ -38,10 +38,11 @@ async function WorkspaceIndexContent({
     );
   }
 
-  // Find first non-journal page or first page
-  const firstPage = pages.find((n) => !n.isJournal) || pages[0];
+  // Find contents page first, fallback to first non-journal page
+  const contentsPage = pages.find((n) => n.pageName === "contents");
+  const firstPage = contentsPage || pages.find((n) => !n.isJournal) || pages[0];
 
-  // Redirect to first page
+  // Redirect to the page
   const pathSegments = firstPage.namespace
     ? [...firstPage.namespace.split("/"), firstPage.slug]
     : [firstPage.slug];

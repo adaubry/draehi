@@ -122,3 +122,93 @@ export async function getNodeBreadcrumbs(
 
   return breadcrumbs;
 }
+
+export const getPageBacklinks = cache(
+  async (workspaceId: number, pageName: string) => {
+    "use cache";
+    // Find all blocks that reference this page via [[pageName]]
+    const allBlocks = await db.query.nodes.findMany({
+      where: and(
+        eq(nodes.workspaceId, workspaceId),
+        eq(nodes.nodeType, "block")
+      ),
+    });
+
+    // Filter blocks that contain [[pageName]] reference
+    const referencingBlocks = allBlocks.filter((block) =>
+      block.html?.includes(`data-page="${pageName}"`)
+    );
+
+    // Get unique page names
+    const uniquePageNames = [
+      ...new Set(referencingBlocks.map((b) => b.pageName)),
+    ];
+
+    // Fetch the actual page nodes
+    const referencingPages = await db.query.nodes.findMany({
+      where: and(
+        eq(nodes.workspaceId, workspaceId),
+        eq(nodes.nodeType, "page")
+      ),
+    });
+
+    return referencingPages.filter((p) =>
+      uniquePageNames.includes(p.pageName)
+    );
+  }
+);
+
+export const getBlockBacklinks = cache(
+  async (workspaceId: number, pageName: string) => {
+    "use cache";
+    // Find all blocks on this page that have UUIDs
+    const pageBlocks = await db.query.nodes.findMany({
+      where: and(
+        eq(nodes.workspaceId, workspaceId),
+        eq(nodes.pageName, pageName),
+        eq(nodes.nodeType, "block")
+      ),
+    });
+
+    const blockUuids = pageBlocks
+      .map((b) => b.blockUuid)
+      .filter((uuid): uuid is string => !!uuid);
+
+    if (blockUuids.length === 0) {
+      return [];
+    }
+
+    // Find all blocks that reference any of these block UUIDs
+    const allBlocks = await db.query.nodes.findMany({
+      where: and(
+        eq(nodes.workspaceId, workspaceId),
+        eq(nodes.nodeType, "block")
+      ),
+    });
+
+    const referencingBlocks = allBlocks.filter((block) =>
+      blockUuids.some((uuid) => block.html?.includes(`data-block-uuid="${uuid}"`))
+    );
+
+    // Get unique page names (excluding self-references)
+    const uniquePageNames = [
+      ...new Set(
+        referencingBlocks
+          .filter((b) => b.pageName !== pageName)
+          .map((b) => b.pageName)
+      ),
+    ];
+
+    // Fetch the actual page nodes
+    const referencingPages = await db.query.nodes.findMany({
+      where: and(
+        eq(nodes.workspaceId, workspaceId),
+        eq(nodes.nodeType, "page")
+      ),
+    });
+
+    return referencingPages.filter((p) =>
+      uniquePageNames.includes(p.pageName)
+    );
+  }
+);

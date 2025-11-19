@@ -8,6 +8,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - 2025-11-19
+
+- **Asset Ingestion**: Integrated S3/MinIO asset upload pipeline
+  - Connected existing `processAssets()` to block ingestion flow
+  - Automatically uploads local images, PDFs to S3/MinIO during sync
+  - Replaces local paths (`../assets/image.png`) with S3 URLs
+  - Non-breaking: gracefully skips external URLs
+  - Location: `modules/content/actions.ts:281`
+- **YouTube Embed Support**: Added automatic video embed conversion
+  - New `processEmbeds()` function detects YouTube URLs in content
+  - Converts `youtube.com/watch?v=*` and `youtu.be/*` to responsive iframes
+  - 16:9 aspect ratio with fullscreen enabled
+  - Handles both plain text URLs and markdown links
+  - Non-breaking: preserves other URLs unchanged
+  - Location: `modules/logseq/process-references.ts:100-171`
+
 ### Changed - 2025-11-19
 
 - **Prose Typography Integration**: Integrated Tailwind Typography into block rendering

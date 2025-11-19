@@ -36,7 +36,7 @@ function extractHeadingsFromHTML(html: string): HeadingItem[] {
     const elements = doc.querySelectorAll("h2, h3, h4");
 
     elements.forEach((el) => {
-      const uuid = el.getAttribute("uuid");
+      const uuid = el.getAttribute("uuid"); // Changed from data-uuid to uuid
       const text = el.textContent || "";
       const level = parseInt(el.tagName[1]);
 
@@ -99,7 +99,7 @@ function TOCItemComponent({ item }: { item: TOCItem }) {
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    const element = document.querySelector(`[uuid="${item.uuid}"]`);
+    const element = document.querySelector(`[uuid="${item.uuid}"]`); // Changed from data-uuid to uuid
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
@@ -166,12 +166,58 @@ export function TableOfContents({ blocks, pageUuid, pageTitle }: TOCProps) {
     .map((b) => b.html)
     .join("");
 
-  if (!allHTML) return null;
+  // DEBUG: Log what we're receiving
+  console.log("=== TOC Debug ===");
+  console.log("Blocks received:", blocks.length);
+  console.log("Blocks with HTML:", blocks.filter((b) => b.html).length);
+  console.log("Total HTML length:", allHTML.length);
+
+  // Sample first block's HTML
+  if (blocks.length > 0 && blocks[0].html) {
+    console.log(
+      "Sample HTML (first 500 chars):",
+      blocks[0].html.substring(0, 500)
+    );
+  }
+
+  if (!allHTML) {
+    return (
+      <div className="px-3 py-4 text-sm text-gray-500 italic">
+        <div className="mb-2">No table of contents</div>
+        {/* DEBUG INFO */}
+        <div className="text-xs bg-gray-100 p-2 rounded mt-2">
+          <div>Debug Info:</div>
+          <div>• Blocks: {blocks.length}</div>
+          <div>• With HTML: {blocks.filter((b) => b.html).length}</div>
+          <div>• Total HTML: {allHTML.length} chars</div>
+        </div>
+      </div>
+    );
+  }
 
   // Extract headings from HTML
   const headings = extractHeadingsFromHTML(allHTML);
 
-  if (headings.length === 0) return null;
+  console.log("Headings extracted:", headings.length);
+  if (headings.length > 0) {
+    console.log("First heading:", headings[0]);
+  }
+
+  if (headings.length === 0) {
+    return (
+      <div className="px-3 py-4 text-sm text-gray-500 italic">
+        <div className="mb-2">No table of contents</div>
+        {/* DEBUG INFO */}
+        <div className="text-xs bg-gray-100 p-2 rounded mt-2">
+          <div>Debug Info:</div>
+          <div>• Blocks: {blocks.length}</div>
+          <div>• With HTML: {blocks.filter((b) => b.html).length}</div>
+          <div>• Total HTML: {allHTML.length} chars</div>
+          <div>• Headings: {headings.length}</div>
+        </div>
+      </div>
+    );
+  }
 
   // Build nested TOC tree from flat heading list
   const tocItems = buildTOCTree(headings);

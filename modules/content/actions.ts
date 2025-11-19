@@ -48,8 +48,17 @@ export async function upsertNode(
   } else {
     // Insert with stable UUID based on workspaceId + pageName
     const pageUuidSeed = `${workspaceId}::${pageName}`;
-    const pageUuidHash = require('crypto').createHash('sha256').update(pageUuidSeed).digest('hex');
-    const pageUuid = `${pageUuidHash.slice(0, 8)}-${pageUuidHash.slice(8, 12)}-${pageUuidHash.slice(12, 16)}-${pageUuidHash.slice(16, 20)}-${pageUuidHash.slice(20, 32)}`;
+    const pageUuidHash = require("crypto")
+      .createHash("sha256")
+      .update(pageUuidSeed)
+      .digest("hex");
+    const pageUuid = `${pageUuidHash.slice(0, 8)}-${pageUuidHash.slice(
+      8,
+      12
+    )}-${pageUuidHash.slice(12, 16)}-${pageUuidHash.slice(
+      16,
+      20
+    )}-${pageUuidHash.slice(20, 32)}`;
 
     const [node] = await db
       .insert(nodes)
@@ -121,7 +130,9 @@ export async function ingestLogseqGraph(
     ]);
 
     const markdownPages = [...regularPages, ...journalPages];
-    buildLog.push(`Found ${regularPages.length} pages and ${journalPages.length} journals`);
+    buildLog.push(
+      `Found ${regularPages.length} pages and ${journalPages.length} journals`
+    );
 
     // Step 2: Export with Rust tool for HTML rendering
     buildLog.push("Rendering HTML with export-logseq-notes...");
@@ -177,14 +188,18 @@ export async function ingestLogseqGraph(
         .replace(/_{2,}/g, "_") // Collapse multiple underscores (___  → _)
         .toLowerCase();
 
-      let htmlPage = parseResult.pages.find((p) => p.name.toLowerCase() === normalizedMdName);
+      let htmlPage = parseResult.pages.find(
+        (p) => p.name.toLowerCase() === normalizedMdName
+      );
 
       // Fallback: fuzzy match if exact match fails
       // Export tool has inconsistent transformations (removes underscores in numbers like 07_09 → 0709)
       if (!htmlPage && normalizedMdName.includes("_")) {
         // Try matching by removing all underscores (handles cases like changelog_07_09 → changelog0709)
         const noUnderscores = normalizedMdName.replace(/_/g, "");
-        const candidates = parseResult.pages.filter((p) => p.name.toLowerCase().replace(/_/g, "") === noUnderscores);
+        const candidates = parseResult.pages.filter(
+          (p) => p.name.toLowerCase().replace(/_/g, "") === noUnderscores
+        );
 
         // Only use fuzzy match if we get exactly 1 candidate (avoid false positives)
         if (candidates.length === 1) {
@@ -194,7 +209,9 @@ export async function ingestLogseqGraph(
       }
 
       if (!htmlPage) {
-        buildLog.push(`Warning: No HTML found for ${mdPage.pageName}, skipping`);
+        buildLog.push(
+          `Warning: No HTML found for ${mdPage.pageName}, skipping`
+        );
         continue;
       }
 
@@ -203,8 +220,17 @@ export async function ingestLogseqGraph(
       // Create page node (parentUuid=null, html=null)
       // Use stable UUID based on workspaceId + pageName for idempotency
       const pageUuidSeed = `${workspaceId}::${mdPage.pageName}`;
-      const pageUuidHash = require('crypto').createHash('sha256').update(pageUuidSeed).digest('hex');
-      const pageUuid = `${pageUuidHash.slice(0, 8)}-${pageUuidHash.slice(8, 12)}-${pageUuidHash.slice(12, 16)}-${pageUuidHash.slice(16, 20)}-${pageUuidHash.slice(20, 32)}`;
+      const pageUuidHash = require("crypto")
+        .createHash("sha256")
+        .update(pageUuidSeed)
+        .digest("hex");
+      const pageUuid = `${pageUuidHash.slice(0, 8)}-${pageUuidHash.slice(
+        8,
+        12
+      )}-${pageUuidHash.slice(12, 16)}-${pageUuidHash.slice(
+        16,
+        20
+      )}-${pageUuidHash.slice(20, 32)}`;
 
       const pageNode: NewNode = {
         uuid: pageUuid,
@@ -228,7 +254,9 @@ export async function ingestLogseqGraph(
 
       // Skip block processing if page has no blocks (property-only pages)
       if (mdPage.blocks.length === 0) {
-        buildLog.push(`Page ${mdPage.pageName} has no blocks (property-only page)`);
+        buildLog.push(
+          `Page ${mdPage.pageName} has no blocks (property-only page)`
+        );
         continue;
       }
 
@@ -287,9 +315,12 @@ export async function ingestLogseqGraph(
       const batch = allNodes.slice(i, i + BATCH_SIZE);
       const batchResult = await db.insert(nodes).values(batch).returning();
       insertedNodes.push(...batchResult);
-      buildLog.push(`  Inserted batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(allNodes.length / BATCH_SIZE)}`);
+      buildLog.push(
+        `  Inserted batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(
+          allNodes.length / BATCH_SIZE
+        )}`
+      );
     }
-
 
     buildLog.push("Ingestion complete!");
 

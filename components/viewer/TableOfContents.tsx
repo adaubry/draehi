@@ -30,7 +30,7 @@ type TOCItem = {
 function extractHeadingsFromHTML(html: string): HeadingItem[] {
   const headings: HeadingItem[] = [];
   const parser = new DOMParser();
-
+  console.log("Extracting headings from HTML...");
   try {
     const doc = parser.parseFromString(html, "text/html");
     const elements = doc.querySelectorAll("h2, h3, h4");
@@ -42,6 +42,7 @@ function extractHeadingsFromHTML(html: string): HeadingItem[] {
 
       if (uuid && text) {
         headings.push({ uuid, title: text, level });
+        console.log("Found heading:", { uuid, title: text, level });
       }
     });
   } catch (e) {
@@ -145,7 +146,10 @@ function TOCItemComponent({ item }: { item: TOCItem }) {
       </div>
 
       {hasChildren && isOpen && (
-        <div className="space-y-1 mt-1" style={{ marginLeft: `${indent + 8}px` }}>
+        <div
+          className="space-y-1 mt-1"
+          style={{ marginLeft: `${indent + 8}px` }}
+        >
           {item.children.map((child) => (
             <TOCItemComponent key={child.uuid} item={child} />
           ))}
@@ -155,11 +159,7 @@ function TOCItemComponent({ item }: { item: TOCItem }) {
   );
 }
 
-export function TableOfContents({
-  blocks,
-  pageUuid,
-  pageTitle,
-}: TOCProps) {
+export function TableOfContents({ blocks, pageUuid, pageTitle }: TOCProps) {
   // Concatenate HTML from all blocks
   const allHTML = blocks
     .filter((b) => b.uuid && b.html)

@@ -4,6 +4,17 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Node } from "@/modules/content/schema";
 
+// Extract just the body content from full HTML documents
+function extractBodyContent(html: string): string {
+  // If HTML doesn't contain a body tag, return as-is (already processed)
+  if (!html.includes("<body")) {
+    return html;
+  }
+  // Extract content between <body> and </body>
+  const match = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  return match ? match[1] : html;
+}
+
 type BlockTreeProps = {
   blocks: Node[];
   workspaceSlug: string;
@@ -74,7 +85,9 @@ function BlockItem({
         {/* Block Content */}
         <div
           className="block-content"
-          dangerouslySetInnerHTML={{ __html: block.html || "" }}
+          dangerouslySetInnerHTML={{
+            __html: extractBodyContent(block.html || "")
+          }}
         />
       </div>
 

@@ -8,6 +8,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - 2025-11-19
+
+- **Navigation Revamp Planning**: Created NAVIGATION_GUIDELINES.md
+  - n-2 breadcrumbs with sessionStorage history tracking
+  - Three-part sidebar (placeholder + nav buttons + dynamic content)
+  - TOC mode (max 3 levels, level 3 expanded) vs all-pages mode
+  - Mobile drawer with hamburger menu (320px viewport)
+  - New /all-pages route for full page tree view
+
 ### Removed - 2025-11-19
 
 - **Documentation Cleanup**: Removed outdated/duplicate documentation

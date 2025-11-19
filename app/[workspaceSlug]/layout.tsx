@@ -4,6 +4,7 @@ import { getWorkspaceBySlug } from "@/modules/workspace/queries";
 import { getAllNodes } from "@/modules/content/queries";
 import { NavigationProvider } from "@/lib/navigation-context";
 import { Sidebar } from "@/components/viewer/Sidebar";
+import { MobileSidebar } from "@/components/viewer/MobileSidebar";
 
 type LayoutProps = {
   children: React.ReactNode;
@@ -44,8 +45,8 @@ async function WorkspaceContent({
 
         <div className="container flex-1">
           <div className="flex gap-6 py-6">
-            {/* Sidebar Navigation */}
-            <aside className="w-64 shrink-0 max-h-[calc(100vh-120px)]">
+            {/* Sidebar Navigation (Desktop) */}
+            <aside className="hidden lg:block w-64 shrink-0 max-h-[calc(100vh-120px)]">
               <div className="sticky top-20 h-full">
                 <Sidebar nodes={nodes} workspaceSlug={workspaceSlug} />
               </div>
@@ -55,6 +56,9 @@ async function WorkspaceContent({
             <main className="flex-1 max-w-4xl">{children}</main>
           </div>
         </div>
+
+        {/* Mobile Drawer */}
+        <MobileSidebar nodes={nodes} workspaceSlug={workspaceSlug} />
       </div>
     </NavigationProvider>
   );

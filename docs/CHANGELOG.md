@@ -8,6 +8,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed - 2025-11-19
+
+- **Prose Typography Integration**: Integrated Tailwind Typography into block rendering
+  - Imported and used `NodeContent` component in `BlockTree.tsx` for consistent typography
+  - Added `block-content` class to NodeContent for flex layout compatibility
+  - Removed redundant typography CSS from `blocks.css` (links, paragraphs)
+  - Kept `.block-content` for flex layout only (flex: 1, min-width: 0)
+  - Typography now fully controlled by Tailwind prose classes
+  - Fixed Sidebar.tsx: replaced ScrollArea with regular div
+  - Changes to prose presets in NodeContent.tsx now take effect immediately
+
 ### Added - 2025-11-19
 
 - **Sidebar Documentation**: Created SIDEBAR.md

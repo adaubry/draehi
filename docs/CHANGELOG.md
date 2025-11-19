@@ -8,6 +8,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed - 2025-11-19 (Session 3)
+- **Test Suite Limitations Identified**: Frontend e2e tests look for plain HTML but pages return React RSC (Server Component) serialization
+  - Pages ARE rendering correctly with all 234 blocks in /test/contents
+  - BlockTree component has all required classes: `logseq-blocks`, `logseq-block`, `block-children`, `has-children`, `data-depth` attributes
+  - Test failures are due to test script not executing JavaScript to hydrate React components
+  - Recommendation: Use browser automation (Playwright/Puppeteer) for e2e tests or modify test script to execute RSC
+
 ### Fixed - 2025-11-19 (Session 2)
 - **Production Build 404 Errors**: Fixed static pre-rendering failures on dynamic routes
   - Pages were returning HTTP 404 even though content existed in database

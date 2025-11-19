@@ -22,11 +22,14 @@ function buildTree(nodes: Node[]): TreeNode[] {
   const nodeMap = new Map<string, TreeNode>();
   const rootNodes: TreeNode[] = [];
 
-  nodes.forEach((node) => {
+  // Filter only page nodes (parentUuid === null)
+  const pageNodes = nodes.filter((n) => n.parentUuid === null);
+
+  pageNodes.forEach((node) => {
     nodeMap.set(node.pageName, { node, children: [] });
   });
 
-  nodes.forEach((node) => {
+  pageNodes.forEach((node) => {
     const treeNode = nodeMap.get(node.pageName);
     if (!treeNode) return;
 
@@ -112,8 +115,8 @@ export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
       {/* Part 1: Placeholder Section (48px) */}
       <div className="h-12 bg-gray-50 border-b border-gray-200 shrink-0" />
 
-      {/* Part 2: Default Action Buttons */}
-      <div className="sticky top-0 z-10 flex flex-col gap-1 p-3 bg-white border-b border-gray-200 shrink-0">
+      {/* Part 2: Navigation Buttons */}
+      <div className="flex flex-col gap-1 p-3 bg-white border-b border-gray-200 shrink-0">
         <Link
           href="/dashboard"
           className="block px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors "
@@ -138,25 +141,23 @@ export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
         </Link>
       </div>
 
-      {/* Part 3: Dynamic Content Area */}
-      <div className="flex-1 sticky ">
+      {/* Part 3: Dynamic Content Area with ScrollArea */}
+      <ScrollArea className="flex-1">
         {mode === "all-pages" ? (
           // All Pages Tree View
-          <nav className="space-y-6 p-3">
-            {nodes.length > 0 && (
+          <nav className="p-3">
+            {tree.length > 0 && (
               <div>
-                <h3 className="mb-2 px-0 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <h3 className="mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Pages
                 </h3>
-                <div className="space-y-0.5 ">
+                <div className="space-y-0.5">
                   {tree.map((treeNode) => (
-                    <div className="todo">
-                      <TreeItem
-                        key={treeNode.node.uuid}
-                        treeNode={treeNode}
-                        workspaceSlug={workspaceSlug}
-                      />
-                    </div>
+                    <TreeItem
+                      key={treeNode.node.uuid}
+                      treeNode={treeNode}
+                      workspaceSlug={workspaceSlug}
+                    />
                   ))}
                 </div>
               </div>
@@ -168,7 +169,7 @@ export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
             <TableOfContents workspaceSlug={workspaceSlug} />
           </div>
         )}
-      </div>
-    </ScrollArea>
+      </ScrollArea>
+    </div>
   );
 }

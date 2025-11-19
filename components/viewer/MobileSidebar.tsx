@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { Node } from "@/modules/content/schema";
 import { TableOfContents } from "./TableOfContents";
-import { usePageBlocks } from "@/lib/page-blocks-context";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type MobileSidebarProps = {
   nodes: Node[];
@@ -23,11 +23,14 @@ function buildTree(nodes: Node[]): TreeNode[] {
   const nodeMap = new Map<string, TreeNode>();
   const rootNodes: TreeNode[] = [];
 
-  nodes.forEach((node) => {
+  // Filter only page nodes (parentUuid === null)
+  const pageNodes = nodes.filter((n) => n.parentUuid === null);
+
+  pageNodes.forEach((node) => {
     nodeMap.set(node.pageName, { node, children: [] });
   });
 
-  nodes.forEach((node) => {
+  pageNodes.forEach((node) => {
     const treeNode = nodeMap.get(node.pageName);
     if (!treeNode) return;
 
@@ -104,26 +107,54 @@ function TreeItem({
 
 export function MobileSidebar({ nodes, workspaceSlug }: MobileSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [mode, setMode] = useState<SidebarMode>("all-pages");
+  const pathname = usePathname();
   const tree = buildTree(nodes);
-  const { blocks, pageUuid } = usePageBlocks();
+
+  // Auto-detect mode based on pathname
+  const isOnAllPagesRoute =
+    pathname === `/${workspaceSlug}/all-pages` ||
+    pathname === `/${workspaceSlug}/all-pages/`;
+  const mode: SidebarMode = isOnAllPagesRoute ? "all-pages" : "toc";
 
   const closeDrawer = () => setIsOpen(false);
 
   return (
     <>
-      {/* Hamburger Button */}
+      {/* Hamburger Button - Fixed Bottom Right */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed bottom-6 right-6 z-30 flex items-center justify-center "
+        className="lg:hidden fixed bottom-6 right-6 z-30 w-12 h-12 flex items-center justify-center bg-gray-900 hover:bg-gray-800 text-white rounded-full shadow-lg transition-colors"
         aria-label="Toggle navigation menu"
         aria-expanded={isOpen}
-      ></button>
+      >
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          {isOpen ? (
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          ) : (
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          )}
+        </svg>
+      </button>
 
       {/* Drawer Overlay */}
       {isOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-20 transition-opacity duration-200"
+          className="lg:hidden fixed inset-0 bg-black/50 z-40 transition-opacity duration-200"
           onClick={closeDrawer}
           aria-hidden="true"
         />
@@ -131,15 +162,12 @@ export function MobileSidebar({ nodes, workspaceSlug }: MobileSidebarProps) {
 
       {/* Drawer Panel */}
       <div
-        className={`lg:hidden fixed left-0 top-0 w-80 h-screen bg-white shadow-lg z-25 transform transition-transform duration-200 ease-out ${
+        className={`lg:hidden fixed left-0 top-0 w-80 h-screen bg-white shadow-lg z-50 transform transition-transform duration-200 ease-out ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
-        style={{
-          zIndex: 25,
-        }}
       >
         {/* Drawer Header */}
-        <div className="flex items-center justify-between h-14 px-4 border-b border-gray-200 bg-white">
+        <div className="flex items-center justify-between h-14 px-4 border-b border-gray-200 bg-white shrink-0">
           <span className="text-sm font-semibold text-gray-900">Menu</span>
           <button
             onClick={closeDrawer}
@@ -162,72 +190,70 @@ export function MobileSidebar({ nodes, workspaceSlug }: MobileSidebarProps) {
           </button>
         </div>
 
-        {/* Drawer Content */}
-        <div className="h-[calc(100%-56px)] overflow-y-auto">
+        {/* Drawer Content with ScrollArea */}
+        <div className="flex flex-col h-[calc(100%-56px)]">
           {/* Placeholder */}
           <div className="h-12 bg-gray-50 border-b border-gray-200 shrink-0" />
 
-          {/* Mode Buttons */}
-          <div className="flex gap-2 p-3 bg-white border-b border-gray-200">
-            <button
-              onClick={() => setMode("all-pages")}
-              className={`flex-1 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                mode === "all-pages"
+          {/* Navigation Buttons */}
+          <div className="flex flex-col gap-1 p-3 bg-white border-b border-gray-200 shrink-0">
+            <Link
+              href="/dashboard"
+              onClick={closeDrawer}
+              className="block px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors text-center"
+            >
+              Dashboard
+            </Link>
+            <Link
+              href={`/${workspaceSlug}`}
+              onClick={closeDrawer}
+              className="block px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors text-center"
+            >
+              Home
+            </Link>
+            <Link
+              href={`/${workspaceSlug}/all-pages`}
+              onClick={closeDrawer}
+              className={`block px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-center ${
+                isOnAllPagesRoute
                   ? "bg-gray-100 text-gray-900"
                   : "text-gray-700 hover:bg-gray-50"
               }`}
             >
-              Contents
-            </button>
-            <button
-              onClick={() => setMode("toc")}
-              className={`flex-1 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                mode === "toc"
-                  ? "bg-gray-100 text-gray-900"
-                  : "text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              On This Page
-            </button>
+              All Pages
+            </Link>
           </div>
 
-          {/* Content Area */}
-          {mode === "all-pages" ? (
-            <nav className="space-y-6 p-3">
-              {nodes.length > 0 && (
-                <div>
-                  <h3 className="mb-2 px-0 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Pages
-                  </h3>
-                  <div className="space-y-0.5">
-                    {tree.map((treeNode) => (
-                      <TreeItem
-                        key={treeNode.node.uuid}
-                        treeNode={treeNode}
-                        workspaceSlug={workspaceSlug}
-                        onNavigate={closeDrawer}
-                      />
-                    ))}
+          {/* Dynamic Content Area with ScrollArea */}
+          <ScrollArea className="flex-1">
+            {mode === "all-pages" ? (
+              // All Pages Tree View
+              <nav className="p-3">
+                {tree.length > 0 && (
+                  <div>
+                    <h3 className="mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Pages
+                    </h3>
+                    <div className="space-y-0.5">
+                      {tree.map((treeNode) => (
+                        <TreeItem
+                          key={treeNode.node.uuid}
+                          treeNode={treeNode}
+                          workspaceSlug={workspaceSlug}
+                          onNavigate={closeDrawer}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </nav>
-          ) : (
-            <div className="p-3">
-              {blocks && blocks.length > 0 && pageUuid ? (
-                <TableOfContents
-                  blocks={blocks}
-                  pageUuid={pageUuid}
-                  pageTitle="On This Page"
-                  workspaceSlug={workspaceSlug}
-                />
-              ) : (
-                <div className="text-xs text-gray-500 italic">
-                  No blocks on this page
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </nav>
+            ) : (
+              // Table of Contents View (same async component as desktop)
+              <div className="p-3">
+                <TableOfContents workspaceSlug={workspaceSlug} />
+              </div>
+            )}
+          </ScrollArea>
         </div>
       </div>
     </>

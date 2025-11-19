@@ -1,3 +1,4 @@
+// TODO: Consider migrating to shadcn/ui components (Collapsible, etc.)
 "use client";
 
 import { useState } from "react";

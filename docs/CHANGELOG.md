@@ -8,6 +8,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Removed - 2025-11-19
+- **Documentation Cleanup**: Removed outdated/duplicate documentation
+  - Deleted duplicate docs from root (PHASE4_COMPLETE.md, TEST_SUMMARY.md, ITERATION_SUMMARY.md)
+  - Removed Phase 4 planning docs (PHASE4_ISSUES.md, PHASE4_TEST_PLAN.md, FRONTEND_FIX_LOG.md)
+  - Removed conversation logs (conversation.md)
+  - Removed diagnostic scripts (diagnose-frontend.ts, diagnose-parser.ts, test-block-structure.ts, test-export-output.ts, analyze-missing-pages.ts)
+  - Removed duplicate script (validate-content.js, kept .ts version)
+
+### Changed - 2025-11-19
+- **Documentation Update**: Aligned all status documentation
+  - Updated README.md: Phase 4 complete status
+  - Updated ROADMAP.md: Removed Phase 4.6-4.9 planning sections (issues resolved)
+  - Updated CLAUDE.md: Current project state, testing commands, architecture notes
+  - Updated PROJECT_STATUS.md: Reflects Phase 4 completion
+- **Component Flags**: Added TODO comments to viewer components
+  - Flagged custom components for potential migration to shadcn/ui
+  - BlockTree, Sidebar, Breadcrumbs, NodeContent marked for future refactor
+
 ### Fixed - 2025-11-18
 - **Collapsible Blocks**: Fixed tab indentation parsing in markdown-parser.ts
   - Tabs now correctly count as 1 indent level (previously calculated as 0)

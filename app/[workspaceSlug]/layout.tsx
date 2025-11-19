@@ -5,6 +5,7 @@ import { getAllNodes } from "@/modules/content/queries";
 import { NavigationProvider } from "@/lib/navigation-context";
 import { Sidebar } from "@/components/viewer/Sidebar";
 import { MobileSidebar } from "@/components/viewer/MobileSidebar";
+import { MobileMenuTrigger } from "@/components/viewer/MobileMenuTrigger";
 
 type LayoutProps = {
   children: React.ReactNode;
@@ -34,21 +35,26 @@ async function WorkspaceContent({
       <div className="min-h-screen bg-white">
         {/* Header */}
         <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-          <div className="container flex h-14 items-center px-4">
-            <div className="mr-4 flex">
-              <a href={`/${workspaceSlug}`} className="mr-6 flex items-center space-x-2">
-                <span className="font-bold text-xl">{workspace.name}</span>
-              </a>
-            </div>
+          <div className="container flex h-14 items-center px-4 gap-3">
+            {/* Mobile Menu Trigger */}
+            <MobileMenuTrigger />
+
+            {/* Logo */}
+            <a
+              href={`/${workspaceSlug}`}
+              className="mr-auto flex items-center space-x-2"
+            >
+              <span className="font-bold text-xl">{workspace.name}</span>
+            </a>
           </div>
         </header>
 
         <div className="container flex-1">
-          <div className="flex gap-6 py-6">
+          <div className="flex gap-6">
             {/* Sidebar Navigation (Desktop) */}
             <aside className="hidden lg:block w-64 shrink-0 max-h-[calc(100vh-120px)]">
               <div className="sticky top-20 h-full">
-                <Sidebar nodes={nodes} workspaceSlug={workspaceSlug} currentPageBlocks={[]} currentPageUuid="" />
+                <Sidebar nodes={nodes} workspaceSlug={workspaceSlug} />
               </div>
             </aside>
 
@@ -58,25 +64,34 @@ async function WorkspaceContent({
         </div>
 
         {/* Mobile Drawer */}
-        <MobileSidebar nodes={nodes} workspaceSlug={workspaceSlug} currentPageBlocks={[]} currentPageUuid="" />
+        <MobileSidebar nodes={nodes} workspaceSlug={workspaceSlug} />
       </div>
     </NavigationProvider>
   );
 }
 
-async function WorkspaceLayoutWrapper({
-  children,
-  params,
-}: LayoutProps) {
+async function WorkspaceLayoutWrapper({ children, params }: LayoutProps) {
   const { workspaceSlug } = await params;
 
-  return <WorkspaceContent workspaceSlug={workspaceSlug}>{children}</WorkspaceContent>;
+  return (
+    <WorkspaceContent workspaceSlug={workspaceSlug}>
+      {children}
+    </WorkspaceContent>
+  );
 }
 
 export default function WorkspaceLayout({ children, params }: LayoutProps) {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center">Loading...</div>}>
-      <WorkspaceLayoutWrapper params={params}>{children}</WorkspaceLayoutWrapper>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <WorkspaceLayoutWrapper params={params}>
+        {children}
+      </WorkspaceLayoutWrapper>
     </Suspense>
   );
 }

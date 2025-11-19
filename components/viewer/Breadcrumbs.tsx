@@ -9,19 +9,21 @@ type BreadcrumbsProps = {
 };
 
 /**
- * N-2 breadcrumb component showing navigation history
- * Format: ../[n-2-page]/[current-page]
- * - ".." button links to n-2 path or workspace root if unavailable
- * - Shows at most 2 past pages in breadcrumb
+ * Breadcrumb component with blockchain navigation pattern
+ * Format: .. / [n-2 page] / [current page]
+ * Uses before/after to derive full breadcrumb chain:
+ * - ".." links to homepage (workspace root)
+ * - middle segment is from history.before (n-2 page)
+ * - current segment is current page title
  */
 export function Breadcrumbs({ currentTitle, workspaceSlug }: BreadcrumbsProps) {
   const history = useNavigationHistory();
 
-  // Extract page titles from paths
-  const getPageTitle = (path: string): string => {
-    if (!path || path === `/${workspaceSlug}`) return workspaceSlug;
+  // Extract page title from path
+  const getPageTitle = (path: string | null): string | null => {
+    if (!path || path === `/${workspaceSlug}`) return null;
     const segments = path.split("/").filter(Boolean);
-    if (segments.length <= 1) return workspaceSlug;
+    if (segments.length <= 1) return null;
     // Return the last segment (current page)
     return segments[segments.length - 1]
       .split("-")
@@ -29,30 +31,30 @@ export function Breadcrumbs({ currentTitle, workspaceSlug }: BreadcrumbsProps) {
       .join(" ");
   };
 
-  const n2Title = history.n2Path ? getPageTitle(history.n2Path) : null;
-  const n2Link = history.n2Path || `/${workspaceSlug}`;
+  const homepageLink = `/${workspaceSlug}`;
+  const previousPageTitle = getPageTitle(history.before);
 
   return (
     <nav className="flex items-center space-x-1 text-sm text-gray-600">
-      {/* Back button */}
+      {/* Homepage link */}
       <Link
-        href={n2Link}
+        href={homepageLink}
         className="inline-flex items-center px-2.5 py-1.5 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors font-medium text-gray-700"
-        title={n2Title ? `Back to ${n2Title}` : "Back to workspace"}
+        title="Back to homepage"
       >
-        ←
+        ..
       </Link>
 
       <span className="text-gray-400">/</span>
 
       {/* N-2 page link (if available) */}
-      {n2Title && (
+      {previousPageTitle && history.before && (
         <>
           <Link
-            href={n2Link}
+            href={history.before}
             className="hover:text-gray-900 transition-colors max-w-[120px] truncate"
           >
-            {n2Title}
+            {previousPageTitle}
           </Link>
           <span className="text-gray-400">/</span>
         </>

@@ -5,12 +5,11 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { Node } from "@/modules/content/schema";
 import { TableOfContents } from "./TableOfContents";
+import { usePageBlocks } from "@/lib/page-blocks-context";
 
 type MobileSidebarProps = {
   nodes: Node[];
   workspaceSlug: string;
-  currentPageBlocks?: Node[];
-  currentPageUuid?: string;
 };
 
 type SidebarMode = "all-pages" | "toc";
@@ -63,8 +62,11 @@ function TreeItem({
   const pathname = usePathname();
   const { node, children } = treeNode;
 
-  const segments = node.pageName.split("/").map(s =>
-    s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
+  const segments = node.pageName.split("/").map((s) =>
+    s
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^\w\-]/g, "")
   );
   const href = `/${workspaceSlug}/${segments.join("/")}`;
   const isActive = pathname === href;
@@ -100,15 +102,11 @@ function TreeItem({
   );
 }
 
-export function MobileSidebar({
-  nodes,
-  workspaceSlug,
-  currentPageBlocks = [],
-  currentPageUuid,
-}: MobileSidebarProps) {
+export function MobileSidebar({ nodes, workspaceSlug }: MobileSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<SidebarMode>("all-pages");
   const tree = buildTree(nodes);
+  const { blocks, pageUuid } = usePageBlocks();
 
   const closeDrawer = () => setIsOpen(false);
 
@@ -117,33 +115,10 @@ export function MobileSidebar({
       {/* Hamburger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed bottom-6 right-6 z-30 flex items-center justify-center w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors"
+        className="lg:hidden fixed bottom-6 right-6 z-30 flex items-center justify-center "
         aria-label="Toggle navigation menu"
         aria-expanded={isOpen}
-      >
-        <svg
-          className="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          {isOpen ? (
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          ) : (
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          )}
-        </svg>
-      </button>
+      ></button>
 
       {/* Drawer Overlay */}
       {isOpen && (
@@ -171,7 +146,12 @@ export function MobileSidebar({
             className="p-1 text-gray-500 hover:text-gray-700 transition-colors"
             aria-label="Close navigation menu"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -234,10 +214,11 @@ export function MobileSidebar({
             </nav>
           ) : (
             <div className="p-3">
-              {currentPageBlocks && currentPageUuid ? (
+              {blocks && blocks.length > 0 && pageUuid ? (
                 <TableOfContents
-                  blocks={currentPageBlocks}
-                  pageUuid={currentPageUuid}
+                  blocks={blocks}
+                  pageUuid={pageUuid}
+                  pageTitle="On This Page"
                   workspaceSlug={workspaceSlug}
                 />
               ) : (

@@ -10,7 +10,7 @@ import {
 } from "@/modules/content/queries";
 import { BlockTree } from "@/components/viewer/BlockTree";
 import { Breadcrumbs } from "@/components/viewer/Breadcrumbs";
-import { PageBlocksContext } from "@/lib/page-blocks-context";
+import { PageBlocksContextProvider } from "@/components/viewer/PageBlocksContextProvider";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +58,7 @@ async function NodePageContent({
   const pagePath = path.join("/");
 
   return (
-    <PageBlocksContext.Provider value={{ blocks, pageUuid: node.uuid }}>
+    <PageBlocksContextProvider blocks={blocks} pageUuid={node.uuid}>
       <div className="flex flex-col gap-6">
         {/* Breadcrumbs */}
         <Breadcrumbs currentTitle={node.title} workspaceSlug={workspaceSlug} />
@@ -152,7 +152,7 @@ async function NodePageContent({
           </div>
         )}
       </div>
-    </PageBlocksContext.Provider>
+    </PageBlocksContextProvider>
   );
 }
 

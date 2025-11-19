@@ -4,12 +4,30 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 export function getStorageClient() {
   const isLocal = process.env.STORAGE_MODE === "local";
 
+  // Validate credentials are configured
+  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+
+  if (!accessKeyId || !secretAccessKey) {
+    const missingVars = [];
+    if (!accessKeyId) missingVars.push("AWS_ACCESS_KEY_ID");
+    if (!secretAccessKey) missingVars.push("AWS_SECRET_ACCESS_KEY");
+
+    throw new Error(
+      `Missing S3 credentials in environment: ${missingVars.join(", ")}.\n` +
+        `Please create .env.local with:\n` +
+        `  AWS_ACCESS_KEY_ID=minioadmin\n` +
+        `  AWS_SECRET_ACCESS_KEY=minioadmin\n` +
+        `Run: cp .env.example .env.local`
+    );
+  }
+
   return new S3Client({
     region: process.env.AWS_REGION || "us-east-1",
     endpoint: isLocal ? process.env.MINIO_ENDPOINT : undefined,
     credentials: {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+      accessKeyId,
+      secretAccessKey,
     },
     forcePathStyle: isLocal, // Required for MinIO
   });

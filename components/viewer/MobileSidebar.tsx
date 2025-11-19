@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { Node } from "@/modules/content/schema";
 import { TableOfContents } from "./TableOfContents";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 type MobileSidebarProps = {
   nodes: Node[];
@@ -190,7 +189,7 @@ export function MobileSidebar({ nodes, workspaceSlug }: MobileSidebarProps) {
           </button>
         </div>
 
-        {/* Drawer Content with ScrollArea */}
+        {/* Drawer Content - scrollable with hidden scrollbar */}
         <div className="flex flex-col h-[calc(100%-56px)]">
           {/* Placeholder */}
           <div className="h-12 bg-gray-50 border-b border-gray-200 shrink-0" />
@@ -224,8 +223,8 @@ export function MobileSidebar({ nodes, workspaceSlug }: MobileSidebarProps) {
             </Link>
           </div>
 
-          {/* Dynamic Content Area with ScrollArea */}
-          <ScrollArea className="flex-1">
+          {/* Dynamic Content Area - scrollable with hidden scrollbar */}
+          <div className="flex-1 overflow-y-auto scrollbar-hide">
             {mode === "all-pages" ? (
               // All Pages Tree View
               <nav className="p-3">
@@ -253,7 +252,7 @@ export function MobileSidebar({ nodes, workspaceSlug }: MobileSidebarProps) {
                 <TableOfContents workspaceSlug={workspaceSlug} />
               </div>
             )}
-          </ScrollArea>
+          </div>
         </div>
       </div>
     </>

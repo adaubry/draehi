@@ -50,10 +50,10 @@ async function WorkspaceContent({
         </header>
 
         <div className="container flex-1">
-          <div className="flex gap-6">
+          <div className="flex gap-6 py-6">
             {/* Sidebar Navigation (Desktop) */}
-            <aside className="hidden lg:block w-64 shrink-0 max-h-[calc(100vh-120px)]">
-              <div className="sticky top-20 h-full">
+            <aside className="hidden lg:block w-64 shrink-0">
+              <div className="sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto">
                 <Sidebar nodes={nodes} workspaceSlug={workspaceSlug} />
               </div>
             </aside>

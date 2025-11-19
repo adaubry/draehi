@@ -390,6 +390,63 @@ test_no_errors() {
     fi
 }
 
+# Test 13: Table of Contents renders with headings from HTML
+test_table_of_contents() {
+    log_step "Test 13: Table of Contents renders correctly"
+
+    local url="http://localhost:3000/${TEST_WORKSPACE_SLUG}/contents"
+    local body=$(curl -s "$url")
+
+    # Check for TOC section
+    if echo "$body" | grep -q "On This Page"; then
+        log_success "TOC section 'On This Page' found"
+    else
+        log_error "TOC section 'On This Page' not found"
+        echo "  FIX: TableOfContents component not rendering"
+        return 1
+    fi
+
+    # Check for TOC nav element
+    if echo "$body" | grep -q '<nav[^>]*class="space-y-3"'; then
+        log_success "TOC nav element found"
+    else
+        log_error "TOC nav element not found"
+        echo "  FIX: TableOfContents should render <nav> with space-y-3"
+    fi
+
+    # Check for TOC items (should have clickable buttons)
+    local toc_count=$(echo "$body" | grep -o 'class="space-y-1"' | head -5 | wc -l)
+    if [[ "$toc_count" -ge 1 ]]; then
+        log_success "TOC item containers found ($toc_count)"
+    else
+        log_warning "No TOC items found (may not have content with headings)"
+    fi
+
+    # Check for TOC links with data-uuid
+    if echo "$body" | grep -q 'data-uuid="[a-f0-9-]*"'; then
+        log_success "TOC items have data-uuid attributes"
+    else
+        log_warning "TOC items may not have data-uuid attributes"
+        echo "  This is needed for scroll-to-click functionality"
+    fi
+
+    # Check for collapse/expand buttons in TOC
+    if echo "$body" | grep -q 'aria-label="Collapse\|Expand"'; then
+        log_success "TOC has collapsible sections"
+    else
+        log_warning "TOC sections may not be collapsible"
+    fi
+
+    # Check for heading extraction (h2, h3, h4 with data-uuid)
+    local heading_count=$(echo "$body" | grep -oE '<h[2-4][^>]*data-uuid' | wc -l)
+    if [[ "$heading_count" -ge 1 ]]; then
+        log_success "Found $heading_count headings with data-uuid (extractable for TOC)"
+    else
+        log_warning "No headings with data-uuid found"
+        echo "  Headings should have data-uuid for TOC extraction"
+    fi
+}
+
 # Main test execution
 main() {
     check_prerequisites
@@ -429,6 +486,9 @@ main() {
     echo ""
 
     test_no_errors
+    echo ""
+
+    test_table_of_contents
 
     # Summary
     echo ""

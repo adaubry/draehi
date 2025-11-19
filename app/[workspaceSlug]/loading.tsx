@@ -9,7 +9,7 @@ export default function WorkspaceLoading() {
       </header>
 
       <div className="container flex-1">
-        <div className="flex gap-6 py-6">
+        <div className="flex gap-6 ">
           {/* Sidebar Skeleton */}
           <aside className="w-64 shrink-0">
             <div className="space-y-4">

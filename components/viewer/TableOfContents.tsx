@@ -1,122 +1,124 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import type { Node } from "@/modules/content/schema";
 
 type TOCProps = {
   blocks: Node[];
   pageUuid: string;
+  pageTitle: string;
   workspaceSlug: string;
+};
+
+type HeadingItem = {
+  uuid: string;
+  title: string;
+  level: number; // 1 = h1, 2 = h2, etc
 };
 
 type TOCItem = {
   uuid: string;
   title: string;
-  depth: number;
+  level: number;
   children: TOCItem[];
-  parentUuid: string | null;
 };
 
 /**
- * Build table of contents tree with max 3 levels
- * Levels 1-2 collapsed, level 3 expanded
+ * Extract headings from HTML content
+ * Looks for h2, h3, h4 tags with data-uuid attributes
  */
-function buildTOCTree(blocks: Node[], pageUuid: string): TOCItem[] {
-  const itemMap = new Map<string, TOCItem>();
-  const rootItems: TOCItem[] = [];
+function extractHeadingsFromHTML(html: string): HeadingItem[] {
+  const headings: HeadingItem[] = [];
+  const parser = new DOMParser();
 
-  // Create items for all blocks (max 3 levels)
-  blocks.forEach((block) => {
-    if (!block.uuid) return;
+  try {
+    const doc = parser.parseFromString(html, "text/html");
+    const elements = doc.querySelectorAll("h2, h3, h4");
 
-    // Calculate depth from parent chain
-    let depth = 1;
-    let currentBlock = block;
+    elements.forEach((el) => {
+      const uuid = el.getAttribute("data-uuid");
+      const text = el.textContent || "";
+      const level = parseInt(el.tagName[1]);
 
-    // Find depth by walking up parent chain
-    while (currentBlock.parentUuid && currentBlock.parentUuid !== pageUuid) {
-      const parent = blocks.find((b) => b.uuid === currentBlock.parentUuid);
-      if (!parent) break;
-      depth++;
-      currentBlock = parent;
-    }
-
-    // Only include blocks up to 3 levels deep
-    if (depth > 3) return;
-
-    itemMap.set(block.uuid, {
-      uuid: block.uuid,
-      title: block.title,
-      depth,
-      children: [],
-      parentUuid: block.parentUuid,
-    });
-  });
-
-  // Build hierarchy
-  blocks.forEach((block) => {
-    if (!block.uuid) return;
-    const item = itemMap.get(block.uuid);
-    if (!item) return;
-
-    // Find parent
-    if (item.parentUuid === pageUuid || !item.parentUuid) {
-      // Top-level block
-      rootItems.push(item);
-    } else {
-      const parent = itemMap.get(item.parentUuid);
-      if (parent) {
-        parent.children.push(item);
-      } else {
-        // Parent not in map, add to root
-        rootItems.push(item);
+      if (uuid && text) {
+        headings.push({ uuid, title: text, level });
       }
-    }
-  });
-
-  // Sort by original order
-  const sortByUuid = (items: TOCItem[]): TOCItem[] => {
-    return items.sort((a, b) => {
-      const blockA = blocks.find((x) => x.uuid === a.uuid);
-      const blockB = blocks.find((x) => x.uuid === b.uuid);
-      if (!blockA || !blockB) return 0;
-      return (blockA.order ?? 0) - (blockB.order ?? 0);
     });
-  };
+  } catch (e) {
+    console.error("Error parsing HTML for TOC:", e);
+  }
 
-  rootItems.forEach((item) => {
-    item.children = sortByUuid(item.children);
-    item.children.forEach((child) => {
-      child.children = sortByUuid(child.children);
-    });
-  });
-
-  return sortByUuid(rootItems);
+  return headings;
 }
 
-function TOCItem({
+/**
+ * Build nested TOC structure from flat heading list
+ * h2 = level 1, h3 = level 2, h4 = level 3
+ */
+function buildTOCTree(headings: HeadingItem[]): TOCItem[] {
+  if (headings.length === 0) return [];
+
+  const stack: TOCItem[] = [];
+  const root: TOCItem[] = [];
+
+  headings.forEach((heading) => {
+    const item: TOCItem = {
+      uuid: heading.uuid,
+      title: heading.title,
+      level: heading.level,
+      children: [],
+    };
+
+    // h2 = level 2 = tree level 0
+    const treeLevel = heading.level - 2;
+
+    // Remove items from stack that are at same or higher level
+    while (stack.length > treeLevel) {
+      stack.pop();
+    }
+
+    if (stack.length === 0) {
+      // Top level (h2)
+      root.push(item);
+    } else {
+      // Nested under last item in stack
+      stack[stack.length - 1].children.push(item);
+    }
+
+    stack.push(item);
+  });
+
+  return root;
+}
+
+function TOCItemComponent({
   item,
-  workspaceSlug,
-  pageUuid,
 }: {
   item: TOCItem;
-  workspaceSlug: string;
-  pageUuid: string;
 }) {
-  // Levels 1-2 collapsed by default, level 3 expanded
-  const [isOpen, setIsOpen] = useState(item.depth >= 3);
+  const [isOpen, setIsOpen] = useState(item.level === 2); // h2 expanded by default
 
   const hasChildren = item.children.length > 0;
-  const canExpand = item.depth < 3; // Only allow expansion if not at level 3
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const element = document.querySelector(`[data-uuid="${item.uuid}"]`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // Calculate indentation based on level (h2=0, h3=1, h4=2)
+  const indentLevel = item.level - 2;
+  const indent = indentLevel * 16;
 
   return (
-    <div className="space-y-1">
+    <div>
       <div className="flex items-center space-x-1">
-        {hasChildren && canExpand && (
+        {hasChildren && (
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="inline-flex items-center justify-center w-4 h-4 text-gray-400 hover:text-gray-600 transition-colors"
+            className="inline-flex items-center justify-center w-4 h-4 text-gray-400 hover:text-gray-600 transition-colors shrink-0"
             aria-label={isOpen ? "Collapse" : "Expand"}
           >
             <svg
@@ -136,31 +138,20 @@ function TOCItem({
             </svg>
           </button>
         )}
-        {!hasChildren && <div className="w-4" />}
+        {!hasChildren && <div className="w-4 shrink-0" />}
 
-        <a
-          href={`#block-${item.uuid}`}
-          className="text-sm text-gray-700 hover:text-blue-600 transition-colors truncate"
+        <button
+          onClick={handleClick}
+          className="text-left text-sm text-gray-700 hover:text-blue-600 transition-colors truncate flex-1"
         >
           {item.title}
-        </a>
+        </button>
       </div>
 
       {hasChildren && isOpen && (
-        <div
-          className="ml-4 space-y-1"
-          style={{
-            opacity: isOpen ? 1 : 0,
-            transition: "opacity 150ms ease-in-out",
-          }}
-        >
+        <div className="space-y-1 mt-1" style={{ marginLeft: `${indent + 8}px` }}>
           {item.children.map((child) => (
-            <TOCItem
-              key={child.uuid}
-              item={child}
-              workspaceSlug={workspaceSlug}
-              pageUuid={pageUuid}
-            />
+            <TOCItemComponent key={child.uuid} item={child} />
           ))}
         </div>
       )}
@@ -171,13 +162,23 @@ function TOCItem({
 export function TableOfContents({
   blocks,
   pageUuid,
-  workspaceSlug,
+  pageTitle,
 }: TOCProps) {
-  if (blocks.length === 0) return null;
+  // Concatenate HTML from all blocks
+  const allHTML = blocks
+    .filter((b) => b.uuid && b.html)
+    .map((b) => b.html)
+    .join("");
 
-  const tocItems = buildTOCTree(blocks, pageUuid);
+  if (!allHTML) return null;
 
-  if (tocItems.length === 0) return null;
+  // Extract headings from HTML
+  const headings = extractHeadingsFromHTML(allHTML);
+
+  if (headings.length === 0) return null;
+
+  // Build nested TOC tree from flat heading list
+  const tocItems = buildTOCTree(headings);
 
   return (
     <nav className="space-y-3">
@@ -186,12 +187,7 @@ export function TableOfContents({
       </h3>
       <div className="space-y-1 text-sm">
         {tocItems.map((item) => (
-          <TOCItem
-            key={item.uuid}
-            item={item}
-            workspaceSlug={workspaceSlug}
-            pageUuid={pageUuid}
-          />
+          <TOCItemComponent key={item.uuid} item={item} />
         ))}
       </div>
     </nav>

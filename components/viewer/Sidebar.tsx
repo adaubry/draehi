@@ -2,15 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 import type { Node } from "@/modules/content/schema";
 import { TableOfContents } from "./TableOfContents";
+import { usePageBlocks } from "@/lib/page-blocks-context";
 
 type SidebarProps = {
   nodes: Node[];
   workspaceSlug: string;
-  currentPageBlocks?: Node[];
-  currentPageUuid?: string;
 };
 
 type SidebarMode = "all-pages" | "toc";
@@ -61,8 +59,11 @@ function TreeItem({
   const pathname = usePathname();
   const { node, children } = treeNode;
 
-  const segments = node.pageName.split("/").map(s =>
-    s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
+  const segments = node.pageName.split("/").map((s) =>
+    s
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^\w\-]/g, "")
   );
   const href = `/${workspaceSlug}/${segments.join("/")}`;
   const isActive = pathname === href;
@@ -96,46 +97,54 @@ function TreeItem({
   );
 }
 
-export function Sidebar({
-  nodes,
-  workspaceSlug,
-  currentPageBlocks = [],
-  currentPageUuid,
-}: SidebarProps) {
-  const [mode, setMode] = useState<SidebarMode>("all-pages");
+export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
+  const pathname = usePathname();
   const tree = buildTree(nodes);
+  const { blocks, pageUuid } = usePageBlocks();
+
+  // Auto-detect which mode to show based on current route
+  const isOnAllPagesRoute =
+    pathname === `/${workspaceSlug}/all-pages` ||
+    pathname === `/${workspaceSlug}/all-pages/`;
+  const mode: SidebarMode = isOnAllPagesRoute ? "all-pages" : "toc";
+
+  // Use context blocks for TOC mode
+  const tocBlocks = mode === "toc" ? blocks : [];
+  const tocPageUuid = mode === "toc" ? pageUuid : "";
 
   return (
     <div className="flex flex-col h-full">
       {/* Part 1: Placeholder Section (48px) */}
       <div className="h-12 bg-gray-50 border-b border-gray-200 shrink-0" />
 
-      {/* Part 2: Sticky Navigation Buttons */}
-      <div className="sticky top-0 z-10 flex gap-2 p-3 bg-white border-b border-gray-200 shrink-0">
-        <button
-          onClick={() => setMode("all-pages")}
-          className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-            mode === "all-pages"
+      {/* Part 2: Default Action Buttons */}
+      <div className="sticky top-0 z-10 flex flex-col gap-1 p-3 bg-white border-b border-gray-200 shrink-0">
+        <Link
+          href="/dashboard"
+          className="block px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors text-center"
+        >
+          Dashboard
+        </Link>
+        <Link
+          href={`/${workspaceSlug}`}
+          className="block px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors text-center"
+        >
+          Home
+        </Link>
+        <Link
+          href={`/${workspaceSlug}/all-pages`}
+          className={`block px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-center ${
+            isOnAllPagesRoute
               ? "bg-gray-100 text-gray-900"
               : "text-gray-700 hover:bg-gray-50"
           }`}
         >
-          Contents
-        </button>
-        <button
-          onClick={() => setMode("toc")}
-          className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-            mode === "toc"
-              ? "bg-gray-100 text-gray-900"
-              : "text-gray-700 hover:bg-gray-50"
-          }`}
-        >
-          On This Page
-        </button>
+          All Pages
+        </Link>
       </div>
 
       {/* Part 3: Dynamic Content Area */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 ">
         {mode === "all-pages" ? (
           // All Pages Tree View
           <nav className="space-y-6 p-3">
@@ -144,13 +153,15 @@ export function Sidebar({
                 <h3 className="mb-2 px-0 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Pages
                 </h3>
-                <div className="space-y-0.5">
+                <div className="space-y-0.5 ">
                   {tree.map((treeNode) => (
-                    <TreeItem
-                      key={treeNode.node.uuid}
-                      treeNode={treeNode}
-                      workspaceSlug={workspaceSlug}
-                    />
+                    <div className="todo">
+                      <TreeItem
+                        key={treeNode.node.uuid}
+                        treeNode={treeNode}
+                        workspaceSlug={workspaceSlug}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
@@ -159,10 +170,11 @@ export function Sidebar({
         ) : (
           // Table of Contents View
           <div className="p-3">
-            {currentPageBlocks && currentPageUuid ? (
+            {tocBlocks && tocBlocks.length > 0 && tocPageUuid ? (
               <TableOfContents
-                blocks={currentPageBlocks}
-                pageUuid={currentPageUuid}
+                blocks={tocBlocks}
+                pageUuid={tocPageUuid}
+                pageTitle="On This Page"
                 workspaceSlug={workspaceSlug}
               />
             ) : (

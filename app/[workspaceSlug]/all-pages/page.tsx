@@ -63,7 +63,10 @@ function TreeItem({
 }) {
   const { node, children } = treeNode;
   const segments = node.pageName.split("/").map((s) =>
-    s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
+    s
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^\w\-]/g, "")
   );
   const href = `/${workspaceSlug}/${segments.join("/")}`;
 
@@ -92,11 +95,7 @@ function TreeItem({
   );
 }
 
-async function AllPagesContent({
-  workspaceSlug,
-}: {
-  workspaceSlug: string;
-}) {
+async function AllPagesContent({ workspaceSlug }: { workspaceSlug: string }) {
   const workspace = await getWorkspaceBySlug(workspaceSlug);
   if (!workspace) {
     notFound();

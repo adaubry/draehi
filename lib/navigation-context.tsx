@@ -4,9 +4,8 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 export type NavHistory = {
-  currentPath: string;
-  previousPath: string | null;
-  n2Path: string | null;
+  before: string | null;
+  after: string;
 };
 
 type NavigationContextType = {
@@ -25,14 +24,13 @@ export function NavigationProvider({
 }) {
   const pathname = usePathname();
   const [history, setHistory] = useState<NavHistory>({
-    currentPath: "",
-    previousPath: null,
-    n2Path: null,
+    before: null,
+    after: "",
   });
 
   // Initialize on mount
   useEffect(() => {
-    const storageKey = `draehi-nav-history-${workspaceSlug}`;
+    const storageKey = `draehi_navigation_history`;
     const stored = localStorage.getItem(storageKey);
 
     if (stored) {
@@ -40,16 +38,14 @@ export function NavigationProvider({
         setHistory(JSON.parse(stored));
       } catch {
         setHistory({
-          currentPath: pathname,
-          previousPath: null,
-          n2Path: null,
+          before: null,
+          after: pathname,
         });
       }
     } else {
       setHistory({
-        currentPath: pathname,
-        previousPath: null,
-        n2Path: null,
+        before: null,
+        after: pathname,
       });
     }
   }, []);
@@ -57,20 +53,19 @@ export function NavigationProvider({
   // Update history on pathname change
   useEffect(() => {
     setHistory((prev) => {
-      const storageKey = `draehi-nav-history-${workspaceSlug}`;
+      const storageKey = `draehi_navigation_history`;
 
       // Only update if path actually changed
-      if (prev.currentPath === pathname) {
+      if (prev.after === pathname) {
         return prev;
       }
 
       const updated: NavHistory = {
-        currentPath: pathname,
-        previousPath: prev.currentPath,
-        n2Path: prev.previousPath,
+        before: prev.after,
+        after: pathname,
       };
 
-      // Persist to sessionStorage
+      // Persist to localStorage
       try {
         localStorage.setItem(storageKey, JSON.stringify(updated));
       } catch {
@@ -79,7 +74,7 @@ export function NavigationProvider({
 
       return updated;
     });
-  }, [pathname, workspaceSlug]);
+  }, [pathname]);
 
   return (
     <NavigationContext.Provider value={{ history, workspaceSlug }}>

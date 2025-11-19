@@ -197,7 +197,7 @@ function parsePageName(pageName: string): {
 /**
  * Process HTML to upload assets and replace local paths with S3 URLs
  */
-async function processAssets(
+export async function processAssets(
   html: string,
   workspaceId: number,
   repoPath: string

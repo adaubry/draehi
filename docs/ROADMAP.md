@@ -327,11 +327,11 @@
 - [ ] Export to Anki format
 
 ### 4b.3 Embedded Media
-- [ ] YouTube embed support (parse URLs → iframe)
+- [x] YouTube embed support (parse URLs → iframe) ✅ 2025-11-19
+- [x] Asset ingestion pipeline (images, PDFs → S3/MinIO) ✅ 2025-11-19
 - [ ] Twitter/X embed support
 - [ ] Vimeo embed support
 - [ ] Audio file playback
-- [ ] PDF viewer integration
 
 **Duration:** 2-3 weeks
 

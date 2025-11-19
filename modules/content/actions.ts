@@ -5,9 +5,9 @@ import { nodes, type NewNode, type Node } from "./schema";
 import { extractNamespaceAndSlug } from "@/lib/utils";
 import { eq, and } from "drizzle-orm";
 import { exportLogseqNotes } from "../logseq/export";
-import { parseLogseqOutput } from "../logseq/parse";
+import { parseLogseqOutput, processAssets } from "../logseq/parse";
 import { parseLogseqDirectory, flattenBlocks } from "../logseq/markdown-parser";
-import { processLogseqReferences } from "../logseq/process-references";
+import { processLogseqReferences, processEmbeds } from "../logseq/process-references";
 import { marked } from "marked";
 import path from "path";
 import { randomUUID } from "crypto";
@@ -276,6 +276,12 @@ export async function ingestLogseqGraph(
           /<(h[1-3])([^>]*)>/g,
           `<$1$2 uuid="${block.uuid}">`
         );
+
+        // Upload assets (images, PDFs) to S3 and replace local paths with S3 URLs
+        blockHTML = await processAssets(blockHTML, workspaceId, repoPath);
+
+        // Process YouTube embeds (convert URLs to responsive iframes)
+        blockHTML = processEmbeds(blockHTML);
 
         // Process Logseq references ([[page]], ((uuid)), TODO markers)
         blockHTML = processLogseqReferences(

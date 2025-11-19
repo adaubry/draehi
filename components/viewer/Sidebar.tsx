@@ -61,7 +61,11 @@ function TreeItem({
   const pathname = usePathname();
   const { node, children } = treeNode;
 
-  const href = `/${workspaceSlug}/${node.pageName}`;
+  // Build href from pageName by slugifying each segment
+  const segments = node.pageName.split("/").map(s =>
+    s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
+  );
+  const href = `/${workspaceSlug}/${segments.join("/")}`;
   const isActive = pathname === href;
 
   return (

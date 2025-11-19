@@ -96,7 +96,10 @@ async function NodePageContent({
               </h2>
               <div className="space-y-2">
                 {citedBy.map((page) => {
-                  const href = `/${workspaceSlug}/${page.pageName}`;
+                  const segments = page.pageName.split("/").map(s =>
+                    s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
+                  );
+                  const href = `/${workspaceSlug}/${segments.join("/")}`;
                   return (
                     <Link
                       key={page.uuid}
@@ -121,7 +124,10 @@ async function NodePageContent({
               </h2>
               <div className="space-y-2">
                 {related.map((page) => {
-                  const href = `/${workspaceSlug}/${page.pageName}`;
+                  const segments = page.pageName.split("/").map(s =>
+                    s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
+                  );
+                  const href = `/${workspaceSlug}/${segments.join("/")}`;
                   return (
                     <Link
                       key={page.uuid}

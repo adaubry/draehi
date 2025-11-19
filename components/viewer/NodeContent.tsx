@@ -1,3 +1,4 @@
+// TODO: Consider migrating to shadcn/ui Typography components
 "use client";
 
 type NodeContentProps = {

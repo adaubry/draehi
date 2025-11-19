@@ -9,11 +9,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed - 2025-11-19 (Session 3)
-- **Test Suite Limitations Identified**: Frontend e2e tests look for plain HTML but pages return React RSC (Server Component) serialization
+- **Page Reference Link Slugification**: Fixed page references to generate proper URL slugs
+  - [[Page Name]] now converts to /workspace/page-name using pageNameToPath()
+  - Handles spaces → dashes, uppercase → lowercase conversion
+  - Fixes test failure: "No page reference links found"
+- **Test Suite Limitations Identified**: Frontend e2e tests require browser automation
   - Pages ARE rendering correctly with all 234 blocks in /test/contents
   - BlockTree component has all required classes: `logseq-blocks`, `logseq-block`, `block-children`, `has-children`, `data-depth` attributes
   - Test failures are due to test script not executing JavaScript to hydrate React components
-  - Recommendation: Use browser automation (Playwright/Puppeteer) for e2e tests or modify test script to execute RSC
+  - Recommendation: Use browser automation (Playwright/Puppeteer) for comprehensive e2e tests
+- **Backlinks Analysis**: "Cited by" section empty because test graph lacks incoming references
+  - getPageBacklinks() correctly finds blocks with data-page attributes
+  - Test data needs pages that reference each other for this feature to show content
 
 ### Fixed - 2025-11-19 (Session 2)
 - **Production Build 404 Errors**: Fixed static pre-rendering failures on dynamic routes

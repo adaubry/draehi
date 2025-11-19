@@ -422,11 +422,11 @@ test_table_of_contents() {
         log_warning "No TOC items found (may not have content with headings)"
     fi
 
-    # Check for TOC links with data-uuid
-    if echo "$body" | grep -q 'data-uuid="[a-f0-9-]*"'; then
-        log_success "TOC items have data-uuid attributes"
+    # Check for TOC links with uuid
+    if echo "$body" | grep -q 'uuid="[a-f0-9-]*"'; then
+        log_success "TOC items have uuid attributes"
     else
-        log_warning "TOC items may not have data-uuid attributes"
+        log_warning "TOC items may not have uuid attributes"
         echo "  This is needed for scroll-to-click functionality"
     fi
 
@@ -437,13 +437,13 @@ test_table_of_contents() {
         log_warning "TOC sections may not be collapsible"
     fi
 
-    # Check for heading extraction (h2, h3, h4 with data-uuid)
-    local heading_count=$(echo "$body" | grep -oE '<h[2-4][^>]*data-uuid' | wc -l)
+    # Check for heading extraction (h2, h3, h4 with uuid)
+    local heading_count=$(echo "$body" | grep -oE '<h[2-4][^>]*uuid' | wc -l)
     if [[ "$heading_count" -ge 1 ]]; then
-        log_success "Found $heading_count headings with data-uuid (extractable for TOC)"
+        log_success "Found $heading_count headings with uuid (extractable for TOC)"
     else
-        log_warning "No headings with data-uuid found"
-        echo "  Headings should have data-uuid for TOC extraction"
+        log_warning "No headings with uuid found"
+        echo "  Headings should have uuid for TOC extraction"
     fi
 }
 

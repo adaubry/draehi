@@ -1,19 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import type { Node } from "@/modules/content/schema";
 
 type TOCProps = {
-  blocks: Node[];
-  pageUuid: string;
-  pageTitle: string;
   workspaceSlug: string;
 };
 
 type HeadingItem = {
   uuid: string;
   title: string;
-  level: number; // 1 = h1, 2 = h2, etc
+  level: number;
 };
 
 type TOCItem = {
@@ -23,26 +21,21 @@ type TOCItem = {
   children: TOCItem[];
 };
 
-/**
- * Extract headings from HTML content
- * Looks for h2, h3, h4 tags with uuid attributes
- */
 function extractHeadingsFromHTML(html: string): HeadingItem[] {
   const headings: HeadingItem[] = [];
   const parser = new DOMParser();
-  console.log("Extracting headings from HTML...");
+
   try {
     const doc = parser.parseFromString(html, "text/html");
     const elements = doc.querySelectorAll("h2, h3, h4");
 
     elements.forEach((el) => {
-      const uuid = el.getAttribute("uuid"); // Changed from data-uuid to uuid
+      const uuid = el.getAttribute("uuid");
       const text = el.textContent || "";
       const level = parseInt(el.tagName[1]);
 
       if (uuid && text) {
         headings.push({ uuid, title: text, level });
-        console.log("Found heading:", { uuid, title: text, level });
       }
     });
   } catch (e) {
@@ -52,10 +45,6 @@ function extractHeadingsFromHTML(html: string): HeadingItem[] {
   return headings;
 }
 
-/**
- * Build nested TOC structure from flat heading list
- * h2 = level 1, h3 = level 2, h4 = level 3
- */
 function buildTOCTree(headings: HeadingItem[]): TOCItem[] {
   if (headings.length === 0) return [];
 
@@ -70,19 +59,15 @@ function buildTOCTree(headings: HeadingItem[]): TOCItem[] {
       children: [],
     };
 
-    // h2 = level 2 = tree level 0
     const treeLevel = heading.level - 2;
 
-    // Remove items from stack that are at same or higher level
     while (stack.length > treeLevel) {
       stack.pop();
     }
 
     if (stack.length === 0) {
-      // Top level (h2)
       root.push(item);
     } else {
-      // Nested under last item in stack
       stack[stack.length - 1].children.push(item);
     }
 
@@ -93,19 +78,18 @@ function buildTOCTree(headings: HeadingItem[]): TOCItem[] {
 }
 
 function TOCItemComponent({ item }: { item: TOCItem }) {
-  const [isOpen, setIsOpen] = useState(item.level === 2); // h2 expanded by default
+  const [isOpen, setIsOpen] = useState(item.level === 2);
 
   const hasChildren = item.children.length > 0;
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    const element = document.querySelector(`[uuid="${item.uuid}"]`); // Changed from data-uuid to uuid
+    const element = document.querySelector(`[uuid="${item.uuid}"]`);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
-  // Calculate indentation based on level (h2=0, h3=1, h4=2)
   const indentLevel = item.level - 2;
   const indent = indentLevel * 16;
 
@@ -159,68 +143,94 @@ function TOCItemComponent({ item }: { item: TOCItem }) {
   );
 }
 
-export function TableOfContents({ blocks, pageUuid, pageTitle }: TOCProps) {
-  // Concatenate HTML from all blocks
-  const allHTML = blocks
-    .filter((b) => b.uuid && b.html)
-    .map((b) => b.html)
-    .join("");
+export function TableOfContents({ workspaceSlug }: TOCProps) {
+  const pathname = usePathname();
+  const [tocItems, setTocItems] = useState<TOCItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // DEBUG: Log what we're receiving
-  console.log("=== TOC Debug ===");
-  console.log("Blocks received:", blocks.length);
-  console.log("Blocks with HTML:", blocks.filter((b) => b.html).length);
-  console.log("Total HTML length:", allHTML.length);
+  useEffect(() => {
+    // Reset state when pathname changes
+    setLoading(true);
+    setError(null);
+    setTocItems([]);
 
-  // Sample first block's HTML
-  if (blocks.length > 0 && blocks[0].html) {
-    console.log(
-      "Sample HTML (first 500 chars):",
-      blocks[0].html.substring(0, 500)
-    );
-  }
+    // Extract page path from pathname
+    // Format: /{workspaceSlug}/{...path}
+    const segments = pathname.split("/").filter(Boolean);
+    if (segments.length < 2) {
+      setLoading(false);
+      return;
+    }
 
-  if (!allHTML) {
+    const pagePath = segments.slice(1).join("/");
+
+    // Fetch blocks for current page
+    fetch(`/api/toc?workspace=${workspaceSlug}&path=${encodeURIComponent(pagePath)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch TOC data");
+        return res.json();
+      })
+      .then((data) => {
+        const { blocks } = data;
+
+        console.log("=== TOC Async Fetch ===");
+        console.log("Blocks fetched:", blocks.length);
+
+        // Concatenate all HTML
+        const allHTML = blocks
+          .filter((b: Node) => b.html)
+          .map((b: Node) => b.html)
+          .join("");
+
+        console.log("Total HTML length:", allHTML.length);
+
+        // Extract headings
+        const headings = extractHeadingsFromHTML(allHTML);
+        console.log("Headings extracted:", headings.length);
+
+        // Build TOC tree
+        const tree = buildTOCTree(headings);
+        setTocItems(tree);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("TOC fetch error:", err);
+        setError(err.message);
+        setLoading(false);
+      });
+  }, [pathname, workspaceSlug]);
+
+  if (loading) {
     return (
-      <div className="px-3 py-4 text-sm text-gray-500 italic">
-        <div className="mb-2">No table of contents</div>
-        {/* DEBUG INFO */}
-        <div className="text-xs bg-gray-100 p-2 rounded mt-2">
-          <div>Debug Info:</div>
-          <div>• Blocks: {blocks.length}</div>
-          <div>• With HTML: {blocks.filter((b) => b.html).length}</div>
-          <div>• Total HTML: {allHTML.length} chars</div>
+      <div className="space-y-3">
+        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          On This Page
+        </h3>
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-6 bg-gray-200 animate-pulse rounded" />
+          ))}
         </div>
       </div>
     );
   }
 
-  // Extract headings from HTML
-  const headings = extractHeadingsFromHTML(allHTML);
-
-  console.log("Headings extracted:", headings.length);
-  if (headings.length > 0) {
-    console.log("First heading:", headings[0]);
-  }
-
-  if (headings.length === 0) {
+  if (error) {
     return (
-      <div className="px-3 py-4 text-sm text-gray-500 italic">
-        <div className="mb-2">No table of contents</div>
-        {/* DEBUG INFO */}
-        <div className="text-xs bg-gray-100 p-2 rounded mt-2">
-          <div>Debug Info:</div>
-          <div>• Blocks: {blocks.length}</div>
-          <div>• With HTML: {blocks.filter((b) => b.html).length}</div>
-          <div>• Total HTML: {allHTML.length} chars</div>
-          <div>• Headings: {headings.length}</div>
-        </div>
+      <div className="px-3 py-4 text-sm text-red-600">
+        Error loading TOC: {error}
       </div>
     );
   }
 
-  // Build nested TOC tree from flat heading list
-  const tocItems = buildTOCTree(headings);
+  if (tocItems.length === 0) {
+    return (
+      <div className="px-3 py-4 text-sm text-gray-500 italic">
+        No table of contents
+      </div>
+    );
+  }
 
   return (
     <nav className="space-y-3">

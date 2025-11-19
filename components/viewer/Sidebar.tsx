@@ -136,6 +136,13 @@ export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
         currentBlocks = nodes.filter(
           (n) => n.pageName === currentNode.pageName && n.parentUuid !== null
         );
+
+        // DEBUG
+        console.log("=== Sidebar Debug ===");
+        console.log("Current pathname:", pathname);
+        console.log("Slug path:", slugPath);
+        console.log("Current page:", currentNode.pageName);
+        console.log("Blocks found:", currentBlocks.length);
       }
     }
   }

@@ -1,3 +1,4 @@
+// TODO: Consider migrating to shadcn/ui components (ScrollArea, Accordion, etc.)
 "use client";
 
 import Link from "next/link";

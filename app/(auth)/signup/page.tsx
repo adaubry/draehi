@@ -1,3 +1,4 @@
+// TODO: Migrate to shadcn/ui components (Button, Input, Label, Alert, Card)
 "use client";
 
 import { signup } from "@/modules/auth/session-actions";

@@ -1,3 +1,4 @@
+// TODO: Consider migrating to shadcn/ui Breadcrumb component
 import Link from "next/link";
 import type { Breadcrumb } from "@/lib/types";
 

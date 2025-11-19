@@ -1,3 +1,4 @@
+// TODO: Migrate to shadcn/ui components (Button, Card for feature sections)
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
 import { Suspense } from "react";

@@ -15,16 +15,27 @@ export const getNodeByUuid = cache(async (uuid: string) => {
 
 export const getNodeByPath = cache(
   async (workspaceId: number, pathSegments: string[]) => {
-    const pageName = pathSegments.join("/");
+    // URL slugs come as ["marketplace-demo"] but pageName is "Marketplace demo"
+    // We need to find a page where the slugified pageName matches the URL slugs
 
-    // Only return page nodes (parentUuid === null)
-    return await db.query.nodes.findFirst({
+    // Get all page nodes for this workspace
+    const pages = await db.query.nodes.findMany({
       where: and(
         eq(nodes.workspaceId, workspaceId),
-        eq(nodes.pageName, pageName),
         isNull(nodes.parentUuid)
       ),
     });
+
+    // Find the page whose slugified pageName matches the URL path
+    const matchingPage = pages.find(page => {
+      const pageSegments = page.pageName.split("/").map(s =>
+        s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
+      );
+      return pageSegments.length === pathSegments.length &&
+        pageSegments.every((seg, i) => seg === pathSegments[i]);
+    });
+
+    return matchingPage;
   }
 );
 

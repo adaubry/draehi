@@ -1,3 +1,4 @@
+// TODO: Migrate to shadcn/ui components (Card, Badge, Collapsible, Dialog, Separator, Form, Button, Input)
 "use client";
 
 import Link from "next/link";

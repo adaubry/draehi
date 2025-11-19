@@ -151,12 +151,17 @@ export function pageWithBlocksToNodes(
   nodes.push(pageNode);
 
   // Create block nodes (with HTML, parentUuid set)
-  // Note: parentUuid will reference parent block's uuid or be set to page uuid after insertion
+  // For top-level blocks: parentUuid = pageUuid
+  // For nested blocks: parentUuid = parent block UUID
   for (const block of page.blocks) {
+    // Determine parentUuid: if block has no parent in markdown (indent=0), use pageUuid
+    // Otherwise use the parentUuid from the parsed structure
+    const blockParentUuid = block.parentUuid || pageUuid;
+
     const blockNode: NewNode = {
       workspaceId,
       uuid: block.uuid,
-      parentUuid: null, // Will be updated after insertion
+      parentUuid: blockParentUuid,
       order: block.order,
       pageName: page.pageName,
       slug: page.slug,

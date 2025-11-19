@@ -112,39 +112,38 @@ export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
   const tocBlocks = mode === "toc" ? blocks : [];
   const tocPageUuid = mode === "toc" ? pageUuid : "";
 
-  const isAllPages = pathname.endsWith("/all-pages");
+  // DEBUG: Log blocks from context
+  console.log("=== Sidebar Debug (Context) ===");
+  console.log("Current pathname:", pathname);
+  console.log("Mode:", mode);
+  console.log("Blocks from context:", tocBlocks.length);
+  console.log("Page UUID:", tocPageUuid);
 
-  // Get blocks for current page from nodes
-  // pathname format: /{workspaceSlug}/{...path}
-  let currentBlocks: Node[] = [];
-  if (!isAllPages) {
-    const pathSegments = pathname.split("/").filter(Boolean);
-    if (pathSegments.length > 1) {
-      const slugPath = pathSegments.slice(1).join("/");
-      const currentNode = nodes.find((n) => {
-        const nodeSlugPath = n.pageName
-          .split("/")
-          .map((s) =>
-            s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
-          )
-          .join("/");
-        return nodeSlugPath === slugPath;
-      });
-
-      if (currentNode) {
-        // Get all blocks for this page
-        currentBlocks = nodes.filter(
-          (n) => n.pageName === currentNode.pageName && n.parentUuid !== null
-        );
-
-        // DEBUG
-        console.log("=== Sidebar Debug ===");
-        console.log("Current pathname:", pathname);
-        console.log("Slug path:", slugPath);
-        console.log("Current page:", currentNode.pageName);
-        console.log("Blocks found:", currentBlocks.length);
-      }
+  if (tocBlocks.length > 0) {
+    console.log("First block UUID:", tocBlocks[0].uuid);
+    console.log("First block has HTML:", !!tocBlocks[0].html);
+    if (tocBlocks[0].html) {
+      console.log("First block HTML (first 300 chars):", tocBlocks[0].html.substring(0, 300));
     }
+  }
+
+  // Count blocks with HTML
+  const blocksWithHtml = tocBlocks.filter(b => b.html && b.html.length > 0);
+  console.log("Blocks with HTML content:", blocksWithHtml.length);
+
+  // Check for headings
+  if (blocksWithHtml.length > 0) {
+    const allHtml = blocksWithHtml.map(b => b.html).join("");
+    const h2Count = (allHtml.match(/<h2/g) || []).length;
+    const h3Count = (allHtml.match(/<h3/g) || []).length;
+    const h4Count = (allHtml.match(/<h4/g) || []).length;
+    console.log("Headings in HTML - h2:", h2Count, "h3:", h3Count, "h4:", h4Count);
+
+    // Check for uuid attributes
+    const uuidInH2 = (allHtml.match(/<h2[^>]*uuid=/g) || []).length;
+    const uuidInH3 = (allHtml.match(/<h3[^>]*uuid=/g) || []).length;
+    const uuidInH4 = (allHtml.match(/<h4[^>]*uuid=/g) || []).length;
+    console.log("Headings WITH uuid - h2:", uuidInH2, "h3:", uuidInH3, "h4:", uuidInH4);
   }
 
   return (

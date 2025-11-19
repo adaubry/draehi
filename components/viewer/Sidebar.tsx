@@ -110,7 +110,7 @@ export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
   const mode: SidebarMode = isOnAllPagesRoute ? "all-pages" : "toc";
 
   return (
-    <ScrollArea dir="rtl" className="flex flex-col h-full sticky ">
+    <div className="flex flex-col h-full sticky">
       {/* Part 1: Placeholder Section (48px) */}
       <div className="h-12 bg-gray-50 border-b border-gray-200 shrink-0" />
 

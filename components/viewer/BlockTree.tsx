@@ -4,6 +4,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Node } from "@/modules/content/schema";
+import { NodeContent } from "./NodeContent";
 
 // Extract just the body content from full HTML documents
 function extractBodyContent(html: string): string {
@@ -84,12 +85,7 @@ function BlockItem({
         </Link>
 
         {/* Block Content */}
-        <div
-          className="block-content"
-          dangerouslySetInnerHTML={{
-            __html: extractBodyContent(block.html || "")
-          }}
-        />
+        <NodeContent html={extractBodyContent(block.html || "")} />
       </div>
 
       {/* Nested Children */}

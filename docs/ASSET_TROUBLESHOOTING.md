@@ -78,18 +78,45 @@ Look for console output like:
 
 ## 6. Common Issues
 
+### Missing .env.local file
+
+**Symptoms:** Error: `The authorization header is malformed; a non-empty Access Key (AKID) must be provided`
+
+**Cause:** No `.env.local` file exists, environment variables not loaded by Next.js
+
+**Fix:**
+```bash
+# Create .env.local from example template
+cp .env.example .env.local
+
+# Verify credentials are present
+cat .env.local | grep -E "AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY"
+
+# Should show:
+# AWS_ACCESS_KEY_ID=minioadmin
+# AWS_SECRET_ACCESS_KEY=minioadmin
+
+# Restart dev server to reload env vars
+npm run dev
+```
+
+**Prevention:** The S3 client now validates credentials on startup and shows this helpful error if missing.
+
 ### Assets still showing local paths (`../assets/...`)
 
 **Symptoms:** HTML contains `<img src="../assets/image.png" />` instead of S3 URL
 
 **Causes:**
 1. MinIO not running
-2. Wrong environment variables
+2. Wrong environment variables (.env.local missing)
 3. Asset file doesn't exist in repo
 4. Upload failed (check logs for errors)
 
 **Fix:**
 ```bash
+# Ensure .env.local exists
+ls -la .env.local || cp .env.example .env.local
+
 # Restart MinIO
 npm run minio restart
 

@@ -49,6 +49,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Console warns `[Asset Upload] ✗ Failed to upload path: error` for failures
   - Helps diagnose why assets remain local instead of S3 URLs
   - Location: `modules/logseq/parse.ts:220-227`
+- **S3 Credential Validation**: Added early validation for AWS credentials
+  - Validates `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` on S3 client creation
+  - Throws helpful error if missing: "Missing S3 credentials in environment: ..."
+  - Prevents cryptic MinIO authorization errors
+  - Suggests fix: `cp .env.example .env.local`
+  - Location: `modules/storage/s3.ts:7-23`
 - **S3 URL Generation Fix**: Fixed MinIO URL to include bucket name
   - Local mode: `http://localhost:9000/draehi-assets/key` (path-style)
   - Production mode: `https://draehi-assets.s3.region.amazonaws.com/key` (subdomain-style)

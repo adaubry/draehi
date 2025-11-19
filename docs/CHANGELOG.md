@@ -10,6 +10,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added - 2025-11-19
 
+- **Sidebar Documentation**: Created SIDEBAR.md
+  - Complete component architecture documentation
+  - Three-section layout explanation
+  - TOC async fetching flow with code examples
+  - API endpoint documentation
+  - Troubleshooting guide and edge cases
+  - Performance optimizations
 - **Navigation System - Complete 8-Phase Implementation**:
   - Phase 1: NavigationProvider with sessionStorage history + useNavigationHistory hook
   - Phase 2: Breadcrumbs revamp with n-2 tracking and proper link behavior
@@ -37,6 +44,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed - 2025-11-19
 
+- **Sidebar Sticky Behavior**: Improved sticky positioning
+  - Full viewport height calculation: calc(100vh-5rem)
+  - Added overflow-y-auto for scrollable content
+  - Better scroll experience on long TOC/page lists
+  - Maintains position during page scroll
 - **Documentation Update**: Aligned all status documentation
   - Updated README.md: Phase 4 complete status
   - Updated ROADMAP.md: Removed Phase 4.6-4.9 planning sections (issues resolved)

@@ -8,6 +8,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed - 2025-11-19 (Session 5)
+- **Removed unused namespace column**: Database simplification
+  - `nodes.namespace` column was always empty (all 0 values in DB) with no functional purpose
+  - `nodes.depth` column was derived from namespace hierarchy and no longer needed
+  - Simplified URL construction: changed from `namespace + slug` to single `pageName` field
+  - Updated query layer to use `pageName` directly instead of decomposing it
+  - Updated Sidebar and page components to use pageName for hierarchy building
+  - Created database migration: `0002_drop_namespace_depth.sql` to drop columns (safe - all values were empty)
+  - Benefits: Simpler code, fewer columns, cleaner data model
+  - **Migration**: Must run migration before deploying to production
+
 ### Fixed - 2025-11-19 (Session 4)
 - **Block Rendering Issue**: Fixed blocks not displaying on pages with content
   - Root cause: Block ingestion pipeline set `parentUuid = null` for ALL blocks during creation

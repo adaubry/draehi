@@ -141,8 +141,6 @@ export function pageWithBlocksToNodes(
     order: 0,
     pageName: page.pageName,
     slug: page.slug,
-    namespace: page.namespace,
-    depth: page.depth,
     title: page.title,
     html: null, // Pages don't have HTML, only blocks do
     metadata: page.metadata,
@@ -165,8 +163,6 @@ export function pageWithBlocksToNodes(
       order: block.order,
       pageName: page.pageName,
       slug: page.slug,
-      namespace: page.namespace,
-      depth: calculateBlockDepth(block, page.blocks),
       title: "", // Blocks don't have titles
       html: block.html,
       metadata: {

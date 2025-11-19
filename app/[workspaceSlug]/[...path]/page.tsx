@@ -4,12 +4,10 @@ import Link from "next/link";
 import { getWorkspaceBySlug } from "@/modules/workspace/queries";
 import {
   getNodeByPath,
-  getNodeBreadcrumbs,
   getAllBlocksForPage,
   getPageBacklinks,
   getBlockBacklinks,
 } from "@/modules/content/queries";
-import { Breadcrumbs } from "@/components/viewer/Breadcrumbs";
 import { BlockTree } from "@/components/viewer/BlockTree";
 
 export const dynamic = "force-dynamic";
@@ -46,9 +44,6 @@ async function NodePageContent({
       ? await getAllBlocksForPage(workspace.id, node.pageName)
       : [];
 
-  // Get breadcrumbs
-  const breadcrumbs = await getNodeBreadcrumbs(node, workspaceSlug);
-
   // Get backlinks (only for page nodes)
   const citedBy = node.parentUuid === null
     ? await getPageBacklinks(workspace.id, node.pageName)
@@ -62,9 +57,6 @@ async function NodePageContent({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Breadcrumbs */}
-      {breadcrumbs.length > 0 && <Breadcrumbs items={breadcrumbs} />}
-
       {/* Page Title */}
       <div className="space-y-2">
         <h1 className="text-4xl font-bold tracking-tight">{node.title}</h1>
@@ -104,10 +96,7 @@ async function NodePageContent({
               </h2>
               <div className="space-y-2">
                 {citedBy.map((page) => {
-                  const pageSegments = page.namespace
-                    ? [...page.namespace.split("/"), page.slug]
-                    : [page.slug];
-                  const href = `/${workspaceSlug}/${pageSegments.join("/")}`;
+                  const href = `/${workspaceSlug}/${page.pageName}`;
                   return (
                     <Link
                       key={page.uuid}
@@ -132,10 +121,7 @@ async function NodePageContent({
               </h2>
               <div className="space-y-2">
                 {related.map((page) => {
-                  const pageSegments = page.namespace
-                    ? [...page.namespace.split("/"), page.slug]
-                    : [page.slug];
-                  const href = `/${workspaceSlug}/${pageSegments.join("/")}`;
+                  const href = `/${workspaceSlug}/${page.pageName}`;
                   return (
                     <Link
                       key={page.uuid}

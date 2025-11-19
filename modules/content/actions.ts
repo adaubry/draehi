@@ -23,14 +23,13 @@ export async function upsertNode(
     metadata?: NewNode["metadata"];
   }
 ) {
-  const { slug, namespace, depth } = extractNamespaceAndSlug(pageName);
+  const { slug } = extractNamespaceAndSlug(pageName);
 
   // Check if exists
   const existing = await db.query.nodes.findFirst({
     where: and(
       eq(nodes.workspaceId, workspaceId),
-      eq(nodes.namespace, namespace),
-      eq(nodes.slug, slug)
+      eq(nodes.pageName, pageName)
     ),
   });
 
@@ -59,8 +58,6 @@ export async function upsertNode(
         workspaceId,
         pageName,
         slug,
-        namespace,
-        depth,
         ...data,
       })
       .returning();
@@ -201,7 +198,7 @@ export async function ingestLogseqGraph(
         continue;
       }
 
-      const { namespace, slug, depth } = extractNamespaceAndSlug(mdPage.pageName);
+      const { slug } = extractNamespaceAndSlug(mdPage.pageName);
 
       // Create page node (parentUuid=null, html=null)
       // Use stable UUID based on workspaceId + pageName for idempotency
@@ -216,8 +213,6 @@ export async function ingestLogseqGraph(
         order: 0,
         pageName: mdPage.pageName,
         slug,
-        namespace,
-        depth,
         title: htmlPage.title,
         html: null, // Pages don't have HTML
         metadata: {
@@ -262,8 +257,6 @@ export async function ingestLogseqGraph(
           order: block.order,
           pageName: mdPage.pageName,
           slug,
-          namespace,
-          depth: 0, // Will be recalculated after parentUuid is set
           title: "", // Blocks don't have titles
           html: blockHTML.trim(),
           metadata: {
@@ -291,47 +284,6 @@ export async function ingestLogseqGraph(
       buildLog.push(`  Inserted batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(allNodes.length / BATCH_SIZE)}`);
     }
 
-    buildLog.push("Calculating block depths from parent relationships...");
-
-    // Build map for parent-child relationships (parentUuid -> blockUuid)
-    const parentUuidMap = new Map<string, string>(); // blockUuid -> parentUuid (for depth calc)
-    const pageUuidMap = new Map<string, string>(); // pageName -> page uuid
-    const blockByUuidMap = new Map<string, Node>(); // uuid -> node
-
-    for (const node of insertedNodes) {
-      blockByUuidMap.set(node.uuid, node);
-      if (node.parentUuid === null) {
-        // Page node
-        pageUuidMap.set(node.pageName, node.uuid);
-      } else {
-        // Block node - record parent relationship
-        parentUuidMap.set(node.uuid, node.parentUuid);
-      }
-    }
-
-    buildLog.push("Recalculating block depths based on parent chain...");
-
-    // Build set of page UUIDs
-    const pageUuids = new Set<string>();
-    for (const node of insertedNodes) {
-      if (node.parentUuid === null) {
-        pageUuids.add(node.uuid);
-      }
-    }
-
-    // Calculate depths in-memory (no DB queries)
-    const depthUpdatePromises: Promise<any>[] = [];
-    for (const node of insertedNodes) {
-      if (node.parentUuid !== null) {
-        // Block node - calculate depth
-        const depth = calculateBlockDepthInMemory(node.uuid, parentUuidMap, pageUuids);
-        depthUpdatePromises.push(
-          db.update(nodes).set({ depth }).where(eq(nodes.uuid, node.uuid))
-        );
-      }
-    }
-
-    await Promise.all(depthUpdatePromises);
 
     buildLog.push("Ingestion complete!");
 
@@ -352,24 +304,4 @@ export async function ingestLogseqGraph(
       buildLog,
     };
   }
-}
-
-/**
- * Calculate block depth in-memory without DB queries
- * Recursively traverses parent chain until reaching a page node
- */
-function calculateBlockDepthInMemory(
-  blockUuid: string,
-  parentUuidMap: Map<string, string>,
-  pageUuids: Set<string>
-): number {
-  const parentUuid = parentUuidMap.get(blockUuid);
-
-  if (!parentUuid) return 0;
-
-  // If parent is a page, depth is 0
-  if (pageUuids.has(parentUuid)) return 0;
-
-  // Parent is a block, add 1 to parent's depth
-  return 1 + calculateBlockDepthInMemory(parentUuid, parentUuidMap, pageUuids);
 }

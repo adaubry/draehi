@@ -18,28 +18,25 @@ function buildTree(nodes: Node[]): TreeNode[] {
   const nodeMap = new Map<string, TreeNode>();
   const rootNodes: TreeNode[] = [];
 
-  // Create tree nodes
+  // Create tree nodes by pageName
   nodes.forEach((node) => {
-    const key = `${node.namespace}/${node.slug}`;
-    nodeMap.set(key, { node, children: [] });
+    nodeMap.set(node.pageName, { node, children: [] });
   });
 
-  // Build hierarchy
+  // Build hierarchy based on pageName path (e.g., "guides/setup/intro")
   nodes.forEach((node) => {
-    const key = `${node.namespace}/${node.slug}`;
-    const treeNode = nodeMap.get(key);
+    const treeNode = nodeMap.get(node.pageName);
     if (!treeNode) return;
 
-    if (node.namespace === "") {
-      // Root level
+    // Get parent pageName by removing last segment
+    const segments = node.pageName.split("/");
+    if (segments.length === 1) {
+      // Root level (no slashes)
       rootNodes.push(treeNode);
     } else {
-      // Find parent
-      const parentSegments = node.namespace.split("/");
-      const parentSlug = parentSegments[parentSegments.length - 1];
-      const parentNamespace = parentSegments.slice(0, -1).join("/");
-      const parentKey = `${parentNamespace}/${parentSlug}`;
-      const parent = nodeMap.get(parentKey);
+      // Has parent path
+      const parentPageName = segments.slice(0, -1).join("/");
+      const parent = nodeMap.get(parentPageName);
       if (parent) {
         parent.children.push(treeNode);
       } else {
@@ -64,10 +61,7 @@ function TreeItem({
   const pathname = usePathname();
   const { node, children } = treeNode;
 
-  const pathSegments = node.namespace
-    ? [...node.namespace.split("/"), node.slug]
-    : [node.slug];
-  const href = `/${workspaceSlug}/${pathSegments.join("/")}`;
+  const href = `/${workspaceSlug}/${node.pageName}`;
   const isActive = pathname === href;
 
   return (

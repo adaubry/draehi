@@ -9,6 +9,7 @@ import {
   getBlockBacklinks,
 } from "@/modules/content/queries";
 import { BlockTree } from "@/components/viewer/BlockTree";
+import { Breadcrumbs } from "@/components/viewer/Breadcrumbs";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,9 @@ async function NodePageContent({
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Breadcrumbs */}
+      <Breadcrumbs currentTitle={node.title} workspaceSlug={workspaceSlug} />
+
       {/* Page Title */}
       <div className="space-y-2">
         <h1 className="text-4xl font-bold tracking-tight">{node.title}</h1>

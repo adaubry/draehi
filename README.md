@@ -6,7 +6,9 @@ A "Vercel for Logseq graphs" - Transform your personal knowledge base into a hig
 
 ## Status
 
-🚧 **In Development** - Phase 3: Logseq Processing (In Progress)
+✅ **Phase 4 Complete** - Public Viewer with Logseq Features
+
+Next: Phase 5 - Deployment Pipeline & Polish
 
 See [ROADMAP.md](docs/ROADMAP.md) for development plan.
 
@@ -19,10 +21,16 @@ See [ROADMAP.md](docs/ROADMAP.md) for development plan.
 - ✅ **GitHub webhooks** - Auto-deploy on push
 - ✅ **Manual deployments** - Trigger sync manually
 - ✅ **Deployment history** - Track all deployments
-- ✅ **Git-based workflow** - Push to deploy foundation
-- 🚧 Logseq graph processing (Phase 3)
-- 🚧 Pre-rendered content using Rust export tool
-- 🚧 Public workspace viewer
+- ✅ **Git-based workflow** - Push to deploy
+- ✅ **Logseq processing** - Rust-based HTML export
+- ✅ **Pre-rendered content** - Stored in PostgreSQL
+- ✅ **Public workspace viewer** - Namespace-based routing
+- ✅ **Block hierarchy** - Collapsible nested content
+- ✅ **Page/Block references** - `[[page]]` and `((uuid))` support
+- ✅ **Task markers** - TODO/DOING/DONE with checkboxes
+- ✅ **Priority badges** - [#A]/[#B]/[#C] color-coded
+- ✅ **Backlinks** - Cited by and Related sections
+- ✅ **Breadcrumbs** - Navigation hierarchy
 
 ## Quick Start
 

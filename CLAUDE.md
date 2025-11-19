@@ -19,7 +19,8 @@ A "Vercel for Logseq graphs" that transforms your personal knowledge base into a
 - Git repo as source of truth (expected: Logseq graph)
 - Rust-based content processing (export-logseq-notes)
 - Pre-rendered HTML stored in PostgreSQL
-- Namespace-based hierarchy (no recursive queries)
+- Block hierarchy with parent_id for nested content
+- Namespace-based hierarchy for O(1) page lookups
 
 ## Key Commands
 
@@ -84,21 +85,26 @@ git push origin main
 - Never push without updating CHANGELOG.md
 - **ALWAYS update all affected markdown documentation after making changes**
 
-### Testing (Implemented - Phase 4)
+### Testing (Phase 4 Complete)
 
 ```bash
-# End-to-end test suite
+# Automated E2E test suite (backend)
 ./scripts/test-e2e.sh
 
-# Content validation (after sync)
-node scripts/validate-content.js
+# Frontend display validation
+./scripts/test-frontend-e2e.sh
 
-# Manual testing
-# 1. Start dev server: npm run dev
-# 2. Connect test graph: file:///path/to/test-data/logseq-docs-graph
-# 3. Compare with: https://docs.logseq.com
+# Pre-flight checks (before changes)
+./scripts/test-phase4.sh
+./scripts/verify-implementation.sh
 
-# See TEST_SUMMARY.md and docs/TESTING.md for full guide
+# Content validation
+npx tsx scripts/validate-content.ts
+
+# Structure comparison with Logseq docs
+npx tsx scripts/compare-with-logseq.ts
+
+# See docs/TEST_SUMMARY.md and docs/TESTING.md for full guide
 ```
 
 ## Architecture Overview
@@ -172,12 +178,12 @@ draehi/
 │       ├── client.ts          # S3 client abstraction
 │       └── upload.ts          # Asset uploads
 ├── components/                # React components
-│   ├── ui/                    # shadcn/ui components
-│   ├── viewer/                # Workspace viewer components
-│   │   ├── BlockTree.tsx      # Logseq block tree
-│   │   ├── Breadcrumbs.tsx    # Navigation breadcrumbs
-│   │   └── Sidebar.tsx        # Page navigation
-│   └── dashboard/             # Dashboard components
+│   ├── ui/                    # shadcn/ui components (TODO: not yet implemented)
+│   └── viewer/                # Workspace viewer components (TODO: migrate to shadcn/ui)
+│       ├── BlockTree.tsx      # Logseq block tree with collapse
+│       ├── Breadcrumbs.tsx    # Navigation breadcrumbs
+│       ├── NodeContent.tsx    # Pre-rendered HTML display
+│       └── Sidebar.tsx        # Page navigation sidebar
 ├── lib/                       # Shared utilities
 │   ├── db.ts                  # Database client
 │   ├── utils.ts               # Shared utilities
@@ -188,8 +194,15 @@ draehi/
 │   ├── install-rust-tools.sh  # Install export-logseq-notes
 │   ├── setup-database.sh      # DB schema setup
 │   ├── setup-minio.sh         # Local S3 setup
-│   ├── test-e2e.sh            # End-to-end tests
-│   └── validate-content.js    # Content validation
+│   ├── test-e2e.sh            # Backend E2E tests
+│   ├── test-frontend-e2e.sh   # Frontend E2E tests
+│   ├── test-phase4.sh         # Pre-flight validation
+│   ├── verify-implementation.sh # Source code verification
+│   ├── validate-content.ts    # Content validation
+│   ├── compare-with-logseq.ts # Structure comparison
+│   ├── cleanup-test-user.ts   # Test cleanup utility
+│   ├── setup-test-workspace.ts # Test workspace setup
+│   └── trigger-sync.ts        # Manual sync trigger
 ├── test-data/                 # Test fixtures
 │   ├── logseq-docs-graph/     # Official Logseq docs (238 pages)
 │   └── README.md              # Test data documentation
@@ -204,9 +217,10 @@ draehi/
 │   ├── CRUD_GUIDELINES.md     # Data operations
 │   └── PERFORMANCE_GUIDELINES.md # Performance patterns
 ├── CLAUDE.md                  # AI agent instructions (this file)
-├── README.md                  # User-facing docs
-└── TEST_SUMMARY.md            # Quick test reference
+└── README.md                  # User-facing docs
 ```
+
+**Note:** All test documentation is in /docs (TEST_SUMMARY.md, TESTING.md). Old diagnostic scripts removed for maintainability.
 
 ### Database Schema
 

@@ -22,9 +22,9 @@ function extractHeadings(blocks: Node[], maxDepth: number = 3): TocHeading[] {
   for (const block of blocks) {
     if (!block.html) continue;
 
-    // Extract h1, h2, h3 from HTML with data-uuid
+    // Extract h1, h2, h3 from HTML with uuid
     const headingMatches = block.html.matchAll(
-      /<h([1-3])[^>]*data-uuid="([^"]+)"[^>]*>(.*?)<\/h\1>/g
+      /<h([1-3])[^>]*uuid="([^"]+)"[^>]*>(.*?)<\/h\1>/g
     );
 
     for (const match of headingMatches) {
@@ -90,7 +90,7 @@ function TocItem({
         }`}
         onClick={(e) => {
           e.preventDefault();
-          const el = document.querySelector(`[data-uuid="${heading.uuid}"]`);
+          const el = document.querySelector(`[uuid="${heading.uuid}"]`);
           el?.scrollIntoView({ behavior: "smooth", block: "start" });
         }}
       >

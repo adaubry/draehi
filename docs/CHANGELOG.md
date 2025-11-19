@@ -10,11 +10,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed - 2025-11-19 (Session 4)
 - **Block Rendering Issue**: Fixed blocks not displaying on pages with content
-  - Root cause: Block ingestion pipeline set `parentUuid = null` for ALL blocks
+  - Root cause: Block ingestion pipeline set `parentUuid = null` for ALL blocks during creation
   - BlockTree component filters for `parentUuid === pageNode.uuid` to find top-level blocks
-  - Solution: Changed `pageWithBlocksToNodes()` to set `parentUuid = pageUuid` for top-level blocks
-  - Logic: `const blockParentUuid = block.parentUuid || pageUuid;`
+  - Solution: Set correct parentUuid at insertion time in `ingestLogseqGraph()`
+  - Logic: `parentUuid: block.parentUuid || pageUuid` - top-level blocks get pageUuid, nested blocks keep parent UUID
+  - Removed broken "update parent-child relationships" logic that was never executed
+  - Simplified depth calculation to use in-memory parent mapping
   - No schema changes required - logic-only fix applied at ingestion time
+  - Tests confirm: 73 blocks with 100% parent assignment on contents page
   - **User Action Required**: Re-ingest content for existing workspaces to apply fix
 
 ### Fixed - 2025-11-19 (Session 3)

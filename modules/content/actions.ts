@@ -258,7 +258,7 @@ export async function ingestLogseqGraph(
         const blockNode: NewNode = {
           workspaceId,
           uuid: block.uuid,
-          parentUuid: null, // Will be set after insertion based on parent relationships
+          parentUuid: block.parentUuid || pageUuid, // Top-level blocks point to page; nested blocks point to parent block
           order: block.order,
           pageName: mdPage.pageName,
           slug,
@@ -291,96 +291,23 @@ export async function ingestLogseqGraph(
       buildLog.push(`  Inserted batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(allNodes.length / BATCH_SIZE)}`);
     }
 
-    buildLog.push("Updating parent-child relationships for blocks...");
+    buildLog.push("Calculating block depths from parent relationships...");
 
-    // Build maps for lookups
-    // 1. uuid -> node (for all nodes)
-    const nodeMap = new Map<string, Node>();
-    // 2. pageName -> page uuid
-    const pageUuidMap = new Map<string, string>();
-    // 3. pageName -> array of block uuids in insertion order
-    const pageBlocksMap = new Map<string, string[]>();
+    // Build map for parent-child relationships (parentUuid -> blockUuid)
+    const parentUuidMap = new Map<string, string>(); // blockUuid -> parentUuid (for depth calc)
+    const pageUuidMap = new Map<string, string>(); // pageName -> page uuid
+    const blockByUuidMap = new Map<string, Node>(); // uuid -> node
 
     for (const node of insertedNodes) {
-      nodeMap.set(node.uuid, node);
+      blockByUuidMap.set(node.uuid, node);
       if (node.parentUuid === null) {
         // Page node
         pageUuidMap.set(node.pageName, node.uuid);
-        pageBlocksMap.set(node.pageName, []);
+      } else {
+        // Block node - record parent relationship
+        parentUuidMap.set(node.uuid, node.parentUuid);
       }
     }
-
-    // Populate pageBlocksMap with blocks in order
-    for (const node of insertedNodes) {
-      if (node.parentUuid !== null || nodeMap.get(node.uuid)?.parentUuid === null) {
-        // Skip if this is a page (we only want blocks)
-        continue;
-      }
-      const blockArray = pageBlocksMap.get(node.pageName);
-      if (blockArray && node.parentUuid === null) {
-        // Block that needs parent assignment
-        blockArray.push(node.uuid);
-      }
-    }
-
-    // Update parentUuid for each block based on its parent UUID or parent position
-    const updatePromises: Promise<any>[] = [];
-    const parentUuidMap = new Map<string, string>(); // blockUuid -> parentUuid (for in-memory depth calc)
-
-    for (const mdPage of markdownPages) {
-      const pageUuid = pageUuidMap.get(mdPage.pageName);
-      if (!pageUuid) continue;
-
-      const flatBlocks = flattenBlocks(mdPage.blocks);
-      const pageBlocks = pageBlocksMap.get(mdPage.pageName) || [];
-
-      for (let i = 0; i < flatBlocks.length; i++) {
-        const block = flatBlocks[i];
-        const blockUuid = block.uuid;
-
-        if (!blockUuid) continue;
-
-        let parentUuid: string;
-
-        if (block.parentUuid) {
-          // Has parent block with UUID
-          const parentNode = nodeMap.get(block.parentUuid);
-          if (parentNode) {
-            parentUuid = block.parentUuid;
-          } else {
-            // Parent UUID not found, fallback to page
-            parentUuid = pageUuid;
-          }
-        } else if (block.indent > 0) {
-          // Has parent but no UUID - find parent by indent level
-          // Look backwards to find most recent block with lower indent
-          let parentBlockUuid: string | undefined;
-          for (let j = i - 1; j >= 0; j--) {
-            const potentialParent = flatBlocks[j];
-            if (potentialParent.indent < block.indent) {
-              // Found parent - get its UUID
-              parentBlockUuid = potentialParent.uuid;
-              break;
-            }
-          }
-          parentUuid = parentBlockUuid || pageUuid;
-        } else {
-          // Top-level block (indent === 0), parent is page
-          parentUuid = pageUuid;
-        }
-
-        parentUuidMap.set(blockUuid, parentUuid); // Track in memory
-
-        updatePromises.push(
-          db
-            .update(nodes)
-            .set({ parentUuid })
-            .where(eq(nodes.uuid, blockUuid))
-        );
-      }
-    }
-
-    await Promise.all(updatePromises);
 
     buildLog.push("Recalculating block depths based on parent chain...");
 

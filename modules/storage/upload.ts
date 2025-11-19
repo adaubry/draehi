@@ -17,17 +17,21 @@ export async function uploadAsset(
   assetPath: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
-    const fullPath = path.join(repoPath, assetPath);
+    // Normalize asset path: ../assets/image.png -> assets/image.png
+    // Logseq markdown files in pages/ reference ../assets/, but we resolve from repo root
+    let normalizedPath = assetPath.replace(/^\.\.\//, "").replace(/^\.\//, "");
+
+    const fullPath = path.join(repoPath, normalizedPath);
 
     // Read file
     const buffer = await fs.readFile(fullPath);
 
     // Determine content type
-    const ext = path.extname(assetPath).toLowerCase();
+    const ext = path.extname(normalizedPath).toLowerCase();
     const contentType = getContentType(ext);
 
-    // Generate S3 key with workspace namespace
-    const key = `workspaces/${workspaceId}/assets/${assetPath}`;
+    // Generate S3 key with workspace namespace (use normalized path)
+    const key = `workspaces/${workspaceId}/${normalizedPath}`;
 
     // Upload to S3
     return await uploadFile(key, buffer, contentType);

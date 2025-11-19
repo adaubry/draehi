@@ -48,7 +48,7 @@ async function WorkspaceContent({
             {/* Sidebar Navigation (Desktop) */}
             <aside className="hidden lg:block w-64 shrink-0 max-h-[calc(100vh-120px)]">
               <div className="sticky top-20 h-full">
-                <Sidebar nodes={nodes} workspaceSlug={workspaceSlug} />
+                <Sidebar nodes={nodes} workspaceSlug={workspaceSlug} currentPageBlocks={[]} currentPageUuid="" />
               </div>
             </aside>
 
@@ -58,7 +58,7 @@ async function WorkspaceContent({
         </div>
 
         {/* Mobile Drawer */}
-        <MobileSidebar nodes={nodes} workspaceSlug={workspaceSlug} />
+        <MobileSidebar nodes={nodes} workspaceSlug={workspaceSlug} currentPageBlocks={[]} currentPageUuid="" />
       </div>
     </NavigationProvider>
   );

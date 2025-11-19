@@ -87,7 +87,7 @@ function TreeItem({
         <div className="mt-1">
           {children.map((child) => (
             <TreeItem
-              key={child.node.id}
+              key={child.node.uuid}
               treeNode={child}
               workspaceSlug={workspaceSlug}
               depth={depth + 1}
@@ -101,8 +101,9 @@ function TreeItem({
 
 export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
   const tree = buildTree(nodes);
-  const journalNodes = nodes.filter((n) => n.isJournal);
-  const regularNodes = nodes.filter((n) => !n.isJournal);
+  // Journal detection removed - all nodes are regular pages now
+  const journalNodes: Node[] = [];
+  const regularNodes = nodes;
 
   return (
     <nav className="space-y-6">
@@ -115,7 +116,7 @@ export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
           <div className="space-y-0.5">
             {tree.map((treeNode) => (
               <TreeItem
-                key={treeNode.node.id}
+                key={treeNode.node.uuid}
                 treeNode={treeNode}
                 workspaceSlug={workspaceSlug}
               />
@@ -135,7 +136,7 @@ export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
               const href = `/${workspaceSlug}/${node.pageName}`;
               return (
                 <Link
-                  key={node.id}
+                  key={node.uuid}
                   href={href}
                   className="block px-3 py-1.5 rounded-md text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors"
                 >

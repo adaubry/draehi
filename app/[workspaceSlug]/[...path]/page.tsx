@@ -40,7 +40,7 @@ async function NodePageContent({
 
   // Get all blocks for this page (if it's a page node)
   const blocks =
-    node.nodeType === "page"
+    node.parentUuid === null
       ? await getAllBlocksForPage(workspace.id, node.pageName)
       : [];
 
@@ -48,11 +48,11 @@ async function NodePageContent({
   const breadcrumbs = await getNodeBreadcrumbs(node, workspaceSlug);
 
   // Get backlinks (only for page nodes)
-  const citedBy = node.nodeType === "page"
+  const citedBy = node.parentUuid === null
     ? await getPageBacklinks(workspace.id, node.pageName)
     : [];
 
-  const related = node.nodeType === "page"
+  const related = node.parentUuid === null
     ? await getBlockBacklinks(workspace.id, node.pageName)
     : [];
 
@@ -108,7 +108,7 @@ async function NodePageContent({
                   const href = `/${workspaceSlug}/${pageSegments.join("/")}`;
                   return (
                     <Link
-                      key={page.id}
+                      key={page.uuid}
                       href={href}
                       className="block px-4 py-2 rounded-md hover:bg-gray-50 transition-colors"
                     >
@@ -136,7 +136,7 @@ async function NodePageContent({
                   const href = `/${workspaceSlug}/${pageSegments.join("/")}`;
                   return (
                     <Link
-                      key={page.id}
+                      key={page.uuid}
                       href={href}
                       className="block px-4 py-2 rounded-md hover:bg-gray-50 transition-colors"
                     >

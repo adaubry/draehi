@@ -2,7 +2,7 @@
 
 **Vision:** Deploy your Logseq graph to the web in 60 seconds.
 
-**Status:** Genesis → MVP in progress
+**Status:** Phase 4 Complete → Phase 4 bis planning
 
 ---
 
@@ -381,3 +381,33 @@
 
 **Last Updated:** 2025-11-17
 **Current Phase:** Phase 4.6-4.9 (Repair) - Fixing Critical Issues Before Phase 5
+
+---
+
+## Phase 4 bis: Rich Content Support 📋 PLANNED
+
+**Goal:** Add asset handling, flashcards, and embedded media
+
+### 4b.1 Asset Management
+- [ ] S3/MinIO integration for images, PDFs, videos
+- [ ] Asset upload during Git sync
+- [ ] Optimize images (WebP conversion, responsive sizes)
+- [ ] CDN integration for fast delivery
+- [ ] Asset versioning and cache busting
+
+### 4b.2 Flashcard Support
+- [ ] Parse Logseq flashcard syntax (cloze, basic, reversed)
+- [ ] Flashcard review UI with spaced repetition
+- [ ] Progress tracking per workspace
+- [ ] Mobile-friendly swipe interface
+- [ ] Export to Anki format
+
+### 4b.3 Embedded Media
+- [ ] YouTube embed support (parse URLs → iframe)
+- [ ] Twitter/X embed support
+- [ ] Vimeo embed support
+- [ ] Audio file playback
+- [ ] PDF viewer integration
+
+**Duration:** 2-3 weeks
+

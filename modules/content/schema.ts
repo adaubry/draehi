@@ -13,24 +13,22 @@ import { workspaces } from "../workspace/schema";
 export const nodes = pgTable(
   "nodes",
   {
-    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    uuid: text("uuid").primaryKey(), // UUID as primary key (no auto-increment)
     workspaceId: integer("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
 
     // Hierarchy (everything is a node: pages and blocks)
-    parentId: integer("parent_id").references((): any => nodes.id, {
+    parentUuid: text("parent_uuid").references((): any => nodes.uuid, {
       onDelete: "cascade",
-    }),
+    }), // NULL = page, NOT NULL = block
     order: integer("order").notNull().default(0), // Order within siblings
-    nodeType: text("node_type").notNull().default("page"), // 'page' | 'block'
 
     // Logseq identification
     pageName: text("page_name").notNull(), // e.g., "guides/setup/intro"
     slug: text("slug").notNull(), // e.g., "intro"
     namespace: text("namespace").notNull().default(""), // e.g., "guides/setup"
     depth: integer("depth").notNull().default(0), // Derived from namespace
-    blockUuid: text("block_uuid"), // Logseq block UUID (for blocks only)
 
     // Content (HTML only - Git is source of truth for markdown)
     title: text("title").notNull(),
@@ -41,20 +39,13 @@ export const nodes = pgTable(
       frontmatter?: Record<string, unknown>;
     }>(),
 
-    // Journal pages
-    isJournal: boolean("is_journal").notNull().default(false),
-    journalDate: date("journal_date"),
-
     // Timestamps
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
     // Hierarchy queries - parent + order for sibling ordering
-    parentOrderIdx: index("parent_order_idx").on(table.parentId, table.order),
-
-    // Block UUID lookups
-    blockUuidIdx: index("block_uuid_idx").on(table.blockUuid),
+    parentOrderIdx: index("parent_order_idx").on(table.parentUuid, table.order),
 
     // O(1) path lookups
     workspaceNamespaceSlugIdx: index("workspace_namespace_slug_idx").on(
@@ -70,14 +61,10 @@ export const nodes = pgTable(
     ),
 
     // Block queries - get all blocks for a page (getAllBlocksForPage)
-    workspacePageNameNodeTypeIdx: index("workspace_pagename_nodetype_idx").on(
+    workspacePageNameIdx: index("workspace_pagename_idx").on(
       table.workspaceId,
-      table.pageName,
-      table.nodeType
+      table.pageName
     ),
-
-    // Journal queries
-    journalDateIdx: index("journal_date_idx").on(table.journalDate),
   })
 );
 

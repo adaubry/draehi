@@ -10,6 +10,7 @@ import { parseLogseqDirectory, flattenBlocks } from "../logseq/markdown-parser";
 import { processLogseqReferences } from "../logseq/process-references";
 import { marked } from "marked";
 import path from "path";
+import { randomUUID } from "crypto";
 
 // Internal only - called during git sync/deployment
 export async function upsertNode(
@@ -20,8 +21,6 @@ export async function upsertNode(
     html?: string;
     content?: string;
     metadata?: NewNode["metadata"];
-    isJournal?: boolean;
-    journalDate?: string; // Date string format
   }
 ) {
   const { slug, namespace, depth } = extractNamespaceAndSlug(pageName);
@@ -43,15 +42,20 @@ export async function upsertNode(
         ...data,
         updatedAt: new Date(),
       })
-      .where(eq(nodes.id, existing.id))
+      .where(eq(nodes.uuid, existing.uuid))
       .returning();
 
     return { node };
   } else {
-    // Insert
+    // Insert with stable UUID based on workspaceId + pageName
+    const pageUuidSeed = `${workspaceId}::${pageName}`;
+    const pageUuidHash = require('crypto').createHash('sha256').update(pageUuidSeed).digest('hex');
+    const pageUuid = `${pageUuidHash.slice(0, 8)}-${pageUuidHash.slice(8, 12)}-${pageUuidHash.slice(12, 16)}-${pageUuidHash.slice(16, 20)}-${pageUuidHash.slice(20, 32)}`;
+
     const [node] = await db
       .insert(nodes)
       .values({
+        uuid: pageUuid,
         workspaceId,
         pageName,
         slug,
@@ -65,8 +69,8 @@ export async function upsertNode(
   }
 }
 
-export async function deleteNode(id: number) {
-  await db.delete(nodes).where(eq(nodes.id, id));
+export async function deleteNode(uuid: string) {
+  await db.delete(nodes).where(eq(nodes.uuid, uuid));
   return { success: true };
 }
 
@@ -199,17 +203,21 @@ export async function ingestLogseqGraph(
 
       const { namespace, slug, depth } = extractNamespaceAndSlug(mdPage.pageName);
 
-      // Create page node (nodeType='page', html=null)
+      // Create page node (parentUuid=null, html=null)
+      // Use stable UUID based on workspaceId + pageName for idempotency
+      const pageUuidSeed = `${workspaceId}::${mdPage.pageName}`;
+      const pageUuidHash = require('crypto').createHash('sha256').update(pageUuidSeed).digest('hex');
+      const pageUuid = `${pageUuidHash.slice(0, 8)}-${pageUuidHash.slice(8, 12)}-${pageUuidHash.slice(12, 16)}-${pageUuidHash.slice(16, 20)}-${pageUuidHash.slice(20, 32)}`;
+
       const pageNode: NewNode = {
+        uuid: pageUuid,
         workspaceId,
-        parentId: null,
+        parentUuid: null,
         order: 0,
-        nodeType: "page",
         pageName: mdPage.pageName,
         slug,
         namespace,
         depth,
-        blockUuid: null,
         title: htmlPage.title,
         html: null, // Pages don't have HTML
         metadata: {
@@ -219,8 +227,6 @@ export async function ingestLogseqGraph(
             ...htmlPage.metadata?.properties,
           },
         },
-        isJournal: htmlPage.isJournal,
-        journalDate: htmlPage.journalDate,
       };
 
       allNodes.push(pageNode);
@@ -251,21 +257,18 @@ export async function ingestLogseqGraph(
 
         const blockNode: NewNode = {
           workspaceId,
-          parentId: null, // Will be set after insertion based on parent relationships
+          uuid: block.uuid,
+          parentUuid: null, // Will be set after insertion based on parent relationships
           order: block.order,
-          nodeType: "block",
           pageName: mdPage.pageName,
           slug,
           namespace,
-          depth: 0, // Will be recalculated after parentId is set
-          blockUuid: block.uuid,
+          depth: 0, // Will be recalculated after parentUuid is set
           title: "", // Blocks don't have titles
           html: blockHTML.trim(),
           metadata: {
             properties: block.properties,
           },
-          isJournal: false,
-          journalDate: undefined,
         };
 
         allNodes.push(blockNode);
@@ -291,100 +294,88 @@ export async function ingestLogseqGraph(
     buildLog.push("Updating parent-child relationships for blocks...");
 
     // Build maps for lookups
-    // 1. blockUuid -> nodeId (for blocks WITH UUIDs)
-    const blockMap = new Map<string, number>();
-    // 2. pageName -> pageId
-    const pageNodeMap = new Map<string, number>();
-    // 3. pageName -> array of block nodeIds in insertion order (for blocks WITHOUT UUIDs)
-    const pageBlocksMap = new Map<string, number[]>();
+    // 1. uuid -> node (for all nodes)
+    const nodeMap = new Map<string, Node>();
+    // 2. pageName -> page uuid
+    const pageUuidMap = new Map<string, string>();
+    // 3. pageName -> array of block uuids in insertion order
+    const pageBlocksMap = new Map<string, string[]>();
 
     for (const node of insertedNodes) {
-      if (node.blockUuid) {
-        blockMap.set(node.blockUuid, node.id);
-      }
-      if (node.nodeType === "page") {
-        pageNodeMap.set(node.pageName, node.id);
+      nodeMap.set(node.uuid, node);
+      if (node.parentUuid === null) {
+        // Page node
+        pageUuidMap.set(node.pageName, node.uuid);
         pageBlocksMap.set(node.pageName, []);
       }
     }
 
     // Populate pageBlocksMap with blocks in order
-    let nodeIndex = 0;
     for (const node of insertedNodes) {
-      if (node.nodeType === "block") {
-        const blockArray = pageBlocksMap.get(node.pageName);
-        if (blockArray) {
-          blockArray.push(node.id);
-        }
+      if (node.parentUuid !== null || nodeMap.get(node.uuid)?.parentUuid === null) {
+        // Skip if this is a page (we only want blocks)
+        continue;
       }
-      nodeIndex++;
+      const blockArray = pageBlocksMap.get(node.pageName);
+      if (blockArray && node.parentUuid === null) {
+        // Block that needs parent assignment
+        blockArray.push(node.uuid);
+      }
     }
 
-    // Update parentId for each block based on its parent UUID or parent position
+    // Update parentUuid for each block based on its parent UUID or parent position
     const updatePromises: Promise<any>[] = [];
-    const parentIdMap = new Map<number, number>(); // blockId -> parentId (for in-memory depth calc)
+    const parentUuidMap = new Map<string, string>(); // blockUuid -> parentUuid (for in-memory depth calc)
 
     for (const mdPage of markdownPages) {
-      const pageId = pageNodeMap.get(mdPage.pageName);
-      if (!pageId) continue;
+      const pageUuid = pageUuidMap.get(mdPage.pageName);
+      if (!pageUuid) continue;
 
       const flatBlocks = flattenBlocks(mdPage.blocks);
       const pageBlocks = pageBlocksMap.get(mdPage.pageName) || [];
 
       for (let i = 0; i < flatBlocks.length; i++) {
         const block = flatBlocks[i];
+        const blockUuid = block.uuid;
 
-        // Get block node ID - either by UUID or by position
-        let blockId: number | undefined;
-        if (block.uuid) {
-          blockId = blockMap.get(block.uuid);
-        } else {
-          // Use position in array (blocks are inserted in same order as flatBlocks)
-          blockId = pageBlocks[i];
-        }
+        if (!blockUuid) continue;
 
-        if (!blockId) continue;
-
-        let parentId: number;
+        let parentUuid: string;
 
         if (block.parentUuid) {
           // Has parent block with UUID
-          const parentBlockId = blockMap.get(block.parentUuid);
-          if (parentBlockId) {
-            parentId = parentBlockId;
+          const parentNode = nodeMap.get(block.parentUuid);
+          if (parentNode) {
+            parentUuid = block.parentUuid;
           } else {
             // Parent UUID not found, fallback to page
-            parentId = pageId;
+            parentUuid = pageUuid;
           }
         } else if (block.indent > 0) {
           // Has parent but no UUID - find parent by indent level
           // Look backwards to find most recent block with lower indent
-          let parentBlockId: number | undefined;
+          let parentBlockUuid: string | undefined;
           for (let j = i - 1; j >= 0; j--) {
             const potentialParent = flatBlocks[j];
             if (potentialParent.indent < block.indent) {
-              // Found parent - get its node ID
-              if (potentialParent.uuid) {
-                parentBlockId = blockMap.get(potentialParent.uuid);
-              } else {
-                parentBlockId = pageBlocks[j];
-              }
+              // Found parent - get its UUID
+              parentBlockUuid = potentialParent.uuid;
               break;
             }
           }
-          parentId = parentBlockId || pageId;
+          parentUuid = parentBlockUuid || pageUuid;
         } else {
           // Top-level block (indent === 0), parent is page
-          parentId = pageId;
+          parentUuid = pageUuid;
         }
 
-        parentIdMap.set(blockId, parentId); // Track in memory
+        parentUuidMap.set(blockUuid, parentUuid); // Track in memory
 
         updatePromises.push(
           db
             .update(nodes)
-            .set({ parentId })
-            .where(eq(nodes.id, blockId))
+            .set({ parentUuid })
+            .where(eq(nodes.uuid, blockUuid))
         );
       }
     }
@@ -393,21 +384,22 @@ export async function ingestLogseqGraph(
 
     buildLog.push("Recalculating block depths based on parent chain...");
 
-    // Build set of page IDs
-    const pageIds = new Set<number>();
+    // Build set of page UUIDs
+    const pageUuids = new Set<string>();
     for (const node of insertedNodes) {
-      if (node.nodeType === "page") {
-        pageIds.add(node.id);
+      if (node.parentUuid === null) {
+        pageUuids.add(node.uuid);
       }
     }
 
     // Calculate depths in-memory (no DB queries)
     const depthUpdatePromises: Promise<any>[] = [];
     for (const node of insertedNodes) {
-      if (node.nodeType === "block") {
-        const depth = calculateBlockDepthInMemory(node.id, parentIdMap, pageIds);
+      if (node.parentUuid !== null) {
+        // Block node - calculate depth
+        const depth = calculateBlockDepthInMemory(node.uuid, parentUuidMap, pageUuids);
         depthUpdatePromises.push(
-          db.update(nodes).set({ depth }).where(eq(nodes.id, node.id))
+          db.update(nodes).set({ depth }).where(eq(nodes.uuid, node.uuid))
         );
       }
     }
@@ -440,17 +432,17 @@ export async function ingestLogseqGraph(
  * Recursively traverses parent chain until reaching a page node
  */
 function calculateBlockDepthInMemory(
-  blockId: number,
-  parentIdMap: Map<number, number>,
-  pageIds: Set<number>
+  blockUuid: string,
+  parentUuidMap: Map<string, string>,
+  pageUuids: Set<string>
 ): number {
-  const parentId = parentIdMap.get(blockId);
+  const parentUuid = parentUuidMap.get(blockUuid);
 
-  if (!parentId) return 0;
+  if (!parentUuid) return 0;
 
   // If parent is a page, depth is 0
-  if (pageIds.has(parentId)) return 0;
+  if (pageUuids.has(parentUuid)) return 0;
 
   // Parent is a block, add 1 to parent's depth
-  return 1 + calculateBlockDepthInMemory(parentId, parentIdMap, pageIds);
+  return 1 + calculateBlockDepthInMemory(parentUuid, parentUuidMap, pageUuids);
 }

@@ -278,17 +278,12 @@ export async function ingestLogseqGraph(
         );
 
         // Process Logseq references ([[page]], ((uuid)), TODO markers)
-        blockHTML = blockHTML.replace(
-          /<(h[1-3])([^>]*)>/g,
-          `<$1$2 data-uuid="${block.uuid}">`
-        );
-        /*
         blockHTML = processLogseqReferences(
           blockHTML,
           workspaceSlug,
           mdPage.pageName
         );
-        */
+
         const blockNode: NewNode = {
           workspaceId,
           uuid: block.uuid,

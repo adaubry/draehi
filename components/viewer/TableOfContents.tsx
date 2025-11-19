@@ -25,23 +25,24 @@ type TOCItem = {
 
 /**
  * Extract headings from HTML content
- * Looks for h2, h3, h4 tags with data-uuid attributes
+ * Looks for h2, h3, h4 tags with uuid attributes
  */
 function extractHeadingsFromHTML(html: string): HeadingItem[] {
   const headings: HeadingItem[] = [];
   const parser = new DOMParser();
-
+  console.log("Extracting headings from HTML...");
   try {
     const doc = parser.parseFromString(html, "text/html");
     const elements = doc.querySelectorAll("h2, h3, h4");
 
     elements.forEach((el) => {
-      const uuid = el.getAttribute("data-uuid");
+      const uuid = el.getAttribute("uuid");
       const text = el.textContent || "";
       const level = parseInt(el.tagName[1]);
 
       if (uuid && text) {
         headings.push({ uuid, title: text, level });
+        console.log("Found heading:", { uuid, title: text, level });
       }
     });
   } catch (e) {
@@ -91,20 +92,16 @@ function buildTOCTree(headings: HeadingItem[]): TOCItem[] {
   return root;
 }
 
-function TOCItemComponent({
-  item,
-}: {
-  item: TOCItem;
-}) {
+function TOCItemComponent({ item }: { item: TOCItem }) {
   const [isOpen, setIsOpen] = useState(item.level === 2); // h2 expanded by default
 
   const hasChildren = item.children.length > 0;
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    const element = document.querySelector(`[data-uuid="${item.uuid}"]`);
+    const element = document.querySelector(`[uuid="${item.uuid}"]`);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
@@ -149,7 +146,10 @@ function TOCItemComponent({
       </div>
 
       {hasChildren && isOpen && (
-        <div className="space-y-1 mt-1" style={{ marginLeft: `${indent + 8}px` }}>
+        <div
+          className="space-y-1 mt-1"
+          style={{ marginLeft: `${indent + 8}px` }}
+        >
           {item.children.map((child) => (
             <TOCItemComponent key={child.uuid} item={child} />
           ))}
@@ -159,11 +159,7 @@ function TOCItemComponent({
   );
 }
 
-export function TableOfContents({
-  blocks,
-  pageUuid,
-  pageTitle,
-}: TOCProps) {
+export function TableOfContents({ blocks, pageUuid, pageTitle }: TOCProps) {
   // Concatenate HTML from all blocks
   const allHTML = blocks
     .filter((b) => b.uuid && b.html)

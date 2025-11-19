@@ -28,6 +28,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Flagged custom components for potential migration to shadcn/ui
   - BlockTree, Sidebar, Breadcrumbs, NodeContent marked for future refactor
 
+### Fixed - 2025-11-19
+
+- **Slug-based URL Routing**: Fixed page lookup after namespace removal
+  - `getNodeByPath()` now slugifies page names and matches against URL slugs
+  - URLs like `/test/marketplace-demo` now correctly find pages with spaces like "Marketplace demo"
+  - Resolves 404 errors when accessing pages via slugified URLs
+
 ### Fixed - 2025-11-18
 
 - **Collapsible Blocks**: Fixed tab indentation parsing in markdown-parser.ts

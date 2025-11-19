@@ -112,6 +112,34 @@ export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
   const tocBlocks = mode === "toc" ? blocks : [];
   const tocPageUuid = mode === "toc" ? pageUuid : "";
 
+  const isAllPages = pathname.endsWith("/all-pages");
+
+  // Get blocks for current page from nodes
+  // pathname format: /{workspaceSlug}/{...path}
+  let currentBlocks: Node[] = [];
+  if (!isAllPages) {
+    const pathSegments = pathname.split("/").filter(Boolean);
+    if (pathSegments.length > 1) {
+      const slugPath = pathSegments.slice(1).join("/");
+      const currentNode = nodes.find((n) => {
+        const nodeSlugPath = n.pageName
+          .split("/")
+          .map((s) =>
+            s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
+          )
+          .join("/");
+        return nodeSlugPath === slugPath;
+      });
+
+      if (currentNode) {
+        // Get all blocks for this page
+        currentBlocks = nodes.filter(
+          (n) => n.pageName === currentNode.pageName && n.parentUuid !== null
+        );
+      }
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Part 1: Placeholder Section (48px) */}

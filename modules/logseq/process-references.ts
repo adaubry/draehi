@@ -25,8 +25,8 @@ export function processLogseqReferences(
 
       // Page references: [[page name]] or [[namespace/page]]
       processed = processed.replace(/\[\[([^\]]+)\]\]/g, (match, pageName) => {
-        // Convert page name to URL path
-        const pageSlug = pageName.trim().replace(/\//g, "/");
+        // Convert page name to URL-safe path (lowercase, spaces → dashes)
+        const pageSlug = pageNameToPath(pageName);
         const pageUrl = `/${workspaceSlug}/${pageSlug}`;
         return `<a href="${pageUrl}" class="page-reference" data-page="${pageName}">${pageName}</a>`;
       });

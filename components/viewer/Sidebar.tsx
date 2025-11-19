@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Node } from "@/modules/content/schema";
+import { TableOfContents } from "./TableOfContents";
 
 type SidebarProps = {
   nodes: Node[];
@@ -99,53 +100,94 @@ function TreeItem({
 }
 
 export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
+  const pathname = usePathname();
   const tree = buildTree(nodes);
-  // Journal detection removed - all nodes are regular pages now
-  const journalNodes: Node[] = [];
   const regularNodes = nodes;
 
-  return (
-    <nav className="space-y-6">
-      {/* Regular Pages */}
-      {regularNodes.length > 0 && (
-        <div>
-          <h3 className="mb-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Pages
-          </h3>
-          <div className="space-y-0.5">
-            {tree.map((treeNode) => (
-              <TreeItem
-                key={treeNode.node.uuid}
-                treeNode={treeNode}
-                workspaceSlug={workspaceSlug}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+  const isAllPages = pathname.endsWith("/all-pages");
 
-      {/* Journal Pages */}
-      {journalNodes.length > 0 && (
-        <div>
-          <h3 className="mb-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Journal
-          </h3>
-          <div className="space-y-0.5">
-            {journalNodes.slice(0, 10).map((node) => {
-              const href = `/${workspaceSlug}/${node.pageName}`;
-              return (
-                <Link
-                  key={node.uuid}
-                  href={href}
-                  className="block px-3 py-1.5 rounded-md text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-                >
-                  {node.title}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
+  // Get blocks for current page from nodes
+  // pathname format: /{workspaceSlug}/{...path}
+  let currentBlocks: Node[] = [];
+  if (!isAllPages) {
+    const pathSegments = pathname.split("/").filter(Boolean);
+    if (pathSegments.length > 1) {
+      const slugPath = pathSegments.slice(1).join("/");
+      const currentNode = nodes.find((n) => {
+        const nodeSlugPath = n.pageName
+          .split("/")
+          .map((s) =>
+            s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
+          )
+          .join("/");
+        return nodeSlugPath === slugPath;
+      });
+
+      if (currentNode) {
+        // Get all blocks for this page
+        currentBlocks = nodes.filter(
+          (n) => n.pageName === currentNode.pageName && n.parentUuid !== null
+        );
+      }
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Section 1: Placeholder for future integrations */}
+      <div className="h-12 bg-gray-50 border-b border-gray-200 flex items-center justify-center">
+        <span className="text-xs text-gray-400">Reserved for integrations</span>
+      </div>
+
+      {/* Section 2: Navigation Buttons */}
+      <div className="px-3 space-y-1 border-b border-gray-200 pb-4">
+        <Link
+          href={`/${workspaceSlug}/contents`}
+          className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+            pathname === `/${workspaceSlug}/contents` || pathname === `/${workspaceSlug}`
+              ? "bg-gray-100 text-gray-900"
+              : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+          }`}
+        >
+          📄 Contents
+        </Link>
+        <Link
+          href={`/${workspaceSlug}/all-pages`}
+          className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+            isAllPages
+              ? "bg-gray-100 text-gray-900"
+              : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+          }`}
+        >
+          📚 All Pages
+        </Link>
+      </div>
+
+      {/* Section 3: Dynamic Content (TOC or Page Tree) */}
+      {isAllPages ? (
+        // Mode 1: All Pages - Show full page tree
+        <nav className="space-y-6">
+          {regularNodes.length > 0 && (
+            <div>
+              <h3 className="mb-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Pages
+              </h3>
+              <div className="space-y-0.5">
+                {tree.map((treeNode) => (
+                  <TreeItem
+                    key={treeNode.node.uuid}
+                    treeNode={treeNode}
+                    workspaceSlug={workspaceSlug}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </nav>
+      ) : (
+        // Mode 2: Regular Page - Show Table of Contents
+        <TableOfContents blocks={currentBlocks} maxDepth={3} />
       )}
-    </nav>
+    </div>
   );
 }

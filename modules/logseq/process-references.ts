@@ -36,7 +36,10 @@ export function processLogseqReferences(
         /\(\(([a-f0-9-]{36})\)\)/g,
         (match, uuid) => {
           // Link to block on current page (hash link)
-          return `<a href="#${uuid}" class="block-reference" data-block-uuid="${uuid}">((${uuid.slice(0, 8)}))</a>`;
+          return `<a href="#${uuid}" class="block-reference" data-block-uuid="${uuid}">((${uuid.slice(
+            0,
+            8
+          )}))</a>`;
         }
       );
 
@@ -46,7 +49,9 @@ export function processLogseqReferences(
         (match, marker) => {
           const checked = marker === "DONE";
           const markerClass = `task-marker task-${marker.toLowerCase()}`;
-          return `<span class="${markerClass}"><input type="checkbox" ${checked ? "checked" : ""} disabled /> ${marker}</span>`;
+          return `<span class="${markerClass}"><input type="checkbox" ${
+            checked ? "checked" : ""
+          } disabled /> ${marker}</span>`;
         }
       );
 
@@ -158,7 +163,7 @@ export function processEmbeds(html: string): string {
  */
 function createYouTubeEmbed(videoId: string): string {
   return `
-    <div class="youtube-embed" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 1rem 0;">
+    <div class="youtube-embed" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; width: 80%; margin: 1rem auto; min-width: 600px">
       <iframe
         src="https://www.youtube.com/embed/${videoId}"
         style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"

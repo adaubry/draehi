@@ -61,27 +61,10 @@
   transform: rotate(0deg);
 }
 
-/* Block content */
+/* Block content - Layout only, typography handled by Tailwind prose */
 .block-content {
   flex: 1;
   min-width: 0; /* Allow text to wrap */
-  line-height: 1.6;
-}
-
-.block-content p {
-  margin: 0;
-  display: inline;
-}
-
-.block-content a {
-  color: rgb(59 130 246); /* blue-500 */
-  text-decoration: underline;
-  text-decoration-color: rgb(191 219 254); /* blue-200 */
-  text-underline-offset: 2px;
-}
-
-.block-content a:hover {
-  text-decoration-color: rgb(59 130 246); /* blue-500 */
 }
 
 /* Nested children */
@@ -128,15 +111,6 @@
 
   .bullet.has-children:hover {
     color: rgb(96 165 250); /* blue-400 */
-  }
-
-  .block-content a {
-    color: rgb(96 165 250); /* blue-400 */
-    text-decoration-color: rgb(30 58 138); /* blue-900 */
-  }
-
-  .block-content a:hover {
-    text-decoration-color: rgb(96 165 250); /* blue-400 */
   }
 
   .logseq-block:target {

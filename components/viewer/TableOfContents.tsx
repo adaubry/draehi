@@ -130,10 +130,28 @@ export function TableOfContents({
 }: TableOfContentsProps) {
   const headings = extractHeadings(blocks, maxDepth);
 
+  // DEBUG: Log what we're receiving
+  console.log("=== TOC Debug ===");
+  console.log("Blocks received:", blocks.length);
+  console.log("Blocks with HTML:", blocks.filter(b => b.html).length);
+  console.log("Headings extracted:", headings.length);
+
+  // Sample first block's HTML
+  if (blocks.length > 0 && blocks[0].html) {
+    console.log("Sample HTML (first 500 chars):", blocks[0].html.substring(0, 500));
+  }
+
   if (headings.length === 0) {
     return (
       <div className="px-3 py-4 text-sm text-gray-500 italic">
-        No table of contents
+        <div className="mb-2">No table of contents</div>
+        {/* DEBUG INFO */}
+        <div className="text-xs bg-gray-100 p-2 rounded mt-2">
+          <div>Debug Info:</div>
+          <div>• Blocks: {blocks.length}</div>
+          <div>• With HTML: {blocks.filter(b => b.html).length}</div>
+          <div>• Headings: {headings.length}</div>
+        </div>
       </div>
     );
   }

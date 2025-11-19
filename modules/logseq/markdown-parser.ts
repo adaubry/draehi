@@ -1,8 +1,9 @@
 import fs from "fs/promises";
 import path from "path";
+import { createHash } from "crypto";
 
 export type LogseqBlock = {
-  uuid: string | null; // Block UUID from id:: property
+  uuid: string; // Block UUID (generated if not present)
   content: string; // Block markdown content
   indent: number; // Indentation level (0 = top-level)
   order: number; // Position among siblings
@@ -71,7 +72,7 @@ export async function parseLogseqMarkdown(
     if (blockMatch) {
       // Finalize previous block if exists
       if (currentBlock && currentBlock.content !== undefined) {
-        const completedBlock = finalizeBlock(currentBlock);
+        const completedBlock = finalizeBlock(currentBlock, pageName);
         addBlockToHierarchy(blocks, blockStack, completedBlock);
         order++;
       }
@@ -83,9 +84,9 @@ export async function parseLogseqMarkdown(
       const indent = tabCount + Math.floor(spaceCount / 2);
       const content = blockMatch[2];
 
-      // Start a new block
+      // Start a new block (UUID will be set during finalization)
       currentBlock = {
-        uuid: null,
+        uuid: undefined as any, // Will be set in finalizeBlock
         content,
         indent,
         order,
@@ -105,7 +106,7 @@ export async function parseLogseqMarkdown(
 
   // Finalize last block
   if (currentBlock && currentBlock.content !== undefined) {
-    const completedBlock = finalizeBlock(currentBlock);
+    const completedBlock = finalizeBlock(currentBlock, pageName);
     addBlockToHierarchy(blocks, blockStack, completedBlock);
   }
 
@@ -116,16 +117,34 @@ export async function parseLogseqMarkdown(
   };
 }
 
-function finalizeBlock(partial: Partial<LogseqBlock>): LogseqBlock {
+function finalizeBlock(partial: Partial<LogseqBlock>, pageName: string): LogseqBlock {
+  const content = partial.content || "";
+
+  // Use explicit id:: property UUID if present, otherwise generate stable UUID from content
+  const uuid = partial.uuid || generateStableUUID(pageName, content, partial.order || 0);
+
   return {
-    uuid: partial.uuid || null,
-    content: partial.content || "",
+    uuid,
+    content,
     indent: partial.indent || 0,
     order: partial.order || 0,
     parentUuid: partial.parentUuid || null,
     properties: partial.properties || {},
     children: partial.children || [],
   };
+}
+
+/**
+ * Generate a stable UUID based on page name, block content, and order
+ * This ensures the same content always gets the same UUID across deployments
+ */
+function generateStableUUID(pageName: string, content: string, order: number): string {
+  const hash = createHash("sha256")
+    .update(`${pageName}::${content}::${order}`)
+    .digest("hex");
+
+  // Convert SHA256 hash to UUID v4 format (8-4-4-4-12)
+  return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`;
 }
 
 function addBlockToHierarchy(

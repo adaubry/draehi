@@ -28,20 +28,19 @@ function BlockItem({
 }: BlockItemProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Find children from ALL blocks
+  // Find children from ALL blocks (blocks have parentUuid !== null)
   const children = allBlocks
-    .filter((b) => b.nodeType === "block" && b.parentId === block.id)
+    .filter((b) => b.parentUuid !== null && b.parentUuid === block.uuid)
     .sort((a, b) => a.order - b.order);
 
   const hasChildren = children.length > 0;
-  const blockId = block.blockUuid || `block-${block.id}`;
-  const blockUrl = `/${workspaceSlug}/${pagePath}#${blockId}`;
+  const blockUrl = `/${workspaceSlug}/${pagePath}#${block.uuid}`;
 
   return (
     <li
       className="logseq-block"
       data-depth={depth}
-      id={blockId}
+      id={block.uuid}
       style={{ marginLeft: `${depth * 1.5}rem` }}
     >
       <div className="block-line group">
@@ -84,7 +83,7 @@ function BlockItem({
         <ul className="block-children">
           {children.map((childBlock) => (
             <BlockItem
-              key={childBlock.id}
+              key={childBlock.uuid}
               block={childBlock}
               allBlocks={allBlocks}
               workspaceSlug={workspaceSlug}
@@ -104,16 +103,16 @@ export function BlockTree({
   pagePath,
   depth = 0,
 }: BlockTreeProps) {
-  // Find the page node
-  const pageNode = blocks.find((b) => b.nodeType === "page");
+  // Find the page node (parentUuid is null)
+  const pageNode = blocks.find((b) => b.parentUuid === null);
 
   // Find top-level blocks (children of the page)
   const topLevelBlocks = blocks
     .filter(
       (b) =>
-        b.nodeType === "block" &&
+        b.parentUuid !== null &&
         pageNode &&
-        b.parentId === pageNode.id
+        b.parentUuid === pageNode.uuid
     )
     .sort((a, b) => a.order - b.order);
 
@@ -121,7 +120,7 @@ export function BlockTree({
     <ul className="logseq-blocks">
       {topLevelBlocks.map((block) => (
         <BlockItem
-          key={block.id}
+          key={block.uuid}
           block={block}
           allBlocks={blocks}
           workspaceSlug={workspaceSlug}

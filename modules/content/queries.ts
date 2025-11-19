@@ -2,15 +2,15 @@
 
 import { db } from "@/lib/db";
 import { nodes } from "./schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNull, isNotNull } from "drizzle-orm";
 import { cache } from "react";
 import type { Breadcrumb } from "@/lib/types";
 import { buildNodeHref } from "@/lib/utils";
 
-export const getNodeById = cache(async (id: number) => {
+export const getNodeByUuid = cache(async (uuid: string) => {
   "use cache";
   return await db.query.nodes.findFirst({
-    where: eq(nodes.id, id),
+    where: eq(nodes.uuid, uuid),
   });
 });
 
@@ -20,13 +20,14 @@ export const getNodeByPath = cache(
     const slug = pathSegments.at(-1) || "";
     const namespace = pathSegments.slice(0, -1).join("/");
 
-    // Only return page nodes (blocks also have namespace/slug but shouldn't be returned here)
+    // Only return page nodes (parentUuid === null)
+    // Blocks also have namespace/slug but shouldn't be returned here
     return await db.query.nodes.findFirst({
       where: and(
         eq(nodes.workspaceId, workspaceId),
         eq(nodes.namespace, namespace),
         eq(nodes.slug, slug),
-        eq(nodes.nodeType, "page")
+        isNull(nodes.parentUuid)
       ),
     });
   }
@@ -47,30 +48,24 @@ export const getNodeChildren = cache(
 
 export const getAllNodes = cache(async (workspaceId: number) => {
   "use cache";
-  // Only return page nodes for navigation (not individual blocks)
+  // Only return page nodes for navigation (parentUuid === null)
   return await db.query.nodes.findMany({
-    where: and(eq(nodes.workspaceId, workspaceId), eq(nodes.nodeType, "page")),
+    where: and(eq(nodes.workspaceId, workspaceId), isNull(nodes.parentUuid)),
     orderBy: [nodes.namespace, nodes.slug],
   });
 });
 
 export const getJournalNodes = cache(async (workspaceId: number) => {
   "use cache";
-  // Only return journal page nodes (not blocks)
-  return await db.query.nodes.findMany({
-    where: and(
-      eq(nodes.workspaceId, workspaceId),
-      eq(nodes.nodeType, "page"),
-      eq(nodes.isJournal, true)
-    ),
-    orderBy: [desc(nodes.journalDate)],
-  });
+  // Journal detection is removed - return empty array
+  // To be implemented with metadata-based detection if needed
+  return [];
 });
 
-export const getPageBlocks = cache(async (pageId: number) => {
+export const getPageBlocks = cache(async (pageUuid: string) => {
   "use cache";
   return await db.query.nodes.findMany({
-    where: and(eq(nodes.parentId, pageId), eq(nodes.nodeType, "block")),
+    where: eq(nodes.parentUuid, pageUuid),
     orderBy: [nodes.order],
   });
 });
@@ -78,12 +73,13 @@ export const getPageBlocks = cache(async (pageId: number) => {
 export const getAllBlocksForPage = cache(
   async (workspaceId: number, pageName: string) => {
     "use cache";
-    // Get page node AND all blocks that belong to this page
-    // BlockTree needs the page node to identify top-level blocks
+    // Get all blocks for this page (excludes the page node itself)
+    // Blocks have parentUuid !== null
     return await db.query.nodes.findMany({
       where: and(
         eq(nodes.workspaceId, workspaceId),
-        eq(nodes.pageName, pageName)
+        eq(nodes.pageName, pageName),
+        isNotNull(nodes.parentUuid)
       ),
       orderBy: [nodes.order],
     });
@@ -130,7 +126,7 @@ export const getPageBacklinks = cache(
     const allBlocks = await db.query.nodes.findMany({
       where: and(
         eq(nodes.workspaceId, workspaceId),
-        eq(nodes.nodeType, "block")
+        isNotNull(nodes.parentUuid)
       ),
     });
 
@@ -144,11 +140,11 @@ export const getPageBacklinks = cache(
       ...new Set(referencingBlocks.map((b) => b.pageName)),
     ];
 
-    // Fetch the actual page nodes
+    // Fetch the actual page nodes (parentUuid === null)
     const referencingPages = await db.query.nodes.findMany({
       where: and(
         eq(nodes.workspaceId, workspaceId),
-        eq(nodes.nodeType, "page")
+        isNull(nodes.parentUuid)
       ),
     });
 
@@ -161,17 +157,17 @@ export const getPageBacklinks = cache(
 export const getBlockBacklinks = cache(
   async (workspaceId: number, pageName: string) => {
     "use cache";
-    // Find all blocks on this page that have UUIDs
+    // Find all blocks on this page (blocks have parentUuid !== null)
     const pageBlocks = await db.query.nodes.findMany({
       where: and(
         eq(nodes.workspaceId, workspaceId),
         eq(nodes.pageName, pageName),
-        eq(nodes.nodeType, "block")
+        isNotNull(nodes.parentUuid)
       ),
     });
 
     const blockUuids = pageBlocks
-      .map((b) => b.blockUuid)
+      .map((b) => b.uuid)
       .filter((uuid): uuid is string => !!uuid);
 
     if (blockUuids.length === 0) {
@@ -182,7 +178,7 @@ export const getBlockBacklinks = cache(
     const allBlocks = await db.query.nodes.findMany({
       where: and(
         eq(nodes.workspaceId, workspaceId),
-        eq(nodes.nodeType, "block")
+        isNotNull(nodes.parentUuid)
       ),
     });
 
@@ -199,11 +195,11 @@ export const getBlockBacklinks = cache(
       ),
     ];
 
-    // Fetch the actual page nodes
+    // Fetch the actual page nodes (parentUuid === null)
     const referencingPages = await db.query.nodes.findMany({
       where: and(
         eq(nodes.workspaceId, workspaceId),
-        eq(nodes.nodeType, "page")
+        isNull(nodes.parentUuid)
       ),
     });
 

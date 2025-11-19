@@ -8,13 +8,6 @@
 .logseq-block {
   position: relative;
   margin: 0.25rem 0;
-  transition: background-color 0.15s ease;
-}
-
-/* Hover effect on entire block */
-.logseq-block:hover {
-  background-color: rgb(243 244 246); /* gray-100 */
-  border-radius: 0.25rem;
 }
 
 .block-line {
@@ -22,6 +15,13 @@
   align-items: flex-start;
   gap: 0.5rem;
   padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.15s ease;
+}
+
+/* Hover effect on direct block line (child, not parent) */
+.block-line:hover {
+  background-color: rgb(243 244 246); /* gray-100 */
 }
 
 /* Bullet point */
@@ -110,7 +110,7 @@
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
-  .logseq-block:hover {
+  .block-line:hover {
     background-color: rgb(31 41 55); /* gray-800 */
   }
 

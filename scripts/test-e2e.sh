@@ -157,17 +157,7 @@ wait_for_sync() {
     log_success "Sync already completed during setup"
 }
 
-# Validate content ingestion
-validate_content() {
-    log_step "Validating content ingestion..."
-
-    cd "$PROJECT_ROOT"
-
-    # Run validation script via tsx
-    npx tsx scripts/validate-content.ts
-
-    log_success "Content validation complete"
-}
+# Validate content ingestion - REMOVED (validate-content.ts deleted during cleanup)
 
 # Compare with Logseq docs
 compare_with_logseq() {
@@ -356,7 +346,6 @@ main() {
     verify_git_connection     # Verifies connection made during setup
     wait_for_sync            # Can be manual or automated
 
-    validate_content
     compare_with_logseq
     test_frontend_phase4     # NEW: Phase 4 critical frontend tests
     test_ui_rendering        # Still manual (visual inspection)

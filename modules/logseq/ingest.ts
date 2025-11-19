@@ -7,7 +7,7 @@ import { parseLogseqOutput } from "./parse";
 import type { NewNode } from "../content/schema";
 
 export type BlockNode = {
-  uuid: string | null;
+  uuid: string; // Always present (generated if not in markdown)
   content: string;
   html: string;
   order: number;
@@ -26,8 +26,6 @@ export type PageWithBlocks = {
     tags?: string[];
     properties?: Record<string, unknown>;
   };
-  isJournal: boolean;
-  journalDate?: string;
 
   // Blocks belonging to this page
   blocks: BlockNode[];
@@ -103,8 +101,6 @@ export async function ingestLogseqRepository(
             ...htmlPage.metadata?.properties,
           },
         },
-        isJournal: htmlPage.isJournal,
-        journalDate: htmlPage.journalDate,
         blocks: blockNodes,
       });
     }
@@ -130,46 +126,47 @@ export function pageWithBlocksToNodes(
 ): NewNode[] {
   const nodes: NewNode[] = [];
 
-  // Create page node (nodeType='page', no HTML)
+  const { createHash } = require("crypto");
+
+  // Create page node (parentUuid=null, no HTML)
+  // Generate stable UUID based on workspaceId + pageName
+  const pageUuidSeed = `${workspaceId}::${page.pageName}`;
+  const pageUuidHash = createHash('sha256').update(pageUuidSeed).digest('hex');
+  const pageUuid = `${pageUuidHash.slice(0, 8)}-${pageUuidHash.slice(8, 12)}-${pageUuidHash.slice(12, 16)}-${pageUuidHash.slice(16, 20)}-${pageUuidHash.slice(20, 32)}`;
+
   const pageNode: NewNode = {
+    uuid: pageUuid,
     workspaceId,
-    parentId: null,
+    parentUuid: null,
     order: 0,
-    nodeType: "page",
     pageName: page.pageName,
     slug: page.slug,
     namespace: page.namespace,
     depth: page.depth,
-    blockUuid: null,
     title: page.title,
     html: null, // Pages don't have HTML, only blocks do
     metadata: page.metadata,
-    isJournal: page.isJournal,
-    journalDate: page.journalDate,
   };
 
   nodes.push(pageNode);
 
-  // Create block nodes (nodeType='block', with HTML)
-  // Note: parentId will be set after page is inserted and we have its ID
+  // Create block nodes (with HTML, parentUuid set)
+  // Note: parentUuid will reference parent block's uuid or be set to page uuid after insertion
   for (const block of page.blocks) {
     const blockNode: NewNode = {
       workspaceId,
-      parentId: null, // Will be updated after insertion
+      uuid: block.uuid,
+      parentUuid: null, // Will be updated after insertion
       order: block.order,
-      nodeType: "block",
       pageName: page.pageName,
       slug: page.slug,
       namespace: page.namespace,
       depth: calculateBlockDepth(block, page.blocks),
-      blockUuid: block.uuid,
       title: "", // Blocks don't have titles
       html: block.html,
       metadata: {
         properties: block.properties,
       },
-      isJournal: false,
-      journalDate: undefined,
     };
 
     nodes.push(blockNode);

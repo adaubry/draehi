@@ -8,6 +8,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed - 2025-11-19
+- **Database Schema Simplification**: Removed redundant columns
+  - Removed `id` (integer, auto-increment) + `blockUuid` duplication → single `uuid` text PRIMARY KEY
+  - Removed `parentId` (integer) → `parentUuid` (text) references nodes.uuid
+  - Removed `nodeType` column → infer from `parentUuid === null` (page) vs `!== null` (block)
+  - Removed `isJournal` and `journalDate` columns (journals not needed for MVP)
+  - Updated all queries to use `isNull()`/`isNotNull()` for null checks
+- **UUID Generation**: All content sources now use stable content-based UUIDs (SHA256)
+  - Pages: `${workspaceId}::${pageName}` → SHA256 → UUID format
+  - Blocks: `${pageName}::${content}::${order}` → SHA256 → UUID format
+  - Fixed `parse.ts` (line 156-158) to use stable UUIDs
+  - Fixed `ingest.ts` (line 133-135) to use stable UUIDs
+  - Resolves duplicate key constraint errors on sync
+- **Block Hover**: Moved hover highlight from parent `.logseq-block` to child `.block-line`
+- **Scripts Cleanup**: Removed 10 diagnostic scripts, kept 10 essential ones
+  - Removed `validate-content.ts` reference from test-e2e.sh
+- **Test Suite**: Updated to require UUID format only (removed `block-N` fallback pattern)
+
 ### Fixed - 2025-11-18
 - **Collapsible Blocks**: Fixed tab indentation parsing in markdown-parser.ts
   - Tabs now correctly count as 1 indent level (previously calculated as 0)

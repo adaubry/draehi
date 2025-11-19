@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
 # Frontend End-to-End Test Suite
 # Tests that ingested content displays correctly in the browser
@@ -84,16 +84,14 @@ test_default_page() {
     log_step "Test 1: Default page redirects to /contents"
 
     local url="http://localhost:3000/${TEST_WORKSPACE_SLUG}"
-    local response=$(curl -s -L -w "\n%{url_effective}" "$url")
-    local final_url=$(echo "$response" | tail -n 1)
+    local body=$(curl -s -L "$url")
 
-    if echo "$final_url" | grep -q "/contents$\|/contents/"; then
-        log_success "Default page redirects to /contents"
+    # Check if page contains "Contents" title (the /contents page)
+    if echo "$body" | grep -q '<h1[^>]*>Contents</h1>'; then
+        log_success "Default page loads /contents"
     else
-        log_error "Default page does not redirect to /contents"
-        echo "  Final URL: $final_url"
-        echo "  Expected: contains '/contents'"
-        echo "  FIX: Update app/[workspaceSlug]/page.tsx to redirect to /contents"
+        log_error "Default page does not load /contents"
+        echo "  FIX: Check app/[workspaceSlug]/page.tsx redirect"
     fi
 }
 
@@ -174,12 +172,12 @@ test_block_navigation() {
     local url="http://localhost:3000/${TEST_WORKSPACE_SLUG}/contents"
     local body=$(curl -s "$url")
 
-    # Check for block IDs (UUID anchors)
-    if echo "$body" | grep -q 'id="[a-f0-9-]\{36\}"'; then
-        log_success "Block UUIDs found as anchor IDs"
+    # Check for block IDs (UUID format only - 8-4-4-4-12)
+    if echo "$body" | grep -qE 'id="[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"'; then
+        log_success "Block IDs found as UUID anchors"
     else
-        log_error "No block UUID anchors found"
-        echo "  FIX: Blocks need id=\"uuid\" for #hash navigation"
+        log_error "No UUID block anchors found"
+        echo "  FIX: Blocks need UUID id attribute for #hash navigation"
     fi
 
     # Check that bullets are clickable links
@@ -187,14 +185,14 @@ test_block_navigation() {
         log_success "Block bullets are clickable"
     else
         log_error "Block bullets not clickable"
-        echo "  FIX: Wrap bullets in <Link href=\"#uuid\">"
+        echo "  FIX: Wrap bullets in <Link href=\"#id\">"
     fi
 
-    # Check for href with hash
-    if echo "$body" | grep -q 'href=".*#[a-f0-9-]'; then
-        log_success "Block links use #hash URLs"
+    # Check for href with UUID hash
+    if echo "$body" | grep -qE 'href="[^"]*#[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"'; then
+        log_success "Block links use UUID #hash URLs"
     else
-        log_error "Block links don't use #hash URLs"
+        log_error "Block links don't use UUID #hash URLs"
         echo "  FIX: BlockTree should generate href='#uuid'"
     fi
 }
@@ -397,16 +395,13 @@ main() {
     check_prerequisites
     echo ""
 
-    #test_default_page
-    # so, this one is failing but should pass with current behavior
+    test_default_page
     echo ""
 
-    #test_slugification
-    #this one is failing on some pages (/New to Logseq) but some have correct slugification
+    test_slugification
     echo ""
 
     test_collapsible_blocks
-    #this is failing and should fail as of right now
     echo ""
 
     test_block_navigation

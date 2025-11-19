@@ -55,8 +55,6 @@ export async function parseLogseqOutput(
               updated: metadata.updated,
             },
           },
-          isJournal: isJournalPage(decodedName),
-          journalDate: extractJournalDate(decodedName),
         };
       })
     );
@@ -148,12 +146,19 @@ export async function logseqPageToNode(
   workspaceId: number,
   repoPath: string
 ): Promise<NewNode> {
+  const { createHash } = await import("crypto");
   const { namespace, slug, depth } = parsePageName(page.name);
 
   // Process HTML to upload assets and replace refs
   const html = await processAssets(page.html, workspaceId, repoPath);
 
+  // Generate stable UUID based on workspaceId + pageName
+  const pageUuidSeed = `${workspaceId}::${page.name}`;
+  const pageUuidHash = createHash('sha256').update(pageUuidSeed).digest('hex');
+  const pageUuid = `${pageUuidHash.slice(0, 8)}-${pageUuidHash.slice(8, 12)}-${pageUuidHash.slice(12, 16)}-${pageUuidHash.slice(16, 20)}-${pageUuidHash.slice(20, 32)}`;
+
   return {
+    uuid: pageUuid,
     workspaceId,
     pageName: page.name,
     slug,
@@ -162,8 +167,6 @@ export async function logseqPageToNode(
     title: page.title,
     html,
     metadata: page.metadata,
-    isJournal: page.isJournal,
-    journalDate: page.journalDate,
   };
 }
 
@@ -191,25 +194,6 @@ function parsePageName(pageName: string): {
   const depth = parts.length - 1;
 
   return { namespace, slug, depth };
-}
-
-/**
- * Detect journal pages (format: YYYY_MM_DD or similar)
- */
-function isJournalPage(pageName: string): boolean {
-  // Match patterns like: 2024_01_15, 2024-01-15, Jan 15th, 2024
-  return /^\d{4}[_-]\d{2}[_-]\d{2}$/.test(pageName);
-}
-
-/**
- * Extract journal date in YYYY-MM-DD format
- */
-function extractJournalDate(pageName: string): string | undefined {
-  const match = pageName.match(/^(\d{4})[_-](\d{2})[_-](\d{2})$/);
-  if (match) {
-    return `${match[1]}-${match[2]}-${match[3]}`;
-  }
-  return undefined;
 }
 
 /**

@@ -8,7 +8,7 @@
 import { db } from "../lib/db";
 import * as contentSchema from "../modules/content/schema";
 import * as workspaceSchema from "../modules/workspace/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull, isNotNull } from "drizzle-orm";
 
 const LOGSEQ_DOCS_BASE = "https://docs.logseq.com";
 
@@ -45,9 +45,9 @@ async function checkPageExists(
   try {
     // Check if page exists in database
     const page = await db.query.nodes.findFirst({
-      where: (nodes, { and, eq }) =>
+      where: (nodes, { and, eq, isNull }) =>
         and(
-          eq(nodes.nodeType, "page"),
+          isNull(nodes.parentUuid),
           eq(nodes.pageName, pageName)
         ),
     });
@@ -69,9 +69,9 @@ async function checkPageExists(
 
     // Get all blocks for this page
     const blocks = await db.query.nodes.findMany({
-      where: (nodes, { and, eq }) =>
+      where: (nodes, { and, eq, isNotNull }) =>
         and(
-          eq(nodes.nodeType, "block"),
+          isNotNull(nodes.parentUuid),
           eq(nodes.pageName, pageName)
         ),
     });
@@ -165,7 +165,7 @@ async function checkDatabaseStats() {
   const pages = await db.query.nodes.findMany({
     where: and(
       eq(contentSchema.nodes.workspaceId, testWorkspace.id),
-      eq(contentSchema.nodes.nodeType, "page")
+      isNull(contentSchema.nodes.parentUuid)
     ),
   });
 
@@ -175,14 +175,14 @@ async function checkDatabaseStats() {
   const blocks = await db.query.nodes.findMany({
     where: and(
       eq(contentSchema.nodes.workspaceId, testWorkspace.id),
-      eq(contentSchema.nodes.nodeType, "block")
+      isNotNull(contentSchema.nodes.parentUuid)
     ),
   });
 
   console.log(`   Total blocks: ${blocks.length}`);
 
-  // Count journals
-  const journals = pages.filter((p) => p.isJournal);
+  // Count journals (removed - no longer tracked)
+  const journals: typeof pages = [];
   console.log(`   Journal pages: ${journals.length}`);
 
   // Check namespace pages
@@ -192,13 +192,13 @@ async function checkDatabaseStats() {
   // Block quality checks
   console.log("\n🧱 Block Quality:");
 
-  const blocksWithUUID = blocks.filter((b) => b.blockUuid !== null);
+  const blocksWithUUID = blocks.filter((b) => b.uuid !== null);
   console.log(`   Blocks with UUID: ${blocksWithUUID.length}/${blocks.length}`);
 
   const blocksWithHTML = blocks.filter((b) => b.html !== null);
   console.log(`   Blocks with HTML: ${blocksWithHTML.length}/${blocks.length}`);
 
-  const blocksWithParent = blocks.filter((b) => b.parentId !== null);
+  const blocksWithParent = blocks.filter((b) => b.parentUuid !== null);
   console.log(`   Blocks with parent: ${blocksWithParent.length}/${blocks.length}`);
 
   // Sample some blocks to check HTML quality

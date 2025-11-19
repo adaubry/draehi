@@ -9,8 +9,6 @@ export type LogseqPage = {
     tags?: string[];
     properties?: Record<string, unknown>;
   };
-  isJournal: boolean;
-  journalDate?: string; // YYYY-MM-DD format
 };
 
 export type LogseqExportResult = {

@@ -9,6 +9,8 @@ import {
   getBlockBacklinks,
 } from "@/modules/content/queries";
 import { BlockTree } from "@/components/viewer/BlockTree";
+import { Breadcrumbs } from "@/components/viewer/Breadcrumbs";
+import { PageBlocksContextProvider } from "@/components/viewer/PageBlocksContextProvider";
 
 export const dynamic = "force-dynamic";
 
@@ -56,96 +58,101 @@ async function NodePageContent({
   const pagePath = path.join("/");
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Page Title */}
-      <div className="space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight">{node.title}</h1>
-        {node.metadata?.tags && node.metadata.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {node.metadata.tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800"
-              >
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+    <PageBlocksContextProvider blocks={blocks} pageUuid={node.uuid}>
+      <div className="flex flex-col gap-6">
+        {/* Breadcrumbs */}
+        <Breadcrumbs currentTitle={node.title} workspaceSlug={workspaceSlug} />
 
-      {/* Logseq-style Block Tree */}
-      {blocks.length > 0 ? (
-        <BlockTree
-          blocks={[node, ...blocks]}
-          workspaceSlug={workspaceSlug}
-          pagePath={pagePath}
-        />
-      ) : (
-        <div className="text-gray-500 italic">No blocks yet</div>
-      )}
-
-      {/* Backlinks Section */}
-      {(citedBy.length > 0 || related.length > 0) && (
-        <div className="mt-12 pt-8 border-t border-gray-200">
-          {/* Cited By (Direct Page References) */}
-          {citedBy.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-lg font-semibold mb-4 text-gray-700">
-                Cited by ({citedBy.length})
-              </h2>
-              <div className="space-y-2">
-                {citedBy.map((page) => {
-                  const segments = page.pageName.split("/").map(s =>
-                    s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
-                  );
-                  const href = `/${workspaceSlug}/${segments.join("/")}`;
-                  return (
-                    <Link
-                      key={page.uuid}
-                      href={href}
-                      className="block px-4 py-2 rounded-md hover:bg-gray-50 transition-colors"
-                    >
-                      <span className="text-blue-600 hover:text-blue-700">
-                        {page.title}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Related (Block References) */}
-          {related.length > 0 && (
-            <div>
-              <h2 className="text-lg font-semibold mb-4 text-gray-700">
-                Related ({related.length})
-              </h2>
-              <div className="space-y-2">
-                {related.map((page) => {
-                  const segments = page.pageName.split("/").map(s =>
-                    s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
-                  );
-                  const href = `/${workspaceSlug}/${segments.join("/")}`;
-                  return (
-                    <Link
-                      key={page.uuid}
-                      href={href}
-                      className="block px-4 py-2 rounded-md hover:bg-gray-50 transition-colors"
-                    >
-                      <span className="text-blue-600 hover:text-blue-700">
-                        {page.title}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
+        {/* Page Title */}
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold tracking-tight">{node.title}</h1>
+          {node.metadata?.tags && node.metadata.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {node.metadata.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800"
+                >
+                  #{tag}
+                </span>
+              ))}
             </div>
           )}
         </div>
-      )}
-    </div>
+
+        {/* Logseq-style Block Tree */}
+        {blocks.length > 0 ? (
+          <BlockTree
+            blocks={[node, ...blocks]}
+            workspaceSlug={workspaceSlug}
+            pagePath={pagePath}
+          />
+        ) : (
+          <div className="text-gray-500 italic">No blocks yet</div>
+        )}
+
+        {/* Backlinks Section */}
+        {(citedBy.length > 0 || related.length > 0) && (
+          <div className="mt-12 pt-8 border-t border-gray-200">
+            {/* Cited By (Direct Page References) */}
+            {citedBy.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-lg font-semibold mb-4 text-gray-700">
+                  Cited by ({citedBy.length})
+                </h2>
+                <div className="space-y-2">
+                  {citedBy.map((page) => {
+                    const segments = page.pageName.split("/").map(s =>
+                      s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
+                    );
+                    const href = `/${workspaceSlug}/${segments.join("/")}`;
+                    return (
+                      <Link
+                        key={page.uuid}
+                        href={href}
+                        className="block px-4 py-2 rounded-md hover:bg-gray-50 transition-colors"
+                      >
+                        <span className="text-blue-600 hover:text-blue-700">
+                          {page.title}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Related (Block References) */}
+            {related.length > 0 && (
+              <div>
+                <h2 className="text-lg font-semibold mb-4 text-gray-700">
+                  Related ({related.length})
+                </h2>
+                <div className="space-y-2">
+                  {related.map((page) => {
+                    const segments = page.pageName.split("/").map(s =>
+                      s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
+                    );
+                    const href = `/${workspaceSlug}/${segments.join("/")}`;
+                    return (
+                      <Link
+                        key={page.uuid}
+                        href={href}
+                        className="block px-4 py-2 rounded-md hover:bg-gray-50 transition-colors"
+                      >
+                        <span className="text-blue-600 hover:text-blue-700">
+                          {page.title}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </PageBlocksContextProvider>
   );
 }
 

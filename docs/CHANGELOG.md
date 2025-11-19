@@ -8,6 +8,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed - 2025-11-19 (Session 4)
+- **Block Rendering Issue**: Fixed blocks not displaying on pages with content
+  - Root cause: Block ingestion pipeline set `parentUuid = null` for ALL blocks
+  - BlockTree component filters for `parentUuid === pageNode.uuid` to find top-level blocks
+  - Solution: Changed `pageWithBlocksToNodes()` to set `parentUuid = pageUuid` for top-level blocks
+  - Logic: `const blockParentUuid = block.parentUuid || pageUuid;`
+  - No schema changes required - logic-only fix applied at ingestion time
+  - **User Action Required**: Re-ingest content for existing workspaces to apply fix
+
 ### Fixed - 2025-11-19 (Session 3)
 - **Page Reference Link Slugification**: Fixed page references to generate proper URL slugs
   - [[Page Name]] now converts to /workspace/page-name using pageNameToPath()

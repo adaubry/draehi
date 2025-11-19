@@ -8,7 +8,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Fixed - 2025-11-19
+### Fixed - 2025-11-19 (Session 2)
+- **Production Build 404 Errors**: Fixed static pre-rendering failures on dynamic routes
+  - Pages were returning HTTP 404 even though content existed in database
+  - Root cause: Next.js static pre-rendering called getWorkspaceBySlug() at build time, but database was empty
+  - Solution: Added `export const dynamic = "force-dynamic"` to workspace viewer page
+  - Also: Disabled `cacheComponents: true` in next.config.ts (incompatible with dynamic routes)
+  - Also: Removed "use cache" directives from query functions that now require dynamic rendering
+  - Pages now render dynamically at request time, allowing proper database lookups
+
+### Fixed - 2025-11-19 (Session 1)
 - **BlockTree Rendering**: Fixed blank pages where content wasn't displaying
   - `getAllBlocksForPage()` only returns blocks (parentUuid !== null), excluding page node
   - BlockTree component needs page node to find top-level blocks

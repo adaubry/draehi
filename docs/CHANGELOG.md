@@ -27,11 +27,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - `npm run minio` - Quick start/status check (auto-setup if needed)
   - `npm run minio stop/restart/logs/status` - Container management
   - `scripts/minio.sh` - Wrapper around setup-minio.sh with colored output
-  - `scripts/test-asset-upload.ts` - Test suite for asset upload flow
+  - `scripts/test-asset-upload.ts` - Test suite for asset upload flow (tests both `../assets/` and `assets/` paths)
   - Updated SCRIPTS.md with asset ingestion flow documentation
+- **Asset Troubleshooting Guide**: New comprehensive debugging guide
+  - MinIO health checks and environment verification
+  - Step-by-step asset upload testing
+  - Common issues with fixes (403, CORS, local paths)
+  - Production AWS S3 migration guide
+  - Location: `docs/ASSET_TROUBLESHOOTING.md`
 
 ### Changed - 2025-11-19
 
+- **Asset Path Resolution Fix**: Fixed handling of `../assets/` paths from Logseq
+  - Normalizes `../assets/image.png` → `assets/image.png` before upload
+  - Fixes issue where assets weren't uploading due to incorrect path resolution
+  - Logseq markdown files in `pages/` reference `../assets/`, now resolves from repo root
+  - S3 keys no longer contain `../` in path
+  - Location: `modules/storage/upload.ts:20-24`
+- **Asset Upload Logging**: Added debug logging to track upload success/failure
+  - Console logs show `[Asset Upload] ✓ path → URL` for successful uploads
+  - Console warns `[Asset Upload] ✗ Failed to upload path: error` for failures
+  - Helps diagnose why assets remain local instead of S3 URLs
+  - Location: `modules/logseq/parse.ts:220-227`
 - **S3 URL Generation Fix**: Fixed MinIO URL to include bucket name
   - Local mode: `http://localhost:9000/draehi-assets/key` (path-style)
   - Production mode: `https://draehi-assets.s3.region.amazonaws.com/key` (subdomain-style)

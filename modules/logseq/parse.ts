@@ -220,6 +220,10 @@ export async function processAssets(
     if (result.success && result.url) {
       // Replace local path with S3 URL
       processedHtml = processedHtml.replace(assetPath, result.url);
+      console.log(`[Asset Upload] ✓ ${assetPath} → ${result.url}`);
+    } else {
+      // Log upload failure (asset reference will remain local)
+      console.warn(`[Asset Upload] ✗ Failed to upload ${assetPath}: ${result.error}`);
     }
   }
 

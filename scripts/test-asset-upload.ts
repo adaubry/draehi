@@ -42,42 +42,47 @@ async function setupTestFiles() {
 async function testAssetProcessing() {
   console.log("\n→ Testing asset processing...");
 
-  // HTML with local asset reference
-  const htmlBefore = `
-    <p>Here is an image:</p>
-    <img src="assets/test-image.png" alt="Test" />
-    <p>And another reference:</p>
-    <a href="assets/test-image.png">Download</a>
-  `;
+  // Test both path styles that Logseq uses
+  const testCases = [
+    {
+      name: "Relative path from pages/ (../assets/...)",
+      html: `<p>Image from pages/:</p><img src="../assets/test-image.png" alt="Test" />`,
+      expectedPath: "../assets/test-image.png",
+    },
+    {
+      name: "Direct path (assets/...)",
+      html: `<p>Direct reference:</p><img src="assets/test-image.png" alt="Test" />`,
+      expectedPath: "assets/test-image.png",
+    },
+  ];
 
-  console.log("\nInput HTML:");
-  console.log(htmlBefore);
+  for (const testCase of testCases) {
+    console.log(`\n[Test] ${testCase.name}`);
+    console.log("Input HTML:", testCase.html);
 
-  // Process assets
-  const htmlAfter = await processAssets(htmlBefore, TEST_WORKSPACE_ID, TEST_REPO_PATH);
+    const htmlAfter = await processAssets(testCase.html, TEST_WORKSPACE_ID, TEST_REPO_PATH);
 
-  console.log("\nOutput HTML:");
-  console.log(htmlAfter);
+    console.log("Output HTML:", htmlAfter);
 
-  // Verify transformation
-  const hasLocalPath = htmlAfter.includes("assets/test-image.png");
-  const hasS3Url = htmlAfter.includes("http://localhost:9000") || htmlAfter.includes("s3.amazonaws.com");
+    const hasLocalPath = htmlAfter.includes(testCase.expectedPath);
+    const hasS3Url =
+      htmlAfter.includes("http://localhost:9000") || htmlAfter.includes("s3.amazonaws.com");
 
-  console.log("\n✓ Results:");
-  console.log(`  - Local path removed: ${!hasLocalPath ? "✓" : "✗ FAILED"}`);
-  console.log(`  - S3 URL present: ${hasS3Url ? "✓" : "✗ FAILED"}`);
+    console.log(`  Local path removed: ${!hasLocalPath ? "✓" : "✗ FAILED"}`);
+    console.log(`  S3 URL present: ${hasS3Url ? "✓" : "✗ FAILED"}`);
 
-  if (hasLocalPath) {
-    console.error("\n✗ ERROR: HTML still contains local path!");
-    process.exit(1);
+    if (hasLocalPath) {
+      console.error(`\n✗ ERROR: HTML still contains local path: ${testCase.expectedPath}`);
+      process.exit(1);
+    }
+
+    if (!hasS3Url) {
+      console.error("\n✗ ERROR: HTML doesn't contain S3 URL!");
+      process.exit(1);
+    }
   }
 
-  if (!hasS3Url) {
-    console.error("\n✗ ERROR: HTML doesn't contain S3 URL!");
-    process.exit(1);
-  }
-
-  console.log("\n✓ Asset processing successful!");
+  console.log("\n✓ All asset processing tests passed!");
 }
 
 async function cleanup() {

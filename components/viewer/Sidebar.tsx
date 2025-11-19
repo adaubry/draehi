@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Node } from "@/modules/content/schema";
 import { TableOfContents } from "./TableOfContents";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 type SidebarProps = {
   nodes: Node[];
@@ -141,8 +140,8 @@ export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
         </Link>
       </div>
 
-      {/* Part 3: Dynamic Content Area with ScrollArea */}
-      <ScrollArea className="flex-1">
+      {/* Part 3: Dynamic Content Area - scrollable with hidden scrollbar */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide">
         {mode === "all-pages" ? (
           // All Pages Tree View
           <nav className="p-3">
@@ -169,7 +168,7 @@ export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
             <TableOfContents workspaceSlug={workspaceSlug} />
           </div>
         )}
-      </ScrollArea>
+      </div>
     </div>
   );
 }

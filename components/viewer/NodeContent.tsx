@@ -8,7 +8,7 @@ type NodeContentProps = {
 export function NodeContent({ html }: NodeContentProps) {
   return (
     <div
-      className="prose prose-gray max-w-none
+      className="block-content prose prose-gray max-w-none
         prose-headings:font-bold prose-headings:tracking-tight
         prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
         prose-p:leading-7 prose-p:text-gray-700

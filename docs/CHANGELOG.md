@@ -17,7 +17,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Kept `.block-content` for flex layout only (flex: 1, min-width: 0)
   - Typography now fully controlled by Tailwind prose classes
   - Fixed Sidebar.tsx: replaced ScrollArea with regular div
-  - Changes to prose presets in NodeContent.tsx now take effect immediately
+  - **FIXED**: Installed `@tailwindcss/typography` plugin (was missing!)
+  - Added `@plugin "@tailwindcss/typography"` to `globals.css`
+  - Prose classes now work - changes to NodeContent.tsx take effect immediately
 
 ### Added - 2025-11-19
 

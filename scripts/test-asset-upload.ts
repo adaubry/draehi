@@ -9,10 +9,16 @@
  *
  * Prerequisites:
  * - MinIO running (npm run minio)
- * - Database set up
+ * - .env.local with S3 credentials
  *
  * Usage: npx tsx scripts/test-asset-upload.ts
  */
+
+import { config } from "dotenv";
+import { resolve } from "path";
+
+// Load environment variables from .env.local
+config({ path: resolve(process.cwd(), ".env.local") });
 
 import { processAssets } from "../modules/logseq/parse";
 import fs from "fs/promises";

@@ -12,8 +12,9 @@ import { eq } from "drizzle-orm";
 import { config } from "dotenv";
 import { resolve } from "path";
 
-// Load test config
-config({ path: resolve(process.cwd(), ".test.env") });
+// Load environment variables (.env.local for local dev, .test.env for tests)
+config({ path: resolve(process.cwd(), ".env.local") });
+config({ path: resolve(process.cwd(), ".test.env") }); // Override with test vars if present
 
 const TEST_WORKSPACE_SLUG =
   process.env.TEST_WORKSPACE_SLUG || "testuser";

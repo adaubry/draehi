@@ -38,6 +38,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed - 2025-11-19
 
+- **Script Environment Loading**: Fixed env var loading in standalone scripts
+  - Added `dotenv` loading to `setup-test-workspace.ts`, `trigger-sync.ts`, `test-asset-upload.ts`
+  - Scripts now load `.env.local` before importing modules
+  - Fixes "Missing S3 credentials" error when running scripts directly
+  - Scripts load `.env.local` first, then `.test.env` (test vars override)
+  - Applies to all scripts that trigger sync/ingestion
+  - Locations: `scripts/setup-test-workspace.ts:17-19`, `scripts/trigger-sync.ts:15-17`, `scripts/test-asset-upload.ts:20-21`
 - **Asset Path Resolution Fix**: Fixed handling of `../assets/` paths from Logseq
   - Normalizes `../assets/image.png` → `assets/image.png` before upload
   - Fixes issue where assets weren't uploading due to incorrect path resolution

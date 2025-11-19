@@ -3,120 +3,155 @@
 import { useState } from "react";
 import type { Node } from "@/modules/content/schema";
 
-type TocHeading = {
-  uuid: string;
-  text: string;
-  level: number; // 1, 2, or 3
-  children: TocHeading[];
-};
-
-type TableOfContentsProps = {
+type TOCProps = {
   blocks: Node[];
-  maxDepth?: number;
+  pageUuid: string;
+  pageTitle: string;
+  workspaceSlug: string;
 };
 
-function extractHeadings(blocks: Node[], maxDepth: number = 3): TocHeading[] {
-  const headings: TocHeading[] = [];
-  const stack: TocHeading[] = [];
+type HeadingItem = {
+  uuid: string;
+  title: string;
+  level: number; // 1 = h1, 2 = h2, etc
+};
 
-  for (const block of blocks) {
-    if (!block.html) continue;
+type TOCItem = {
+  uuid: string;
+  title: string;
+  level: number;
+  children: TOCItem[];
+};
 
-    // Extract h1, h2, h3 from HTML with uuid
-    const headingMatches = block.html.matchAll(
-      /<h([1-3])[^>]*uuid="([^"]+)"[^>]*>(.*?)<\/h\1>/g
-    );
+/**
+ * Extract headings from HTML content
+ * Looks for h2, h3, h4 tags with data-uuid attributes
+ */
+function extractHeadingsFromHTML(html: string): HeadingItem[] {
+  const headings: HeadingItem[] = [];
+  const parser = new DOMParser();
 
-    for (const match of headingMatches) {
-      const level = parseInt(match[1]);
-      const uuid = match[2];
-      const text = match[3].replace(/<[^>]+>/g, "").trim(); // Strip HTML tags
+  try {
+    const doc = parser.parseFromString(html, "text/html");
+    const elements = doc.querySelectorAll("h2, h3, h4");
 
-      if (level > maxDepth) continue;
+    elements.forEach((el) => {
+      const uuid = el.getAttribute("data-uuid");
+      const text = el.textContent || "";
+      const level = parseInt(el.tagName[1]);
 
-      const heading: TocHeading = {
-        uuid,
-        text,
-        level,
-        children: [],
-      };
-
-      // Build hierarchy
-      while (stack.length > 0 && stack[stack.length - 1].level >= level) {
-        stack.pop();
+      if (uuid && text) {
+        headings.push({ uuid, title: text, level });
       }
-
-      if (stack.length === 0) {
-        // Root level heading
-        headings.push(heading);
-      } else {
-        // Nested heading
-        stack[stack.length - 1].children.push(heading);
-      }
-
-      // Don't add level 3 to stack (no children allowed)
-      if (level < 3) {
-        stack.push(heading);
-      }
-    }
+    });
+  } catch (e) {
+    console.error("Error parsing HTML for TOC:", e);
   }
 
   return headings;
 }
 
-function TocItem({
-  heading,
-  depth,
-}: {
-  heading: TocHeading;
-  depth: number;
-}) {
-  const [isCollapsed, setIsCollapsed] = useState(depth < 3);
-  const hasChildren = heading.children.length > 0;
+/**
+ * Build nested TOC structure from flat heading list
+ * h2 = level 1, h3 = level 2, h4 = level 3
+ */
+function buildTOCTree(headings: HeadingItem[]): TOCItem[] {
+  if (headings.length === 0) return [];
 
-  // Level 3 has no collapse (always expanded)
-  const canCollapse = depth < 3 && hasChildren;
+  const stack: TOCItem[] = [];
+  const root: TOCItem[] = [];
+
+  headings.forEach((heading) => {
+    const item: TOCItem = {
+      uuid: heading.uuid,
+      title: heading.title,
+      level: heading.level,
+      children: [],
+    };
+
+    // h2 = level 2 = tree level 0
+    const treeLevel = heading.level - 2;
+
+    // Remove items from stack that are at same or higher level
+    while (stack.length > treeLevel) {
+      stack.pop();
+    }
+
+    if (stack.length === 0) {
+      // Top level (h2)
+      root.push(item);
+    } else {
+      // Nested under last item in stack
+      stack[stack.length - 1].children.push(item);
+    }
+
+    stack.push(item);
+  });
+
+  return root;
+}
+
+function TOCItemComponent({
+  item,
+}: {
+  item: TOCItem;
+}) {
+  const [isOpen, setIsOpen] = useState(item.level === 2); // h2 expanded by default
+
+  const hasChildren = item.children.length > 0;
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const element = document.querySelector(`[data-uuid="${item.uuid}"]`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // Calculate indentation based on level (h2=0, h3=1, h4=2)
+  const indentLevel = item.level - 2;
+  const indent = indentLevel * 16;
 
   return (
     <div>
-      <a
-        href={`#${heading.uuid}`}
-        className={`block py-1.5 text-sm transition-colors hover:text-gray-900 ${
-          depth === 1
-            ? "font-medium text-gray-900"
-            : depth === 2
-            ? "text-gray-700 pl-3"
-            : "text-gray-600 pl-6"
-        }`}
-        onClick={(e) => {
-          e.preventDefault();
-          const el = document.querySelector(`[uuid="${heading.uuid}"]`);
-          el?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }}
-      >
-        <span className="flex items-center gap-1.5">
-          {canCollapse && (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsCollapsed(!isCollapsed);
-              }}
-              className="hover:text-gray-900"
-              aria-label={isCollapsed ? "Expand" : "Collapse"}
+      <div className="flex items-center space-x-1">
+        {hasChildren && (
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="inline-flex items-center justify-center w-4 h-4 text-gray-400 hover:text-gray-600 transition-colors shrink-0"
+            aria-label={isOpen ? "Collapse" : "Expand"}
+          >
+            <svg
+              className={`w-3 h-3 transition-transform ${
+                isOpen ? "rotate-90" : ""
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              {isCollapsed ? "▸" : "▾"}
-            </button>
-          )}
-          <span>{heading.text}</span>
-        </span>
-      </a>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+        )}
+        {!hasChildren && <div className="w-4 shrink-0" />}
 
-      {/* Children - only render if not collapsed and has children */}
-      {hasChildren && !isCollapsed && (
-        <div className="mt-0.5">
-          {heading.children.map((child) => (
-            <TocItem key={child.uuid} heading={child} depth={depth + 1} />
+        <button
+          onClick={handleClick}
+          className="text-left text-sm text-gray-700 hover:text-blue-600 transition-colors truncate flex-1"
+        >
+          {item.title}
+        </button>
+      </div>
+
+      {hasChildren && isOpen && (
+        <div className="space-y-1 mt-1" style={{ marginLeft: `${indent + 8}px` }}>
+          {item.children.map((child) => (
+            <TOCItemComponent key={child.uuid} item={child} />
           ))}
         </div>
       )}
@@ -126,28 +161,35 @@ function TocItem({
 
 export function TableOfContents({
   blocks,
-  maxDepth = 3,
-}: TableOfContentsProps) {
-  const headings = extractHeadings(blocks, maxDepth);
+  pageUuid,
+  pageTitle,
+}: TOCProps) {
+  // Concatenate HTML from all blocks
+  const allHTML = blocks
+    .filter((b) => b.uuid && b.html)
+    .map((b) => b.html)
+    .join("");
 
-  if (headings.length === 0) {
-    return (
-      <div className="px-3 py-4 text-sm text-gray-500 italic">
-        No table of contents
-      </div>
-    );
-  }
+  if (!allHTML) return null;
+
+  // Extract headings from HTML
+  const headings = extractHeadingsFromHTML(allHTML);
+
+  if (headings.length === 0) return null;
+
+  // Build nested TOC tree from flat heading list
+  const tocItems = buildTOCTree(headings);
 
   return (
-    <div>
-      <h3 className="mb-3 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+    <nav className="space-y-3">
+      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
         On This Page
       </h3>
-      <nav className="space-y-1" data-toc="true">
-        {headings.map((heading) => (
-          <TocItem key={heading.uuid} heading={heading} depth={1} />
+      <div className="space-y-1 text-sm">
+        {tocItems.map((item) => (
+          <TOCItemComponent key={item.uuid} item={item} />
         ))}
-      </nav>
-    </div>
+      </div>
+    </nav>
   );
 }

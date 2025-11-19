@@ -243,10 +243,10 @@ export async function ingestLogseqGraph(
           gfm: true,
         });
 
-        // Add data-uuid to headings for TOC extraction
+        // Add uuid to headings for TOC extraction
         blockHTML = blockHTML.replace(
           /<(h[1-3])([^>]*)>/g,
-          `<$1$2 data-uuid="${block.uuid}">`
+          `<$1$2 uuid="${block.uuid}">`
         );
 
         // Process Logseq references ([[page]], ((uuid)), TODO markers)

@@ -8,6 +8,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed - 2025-11-19
+- **BlockTree Rendering**: Fixed blank pages where content wasn't displaying
+  - `getAllBlocksForPage()` only returns blocks (parentUuid !== null), excluding page node
+  - BlockTree component needs page node to find top-level blocks
+  - Fixed by passing `[node, ...blocks]` to BlockTree instead of just `blocks`
+
 ### Changed - 2025-11-19
 - **Database Schema Simplification**: Removed redundant columns
   - Removed `id` (integer, auto-increment) + `blockUuid` duplication → single `uuid` text PRIMARY KEY

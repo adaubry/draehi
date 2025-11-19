@@ -83,7 +83,7 @@ async function NodePageContent({
       {/* Logseq-style Block Tree */}
       {blocks.length > 0 ? (
         <BlockTree
-          blocks={blocks}
+          blocks={[node, ...blocks]}
           workspaceSlug={workspaceSlug}
           pagePath={pagePath}
         />

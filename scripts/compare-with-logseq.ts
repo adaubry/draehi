@@ -185,8 +185,8 @@ async function checkDatabaseStats() {
   const journals: typeof pages = [];
   console.log(`   Journal pages: ${journals.length}`);
 
-  // Check namespace pages
-  const namespacedPages = pages.filter((p) => p.namespace);
+  // Check namespace pages (namespace removed from schema)
+  const namespacedPages: typeof pages = [];
   console.log(`   Namespaced pages: ${namespacedPages.length}`);
 
   // Block quality checks

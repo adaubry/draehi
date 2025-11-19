@@ -27,8 +27,6 @@ export const nodes = pgTable(
     // Logseq identification
     pageName: text("page_name").notNull(), // e.g., "guides/setup/intro"
     slug: text("slug").notNull(), // e.g., "intro"
-    namespace: text("namespace").notNull().default(""), // e.g., "guides/setup"
-    depth: integer("depth").notNull().default(0), // Derived from namespace
 
     // Content (HTML only - Git is source of truth for markdown)
     title: text("title").notNull(),
@@ -46,19 +44,6 @@ export const nodes = pgTable(
   (table) => ({
     // Hierarchy queries - parent + order for sibling ordering
     parentOrderIdx: index("parent_order_idx").on(table.parentUuid, table.order),
-
-    // O(1) path lookups
-    workspaceNamespaceSlugIdx: index("workspace_namespace_slug_idx").on(
-      table.workspaceId,
-      table.namespace,
-      table.slug
-    ),
-
-    // Workspace + namespace for page listing
-    workspaceNamespaceIdx: index("workspace_namespace_idx").on(
-      table.workspaceId,
-      table.namespace
-    ),
 
     // Block queries - get all blocks for a page (getAllBlocksForPage)
     workspacePageNameIdx: index("workspace_pagename_idx").on(

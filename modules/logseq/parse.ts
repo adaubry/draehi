@@ -162,8 +162,6 @@ export async function logseqPageToNode(
     workspaceId,
     pageName: page.name,
     slug,
-    namespace,
-    depth,
     title: page.title,
     html,
     metadata: page.metadata,

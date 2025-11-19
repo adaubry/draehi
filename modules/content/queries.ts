@@ -15,30 +15,15 @@ export const getNodeByUuid = cache(async (uuid: string) => {
 
 export const getNodeByPath = cache(
   async (workspaceId: number, pathSegments: string[]) => {
-    const slug = pathSegments.at(-1) || "";
-    const namespace = pathSegments.slice(0, -1).join("/");
+    const pageName = pathSegments.join("/");
 
     // Only return page nodes (parentUuid === null)
-    // Blocks also have namespace/slug but shouldn't be returned here
     return await db.query.nodes.findFirst({
       where: and(
         eq(nodes.workspaceId, workspaceId),
-        eq(nodes.namespace, namespace),
-        eq(nodes.slug, slug),
+        eq(nodes.pageName, pageName),
         isNull(nodes.parentUuid)
       ),
-    });
-  }
-);
-
-export const getNodeChildren = cache(
-  async (workspaceId: number, namespace: string) => {
-    return await db.query.nodes.findMany({
-      where: and(
-        eq(nodes.workspaceId, workspaceId),
-        eq(nodes.namespace, namespace)
-      ),
-      orderBy: [nodes.title],
     });
   }
 );
@@ -47,7 +32,7 @@ export const getAllNodes = cache(async (workspaceId: number) => {
   // Only return page nodes for navigation (parentUuid === null)
   return await db.query.nodes.findMany({
     where: and(eq(nodes.workspaceId, workspaceId), isNull(nodes.parentUuid)),
-    orderBy: [nodes.namespace, nodes.slug],
+    orderBy: [nodes.pageName],
   });
 });
 
@@ -78,39 +63,6 @@ export const getAllBlocksForPage = cache(
     });
   }
 );
-
-export async function getNodeBreadcrumbs(
-  node: { workspaceId: number; namespace: string },
-  workspaceSlug: string
-): Promise<Breadcrumb[]> {
-  if (!node.namespace) return [];
-
-  const segments = node.namespace.split("/");
-  const breadcrumbs: Breadcrumb[] = [];
-
-  for (let i = 0; i < segments.length; i++) {
-    const slug = segments[i];
-    const namespace = segments.slice(0, i).join("/");
-
-    const breadcrumbNode = await db.query.nodes.findFirst({
-      where: and(
-        eq(nodes.workspaceId, node.workspaceId),
-        eq(nodes.namespace, namespace),
-        eq(nodes.slug, slug)
-      ),
-    });
-
-    if (breadcrumbNode) {
-      breadcrumbs.push({
-        title: breadcrumbNode.title,
-        slug: breadcrumbNode.slug,
-        href: buildNodeHref(workspaceSlug, [...segments.slice(0, i), slug]),
-      });
-    }
-  }
-
-  return breadcrumbs;
-}
 
 export const getPageBacklinks = cache(
   async (workspaceId: number, pageName: string) => {

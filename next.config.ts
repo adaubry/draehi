@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Enable cacheComponents for performance optimizations
-  cacheComponents: true,
+  // cacheComponents disabled: conflicts with dynamic routes needed for workspace viewer
+  cacheComponents: false,
 };
 
 export default nextConfig;

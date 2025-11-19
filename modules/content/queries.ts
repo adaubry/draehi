@@ -8,7 +8,6 @@ import type { Breadcrumb } from "@/lib/types";
 import { buildNodeHref } from "@/lib/utils";
 
 export const getNodeByUuid = cache(async (uuid: string) => {
-  "use cache";
   return await db.query.nodes.findFirst({
     where: eq(nodes.uuid, uuid),
   });
@@ -16,7 +15,6 @@ export const getNodeByUuid = cache(async (uuid: string) => {
 
 export const getNodeByPath = cache(
   async (workspaceId: number, pathSegments: string[]) => {
-    "use cache";
     const slug = pathSegments.at(-1) || "";
     const namespace = pathSegments.slice(0, -1).join("/");
 
@@ -35,7 +33,6 @@ export const getNodeByPath = cache(
 
 export const getNodeChildren = cache(
   async (workspaceId: number, namespace: string) => {
-    "use cache";
     return await db.query.nodes.findMany({
       where: and(
         eq(nodes.workspaceId, workspaceId),
@@ -47,7 +44,6 @@ export const getNodeChildren = cache(
 );
 
 export const getAllNodes = cache(async (workspaceId: number) => {
-  "use cache";
   // Only return page nodes for navigation (parentUuid === null)
   return await db.query.nodes.findMany({
     where: and(eq(nodes.workspaceId, workspaceId), isNull(nodes.parentUuid)),
@@ -56,14 +52,12 @@ export const getAllNodes = cache(async (workspaceId: number) => {
 });
 
 export const getJournalNodes = cache(async (workspaceId: number) => {
-  "use cache";
   // Journal detection is removed - return empty array
   // To be implemented with metadata-based detection if needed
   return [];
 });
 
 export const getPageBlocks = cache(async (pageUuid: string) => {
-  "use cache";
   return await db.query.nodes.findMany({
     where: eq(nodes.parentUuid, pageUuid),
     orderBy: [nodes.order],
@@ -72,7 +66,6 @@ export const getPageBlocks = cache(async (pageUuid: string) => {
 
 export const getAllBlocksForPage = cache(
   async (workspaceId: number, pageName: string) => {
-    "use cache";
     // Get all blocks for this page (excludes the page node itself)
     // Blocks have parentUuid !== null
     return await db.query.nodes.findMany({
@@ -121,7 +114,6 @@ export async function getNodeBreadcrumbs(
 
 export const getPageBacklinks = cache(
   async (workspaceId: number, pageName: string) => {
-    "use cache";
     // Find all blocks that reference this page via [[pageName]]
     const allBlocks = await db.query.nodes.findMany({
       where: and(
@@ -156,7 +148,6 @@ export const getPageBacklinks = cache(
 
 export const getBlockBacklinks = cache(
   async (workspaceId: number, pageName: string) => {
-    "use cache";
     // Find all blocks on this page (blocks have parentUuid !== null)
     const pageBlocks = await db.query.nodes.findMany({
       where: and(

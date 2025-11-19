@@ -12,6 +12,8 @@ import {
 import { Breadcrumbs } from "@/components/viewer/Breadcrumbs";
 import { BlockTree } from "@/components/viewer/BlockTree";
 
+export const dynamic = "force-dynamic";
+
 type PageProps = {
   params: Promise<{
     workspaceSlug: string;

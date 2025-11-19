@@ -111,7 +111,7 @@ export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
   const mode: SidebarMode = isOnAllPagesRoute ? "all-pages" : "toc";
 
   return (
-    <div className="flex flex-col h-full">
+    <ScrollArea dir="rtl" className="flex flex-col h-full sticky ">
       {/* Part 1: Placeholder Section (48px) */}
       <div className="h-12 bg-gray-50 border-b border-gray-200 shrink-0" />
 
@@ -119,19 +119,19 @@ export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
       <div className="flex flex-col gap-1 p-3 bg-white border-b border-gray-200 shrink-0">
         <Link
           href="/dashboard"
-          className="block px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors text-center"
+          className="block px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors "
         >
           Dashboard
         </Link>
         <Link
           href={`/${workspaceSlug}`}
-          className="block px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors text-center"
+          className="block px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors "
         >
           Home
         </Link>
         <Link
           href={`/${workspaceSlug}/all-pages`}
-          className={`block px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-center ${
+          className={`block px-3 py-1.5 rounded-md text-xs font-medium transition-colors  ${
             isOnAllPagesRoute
               ? "bg-gray-100 text-gray-900"
               : "text-gray-700 hover:bg-gray-50"

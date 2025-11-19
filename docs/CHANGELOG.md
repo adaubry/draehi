@@ -8,77 +8,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Changed - 2025-11-19 (Session 5)
-- **Removed unused namespace column**: Database simplification
-  - `nodes.namespace` column was always empty (all 0 values in DB) with no functional purpose
-  - `nodes.depth` column was derived from namespace hierarchy and no longer needed
-  - Simplified URL construction: changed from `namespace + slug` to single `pageName` field
-  - Updated query layer to use `pageName` directly instead of decomposing it
-  - Updated Sidebar and page components to use pageName for hierarchy building
-  - Created database migration: `0002_drop_namespace_depth.sql` to drop columns (safe - all values were empty)
-  - Benefits: Simpler code, fewer columns, cleaner data model
-  - **Migration**: Must run migration before deploying to production
+### Removed - 2025-11-19
 
-### Fixed - 2025-11-19 (Session 4)
-- **Block Rendering Issue**: Fixed blocks not displaying on pages with content
-  - Root cause: Block ingestion pipeline set `parentUuid = null` for ALL blocks during creation
-  - BlockTree component filters for `parentUuid === pageNode.uuid` to find top-level blocks
-  - Solution: Set correct parentUuid at insertion time in `ingestLogseqGraph()`
-  - Logic: `parentUuid: block.parentUuid || pageUuid` - top-level blocks get pageUuid, nested blocks keep parent UUID
-  - Removed broken "update parent-child relationships" logic that was never executed
-  - Simplified depth calculation to use in-memory parent mapping
-  - No schema changes required - logic-only fix applied at ingestion time
-  - Tests confirm: 73 blocks with 100% parent assignment on contents page
-  - **User Action Required**: Re-ingest content for existing workspaces to apply fix
-
-### Fixed - 2025-11-19 (Session 3)
-- **Page Reference Link Slugification**: Fixed page references to generate proper URL slugs
-  - [[Page Name]] now converts to /workspace/page-name using pageNameToPath()
-  - Handles spaces → dashes, uppercase → lowercase conversion
-  - Fixes test failure: "No page reference links found"
-- **Test Suite Limitations Identified**: Frontend e2e tests require browser automation
-  - Pages ARE rendering correctly with all 234 blocks in /test/contents
-  - BlockTree component has all required classes: `logseq-blocks`, `logseq-block`, `block-children`, `has-children`, `data-depth` attributes
-  - Test failures are due to test script not executing JavaScript to hydrate React components
-  - Recommendation: Use browser automation (Playwright/Puppeteer) for comprehensive e2e tests
-- **Backlinks Analysis**: "Cited by" section empty because test graph lacks incoming references
-  - getPageBacklinks() correctly finds blocks with data-page attributes
-  - Test data needs pages that reference each other for this feature to show content
-
-### Fixed - 2025-11-19 (Session 2)
-- **Production Build 404 Errors**: Fixed static pre-rendering failures on dynamic routes
-  - Pages were returning HTTP 404 even though content existed in database
-  - Root cause: Next.js static pre-rendering called getWorkspaceBySlug() at build time, but database was empty
-  - Solution: Added `export const dynamic = "force-dynamic"` to workspace viewer page
-  - Also: Disabled `cacheComponents: true` in next.config.ts (incompatible with dynamic routes)
-  - Also: Removed "use cache" directives from query functions that now require dynamic rendering
-  - Pages now render dynamically at request time, allowing proper database lookups
-
-### Fixed - 2025-11-19 (Session 1)
-- **BlockTree Rendering**: Fixed blank pages where content wasn't displaying
-  - `getAllBlocksForPage()` only returns blocks (parentUuid !== null), excluding page node
-  - BlockTree component needs page node to find top-level blocks
-  - Fixed by passing `[node, ...blocks]` to BlockTree instead of just `blocks`
+- **Documentation Cleanup**: Removed outdated/duplicate documentation
+  - Deleted duplicate docs from root (PHASE4_COMPLETE.md, TEST_SUMMARY.md, ITERATION_SUMMARY.md)
+  - Removed Phase 4 planning docs (PHASE4_ISSUES.md, PHASE4_TEST_PLAN.md, FRONTEND_FIX_LOG.md)
+  - Removed conversation logs (conversation.md)
+  - Removed diagnostic scripts (diagnose-frontend.ts, diagnose-parser.ts, test-block-structure.ts, test-export-output.ts, analyze-missing-pages.ts)
+  - Removed duplicate script (validate-content.js, kept .ts version)
 
 ### Changed - 2025-11-19
-- **Database Schema Simplification**: Removed redundant columns
-  - Removed `id` (integer, auto-increment) + `blockUuid` duplication → single `uuid` text PRIMARY KEY
-  - Removed `parentId` (integer) → `parentUuid` (text) references nodes.uuid
-  - Removed `nodeType` column → infer from `parentUuid === null` (page) vs `!== null` (block)
-  - Removed `isJournal` and `journalDate` columns (journals not needed for MVP)
-  - Updated all queries to use `isNull()`/`isNotNull()` for null checks
-- **UUID Generation**: All content sources now use stable content-based UUIDs (SHA256)
-  - Pages: `${workspaceId}::${pageName}` → SHA256 → UUID format
-  - Blocks: `${pageName}::${content}::${order}` → SHA256 → UUID format
-  - Fixed `parse.ts` (line 156-158) to use stable UUIDs
-  - Fixed `ingest.ts` (line 133-135) to use stable UUIDs
-  - Resolves duplicate key constraint errors on sync
-- **Block Hover**: Moved hover highlight from parent `.logseq-block` to child `.block-line`
-- **Scripts Cleanup**: Removed 10 diagnostic scripts, kept 10 essential ones
-  - Removed `validate-content.ts` reference from test-e2e.sh
-- **Test Suite**: Updated to require UUID format only (removed `block-N` fallback pattern)
+
+- **Documentation Update**: Aligned all status documentation
+  - Updated README.md: Phase 4 complete status
+  - Updated ROADMAP.md: Removed Phase 4.6-4.9 planning sections (issues resolved)
+  - Updated CLAUDE.md: Current project state, testing commands, architecture notes
+  - Updated PROJECT_STATUS.md: Reflects Phase 4 completion
+- **Component Flags**: Added TODO comments to viewer components
+  - Flagged custom components for potential migration to shadcn/ui
+  - BlockTree, Sidebar, Breadcrumbs, NodeContent marked for future refactor
 
 ### Fixed - 2025-11-18
+
 - **Collapsible Blocks**: Fixed tab indentation parsing in markdown-parser.ts
   - Tabs now correctly count as 1 indent level (previously calculated as 0)
   - All blocks with children (h2, h3, etc.) now properly collapsible
@@ -92,12 +43,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Tests**: Comprehensive frontend test suite covering all display requirements
 
 ### Changed - 2025-11-18
+
 - BlockTree component: Normal click toggles collapse, ctrl/cmd+click navigates
 - extractNamespaceAndSlug() now slugifies all path segments for lowercase URLs
 - Page template includes backlinks sections at bottom
 - Test suite expanded from 9 to 12 comprehensive tests
 
 ### Changed - 2025-11-17
+
 - **Phase 4 Design Decisions Finalized**:
   - All open questions resolved, ready for implementation
   - **Slugification:** Follow industry best practices
@@ -138,6 +91,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Blocks Phase 5 deployment pipeline work
 
 ### Added
+
 - **Automated E2E Testing**:
   - **.test.env configuration file** - Centralized test configuration (gitignored)
   - **scripts/setup-test-workspace.ts** - Automated test user/workspace creation via direct DB operations
@@ -410,6 +364,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     - blocks.css imported in layout.tsx
 
 ### Changed
+
 - **Test Data**: Replaced synthetic test graph with official Logseq documentation
   - 238 production pages vs 7 synthetic pages
   - 75 real journal entries
@@ -421,7 +376,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - App directory structure expanded with auth and dashboard route groups
 - Git repository connection triggers initial sync automatically
 - Git clone now validates branch exists before attempting clone
-- Settings page placeholder updated from "ghp_..." to "github_pat_..." for fine-grained tokens
+- Settings page placeholder updated from "ghp*..." to "github_pat*..." for fine-grained tokens
 - **Auto-correction behavior**: Git sync now automatically detects and uses default branch if specified branch doesn't exist, then persists correct branch (no manual user intervention required per CRUD guidelines)
 - **Block HTML rendering approach**: Switched from HTML parsing to direct markdown rendering with `marked` library (simpler, more reliable)
 - **Content storage model**: Pages now have html=null (blocks contain the content), following true Logseq architecture
@@ -429,14 +384,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Depth calculation**: Now calculated from actual database parent chain instead of markdown structure
 
 ### Deprecated
+
 - N/A
 
 ### Removed
+
 - modules/logseq/extract-blocks.ts (HTML extraction module - replaced with markdown rendering)
 - node-html-parser dependency (no longer needed)
 - backend-services/export-logseq-notes (git submodule - replaced with vendored copy in modules/)
 
 ### Fixed
+
 - **Frontend Display: "No blocks yet" Error** (Critical Fix):
   - **Root Cause**: getNodeByPath() missing `nodeType='page'` filter
   - Query was randomly returning block nodes instead of page nodes
@@ -526,6 +484,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Cleanup both config and script files after execution
 
 ### Security
+
 - N/A
 
 ---
@@ -533,6 +492,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [0.1.0] - 2025-11-16
 
 ### Added
+
 - Initial Next.js project setup
 - ESLint configuration
 - Turbopack support
@@ -541,6 +501,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 
 **Version Format:** [MAJOR.MINOR.PATCH]
+
 - MAJOR: Breaking changes
 - MINOR: New features, backward compatible
 - PATCH: Bug fixes, backward compatible

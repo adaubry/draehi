@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Node } from "@/modules/content/schema";
 import { TableOfContents } from "./TableOfContents";
-import { usePageBlocks } from "@/lib/page-blocks-context";
 
 type SidebarProps = {
   nodes: Node[];
@@ -100,51 +99,12 @@ function TreeItem({
 export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
   const pathname = usePathname();
   const tree = buildTree(nodes);
-  const { blocks, pageUuid } = usePageBlocks();
 
   // Auto-detect which mode to show based on current route
   const isOnAllPagesRoute =
     pathname === `/${workspaceSlug}/all-pages` ||
     pathname === `/${workspaceSlug}/all-pages/`;
   const mode: SidebarMode = isOnAllPagesRoute ? "all-pages" : "toc";
-
-  // Use context blocks for TOC mode
-  const tocBlocks = mode === "toc" ? blocks : [];
-  const tocPageUuid = mode === "toc" ? pageUuid : "";
-
-  // DEBUG: Log blocks from context
-  console.log("=== Sidebar Debug (Context) ===");
-  console.log("Current pathname:", pathname);
-  console.log("Mode:", mode);
-  console.log("Blocks from context:", tocBlocks.length);
-  console.log("Page UUID:", tocPageUuid);
-
-  if (tocBlocks.length > 0) {
-    console.log("First block UUID:", tocBlocks[0].uuid);
-    console.log("First block has HTML:", !!tocBlocks[0].html);
-    if (tocBlocks[0].html) {
-      console.log("First block HTML (first 300 chars):", tocBlocks[0].html.substring(0, 300));
-    }
-  }
-
-  // Count blocks with HTML
-  const blocksWithHtml = tocBlocks.filter(b => b.html && b.html.length > 0);
-  console.log("Blocks with HTML content:", blocksWithHtml.length);
-
-  // Check for headings
-  if (blocksWithHtml.length > 0) {
-    const allHtml = blocksWithHtml.map(b => b.html).join("");
-    const h2Count = (allHtml.match(/<h2/g) || []).length;
-    const h3Count = (allHtml.match(/<h3/g) || []).length;
-    const h4Count = (allHtml.match(/<h4/g) || []).length;
-    console.log("Headings in HTML - h2:", h2Count, "h3:", h3Count, "h4:", h4Count);
-
-    // Check for uuid attributes
-    const uuidInH2 = (allHtml.match(/<h2[^>]*uuid=/g) || []).length;
-    const uuidInH3 = (allHtml.match(/<h3[^>]*uuid=/g) || []).length;
-    const uuidInH4 = (allHtml.match(/<h4[^>]*uuid=/g) || []).length;
-    console.log("Headings WITH uuid - h2:", uuidInH2, "h3:", uuidInH3, "h4:", uuidInH4);
-  }
 
   return (
     <div className="flex flex-col h-full">
@@ -204,18 +164,7 @@ export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
         ) : (
           // Table of Contents View
           <div className="p-3">
-            {tocBlocks && tocBlocks.length > 0 && tocPageUuid ? (
-              <TableOfContents
-                blocks={tocBlocks}
-                pageUuid={tocPageUuid}
-                pageTitle="On This Page"
-                workspaceSlug={workspaceSlug}
-              />
-            ) : (
-              <div className="text-xs text-gray-500 italic">
-                No blocks on this page
-              </div>
-            )}
+            <TableOfContents workspaceSlug={workspaceSlug} />
           </div>
         )}
       </div>

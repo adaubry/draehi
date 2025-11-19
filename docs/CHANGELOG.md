@@ -23,9 +23,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Handles both plain text URLs and markdown links
   - Non-breaking: preserves other URLs unchanged
   - Location: `modules/logseq/process-references.ts:100-171`
+- **MinIO Launch Scripts**: Added convenient npm scripts for MinIO management
+  - `npm run minio` - Quick start/status check (auto-setup if needed)
+  - `npm run minio stop/restart/logs/status` - Container management
+  - `scripts/minio.sh` - Wrapper around setup-minio.sh with colored output
+  - `scripts/test-asset-upload.ts` - Test suite for asset upload flow
+  - Updated SCRIPTS.md with asset ingestion flow documentation
 
 ### Changed - 2025-11-19
 
+- **S3 URL Generation Fix**: Fixed MinIO URL to include bucket name
+  - Local mode: `http://localhost:9000/draehi-assets/key` (path-style)
+  - Production mode: `https://draehi-assets.s3.region.amazonaws.com/key` (subdomain-style)
+  - Location: `modules/storage/s3.ts:42-43`
 - **Prose Typography Integration**: Integrated Tailwind Typography into block rendering
   - Imported and used `NodeContent` component in `BlockTree.tsx` for consistent typography
   - Added `block-content` class to NodeContent for flex layout compatibility

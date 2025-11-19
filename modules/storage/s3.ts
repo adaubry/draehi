@@ -39,9 +39,12 @@ export async function uploadFile(
       ? process.env.MINIO_PUBLIC_URL || "http://localhost:9000"
       : `https://${bucket}.s3.${process.env.AWS_REGION || "us-east-1"}.amazonaws.com`;
 
+    // For MinIO (local), include bucket in path; for S3 (prod), bucket is in subdomain
+    const url = isLocal ? `${baseUrl}/${bucket}/${key}` : `${baseUrl}/${key}`;
+
     return {
       success: true,
-      url: `${baseUrl}/${key}`,
+      url,
     };
   } catch (error) {
     return {

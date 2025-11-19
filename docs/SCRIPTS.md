@@ -69,12 +69,32 @@ cargo install export-logseq-notes
 - Docker installed and running
 - Ports 9000 and 9001 available
 
-**Usage:**
+**First-time setup:**
 ```bash
+npm run minio:setup
+# OR
 ./scripts/setup-minio.sh
 ```
 
-**Configuration added to `.env.local`:**
+**Daily usage (quick launcher):**
+```bash
+# Start MinIO (auto-runs setup if needed)
+npm run minio
+
+# Stop MinIO
+npm run minio stop
+
+# Restart MinIO
+npm run minio restart
+
+# View logs
+npm run minio logs
+
+# Check status
+npm run minio status
+```
+
+**Configuration (add to `.env.local`):**
 ```bash
 STORAGE_MODE=local
 MINIO_ENDPOINT=http://localhost:9000
@@ -89,21 +109,21 @@ S3_BUCKET=draehi-assets
 - Console: http://localhost:9001
 - Credentials: minioadmin / minioadmin
 
-**Container Management:**
+**Asset Ingestion Flow:**
+1. Start MinIO: `npm run minio`
+2. Sync workspace: triggers `ingestLogseqGraph()`
+3. Assets (`../assets/image.png`) uploaded to MinIO
+4. HTML updated with S3 URLs (`http://localhost:9000/draehi-assets/workspaces/1/assets/image.png`)
+5. Frontend serves assets from MinIO
+
+**Test asset upload:**
 ```bash
-# Stop MinIO
-docker stop draehi-minio
-
-# Start MinIO
-docker start draehi-minio
-
-# Remove MinIO
-docker rm -f draehi-minio
+npx tsx scripts/test-asset-upload.ts
 ```
 
 **When to skip:**
 - You don't need asset hosting yet
-- You're using AWS S3 directly
+- You're using AWS S3 directly (set `STORAGE_MODE=production`)
 - You're only testing auth/git features
 
 ---

@@ -22,8 +22,6 @@ This will:
 
 ## Individual Scripts
 
-You can also run individual scripts as needed:
-
 ### 1. Install Rust Tools
 
 **Script:** `./scripts/install-rust-tools.sh`
@@ -41,15 +39,6 @@ You can also run individual scripts as needed:
 **Usage:**
 ```bash
 ./scripts/install-rust-tools.sh
-```
-
-**Manual alternative:**
-```bash
-# Install Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Install export-logseq-notes
-cargo install export-logseq-notes
 ```
 
 ---
@@ -76,22 +65,16 @@ npm run minio:setup
 ./scripts/setup-minio.sh
 ```
 
-**Daily usage (quick launcher):**
+**Daily usage:**
 ```bash
-# Start MinIO (auto-runs setup if needed)
+# Start MinIO
 npm run minio
 
-# Stop MinIO
-npm run minio stop
-
-# Restart MinIO
-npm run minio restart
-
-# View logs
-npm run minio logs
-
-# Check status
-npm run minio status
+# Other commands via minio.sh
+./scripts/minio.sh stop
+./scripts/minio.sh restart
+./scripts/minio.sh logs
+./scripts/minio.sh status
 ```
 
 **Configuration (add to `.env.local`):**
@@ -108,23 +91,6 @@ S3_BUCKET=draehi-assets
 - API: http://localhost:9000
 - Console: http://localhost:9001
 - Credentials: minioadmin / minioadmin
-
-**Asset Ingestion Flow:**
-1. Start MinIO: `npm run minio`
-2. Sync workspace: triggers `ingestLogseqGraph()`
-3. Assets (`../assets/image.png`) uploaded to MinIO
-4. HTML updated with S3 URLs (`http://localhost:9000/draehi-assets/workspaces/1/assets/image.png`)
-5. Frontend serves assets from MinIO
-
-**Test asset upload:**
-```bash
-npx tsx scripts/test-asset-upload.ts
-```
-
-**When to skip:**
-- You don't need asset hosting yet
-- You're using AWS S3 directly (set `STORAGE_MODE=production`)
-- You're only testing auth/git features
 
 ---
 
@@ -164,12 +130,6 @@ npx tsx scripts/test-asset-upload.ts
 - **Supabase**: https://supabase.com
 - **Local PostgreSQL**: Install via Homebrew/apt
 
-**Manual alternative:**
-```bash
-npm install
-npm run db:push
-```
-
 ---
 
 ### 4. Master Setup
@@ -186,15 +146,49 @@ npm run db:push
 ./scripts/setup.sh
 ```
 
-**Interactive prompts:**
-1. Pauses after creating `.env.local` to let you configure it
-2. Asks if you want to set up MinIO
+---
 
-**Non-interactive mode (for CI):**
+## Testing Scripts
+
+### Backend E2E Tests
+
+**Script:** `./scripts/test-e2e.sh`
+
+Tests the full ingestion pipeline:
+- Database schema setup
+- Test user creation
+- Workspace creation
+- Git repository connection
+- Content validation
+
+**Usage:**
 ```bash
-# Skip MinIO setup automatically
-echo "N" | ./scripts/setup.sh
+./scripts/test-e2e.sh
 ```
+
+### Frontend E2E Tests
+
+**Script:** `./scripts/test-frontend-e2e.sh`
+
+Validates frontend rendering:
+- Pages load correctly (HTTP 200)
+- Blocks display properly
+- URL encoding works
+- CSS stylesheets loaded
+
+**Usage:**
+```bash
+./scripts/test-frontend-e2e.sh
+```
+
+### Structure Comparison
+
+**Script:** `npx tsx scripts/compare-with-logseq.ts`
+
+Compares database structure with Logseq docs:
+- Page count validation
+- Block quality checks
+- Key pages verification
 
 ---
 
@@ -207,94 +201,11 @@ Make scripts executable:
 chmod +x scripts/*.sh
 ```
 
-### Rust installation fails on Linux
-
-Install build dependencies first:
-```bash
-# Ubuntu/Debian
-sudo apt-get update
-sudo apt-get install -y build-essential curl
-
-# Fedora/RHEL
-sudo dnf groupinstall -y "Development Tools"
-```
-
 ### Docker not found (MinIO)
 
 Install Docker:
 - **macOS**: Docker Desktop (https://www.docker.com/products/docker-desktop)
 - **Linux**: `curl -fsSL https://get.docker.com | sh`
-- **Windows**: WSL2 + Docker Desktop
-
-### Docker permission denied (Linux)
-
-The script will automatically detect and fix this:
-```bash
-./scripts/setup-minio.sh
-```
-
-If prompted, enter your sudo password. You'll need to log out and log back in.
-
-**Manual fix:**
-```bash
-# Add user to docker group
-sudo usermod -aG docker $USER
-
-# Log out and log back in
-# Then verify:
-docker ps
-```
-
-### export-logseq-notes: "not found in registry"
-
-The tool is not published to crates.io. The script automatically builds from source.
-
-**Requirements:**
-- Git installed
-- Rust build tools (installed automatically)
-- Internet connection
-
-**Manual install:**
-```bash
-git clone https://github.com/dimfeld/export-logseq-notes.git
-cd export-logseq-notes
-cargo install --path .
-```
-
-### Rust compilation error (time crate v0.3.20)
-
-**Error:** `type annotations needed for Box<_>` in time-0.3.20
-
-This is a known incompatibility between old `time` crate and modern Rust.
-
-**The script automatically tries:**
-```bash
-cargo update  # Updates time to latest 0.3.x
-```
-
-**If build still fails, use older Rust:**
-```bash
-# Install and use Rust 1.70 (compatible with time 0.3.20)
-rustup install 1.70.0
-rustup default 1.70.0
-
-# Build
-cd /tmp
-git clone https://github.com/dimfeld/export-logseq-notes.git
-cd export-logseq-notes
-cargo install --path .
-
-# Return to latest Rust after
-rustup default stable
-```
-
-**Manual fix (edit upstream project):**
-```bash
-cd /tmp/export-logseq-notes
-# Edit Cargo.toml: change time = "0.3.20" to time = "0.3.36"
-cargo build --release
-cargo install --path .
-```
 
 ### DATABASE_URL connection fails
 
@@ -303,11 +214,6 @@ Check:
 2. Credentials are correct
 3. Database name exists
 4. Host/port are accessible
-
-Test connection:
-```bash
-psql "${DATABASE_URL}"
-```
 
 ### export-logseq-notes not found after install
 
@@ -325,57 +231,14 @@ export PATH="$HOME/.cargo/bin:$PATH"
 
 ## Script Architecture
 
-All scripts follow industry best practices documented in [docs/BASH_GUIDELINES.md](BASH_GUIDELINES.md):
+All scripts follow industry best practices documented in [BASH_GUIDELINES.md](BASH_GUIDELINES.md):
 
 1. **Idempotent** - Safe to run multiple times
 2. **Unix-compatible** - Works on macOS/Linux
 3. **Error handling** - `set -euo pipefail` + cleanup traps
 4. **Self-cleaning** - Removes temp files on success AND failure
-5. **User-friendly** - Clear output with ✅/❌ indicators
-6. **Fail-safe** - Never leaves system in broken state
-
-**Directory structure:**
-```
-scripts/
-├── setup.sh                    # Master setup script
-├── install-rust-tools.sh       # Rust + export-logseq-notes
-├── setup-minio.sh              # Local S3 storage
-└── setup-database.sh           # PostgreSQL schema
-```
-
-**See also:**
-- [BASH_GUIDELINES.md](BASH_GUIDELINES.md) - Complete bash scripting standards
+5. **User-friendly** - Clear output with indicators
 
 ---
 
-## For CI/CD
-
-Use individual scripts in CI pipelines:
-
-```yaml
-# Example GitHub Actions
-- name: Install Rust tools
-  run: ./scripts/install-rust-tools.sh
-
-- name: Setup database
-  run: ./scripts/setup-database.sh
-  env:
-    DATABASE_URL: ${{ secrets.DATABASE_URL }}
-```
-
----
-
-## Contributing
-
-When adding new setup scripts:
-
-1. Place in `scripts/` directory
-2. Use `#!/usr/bin/env bash` shebang
-3. Add `set -euo pipefail` for safety
-4. Make executable: `chmod +x scripts/your-script.sh`
-5. Document in this file
-6. Update master `setup.sh` if needed
-
----
-
-**Last Updated:** 2025-11-16
+**Last Updated:** 2025-11-23

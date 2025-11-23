@@ -210,6 +210,7 @@ draehi/
 │   ├── ROADMAP.md             # Development roadmap
 │   ├── TESTING.md             # Testing guide
 │   ├── DIRECTORY.md           # Project navigation
+│   ├── DATABASE.md            # Database guide (Drizzle, schemas, queries)
 │   ├── SCRIPTS.md             # Setup scripts docs
 │   ├── BASH_GUIDELINES.md     # Bash best practices
 │   ├── CRUD_GUIDELINES.md     # Data operations

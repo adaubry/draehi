@@ -1,0 +1,118 @@
+version: "3.8"
+
+services:
+  # SurrealDB - Document/Graph database
+  surrealdb:
+    image: surrealdb/surrealdb:latest
+    container_name: draehi-surrealdb
+    command: start --log trace --user root --pass root file:/data/draehi.db
+    ports:
+      - "8000:8000"
+    volumes:
+      - surrealdb_data:/data
+    environment:
+      - SURREAL_LOG=trace
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # KeyDB - Redis-compatible cache for pre-rendered HTML
+  keydb:
+    image: eqalpha/keydb:latest
+    container_name: draehi-keydb
+    ports:
+      - "6379:6379"
+    volumes:
+      - keydb_data:/data
+    command: keydb-server --appendonly yes --server-threads 2
+    healthcheck:
+      test: ["CMD", "keydb-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # MinIO - S3-compatible object storage
+  minio:
+    image: minio/minio:latest
+    container_name: draehi-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # MinIO bucket init
+  minio-init:
+    image: minio/mc:latest
+    container_name: draehi-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      mc mb myminio/draehi-assets --ignore-existing;
+      mc anonymous set download myminio/draehi-assets;
+      exit 0;
+      "
+
+  # Next.js app (optional - can run outside Docker for dev)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: draehi-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - SURREAL_URL=http://surrealdb:8000
+      - SURREAL_USER=root
+      - SURREAL_PASS=root
+      - SURREAL_NS=draehi
+      - SURREAL_DB=main
+      - KEYDB_URL=redis://keydb:6379
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_PUBLIC_URL=http://localhost:9000
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - S3_BUCKET=draehi-assets
+      - SESSION_SECRET=dev-session-secret-change-in-prod
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+    depends_on:
+      surrealdb:
+        condition: service_healthy
+      keydb:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    profiles:
+      - full  # Only start with --profile full
+    restart: unless-stopped
+
+volumes:
+  surrealdb_data:
+  keydb_data:
+  minio_data:
+
+networks:
+  default:
+    name: draehi-network

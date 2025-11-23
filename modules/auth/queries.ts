@@ -1,18 +1,18 @@
 "use server";
 
-import { db } from "@/lib/db";
-import { users } from "./schema";
-import { eq } from "drizzle-orm";
+import { queryOne, selectOne } from "@/lib/surreal";
+import { type User, userRecordId } from "./schema";
 import { cache } from "react";
 
-export const getUserById = cache(async (id: number) => {
-  return await db.query.users.findFirst({
-    where: eq(users.id, id),
-  });
+export const getUserById = cache(async (id: string): Promise<User | null> => {
+  return await selectOne<User>(userRecordId(id));
 });
 
-export const getUserByUsername = cache(async (username: string) => {
-  return await db.query.users.findFirst({
-    where: eq(users.username, username),
-  });
-});
+export const getUserByUsername = cache(
+  async (username: string): Promise<User | null> => {
+    return await queryOne<User>(
+      "SELECT * FROM users WHERE username = $username LIMIT 1",
+      { username }
+    );
+  }
+);

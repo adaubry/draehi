@@ -1,57 +1,47 @@
-import {
-  pgTable,
-  text,
-  timestamp,
-  integer,
-  json,
-  boolean,
-  date,
-  index,
-} from "drizzle-orm/pg-core";
-import { workspaces } from "../workspace/schema";
+// SurrealDB node type definitions
+// Schema is defined in lib/surreal.ts initSchema()
+// HTML content is stored in KeyDB (see lib/keydb.ts)
 
-export const nodes = pgTable(
-  "nodes",
-  {
-    uuid: text("uuid").primaryKey(), // UUID as primary key (no auto-increment)
-    workspaceId: integer("workspace_id")
-      .notNull()
-      .references(() => workspaces.id, { onDelete: "cascade" }),
+export interface Node {
+  id: string; // SurrealDB record ID: nodes:uuid
+  workspace: string; // Record link to workspaces:xxx
+  parent?: string; // Record link to nodes:xxx (NULL = page, NOT NULL = block)
+  order: number;
+  page_name: string; // e.g., "guides/setup/intro"
+  slug: string; // e.g., "intro"
+  title: string;
+  metadata?: {
+    tags?: string[];
+    properties?: Record<string, unknown>;
+    frontmatter?: Record<string, unknown>;
+  };
+  created_at: string;
+  updated_at: string;
+}
 
-    // Hierarchy (everything is a node: pages and blocks)
-    parentUuid: text("parent_uuid").references((): any => nodes.uuid, {
-      onDelete: "cascade",
-    }), // NULL = page, NOT NULL = block
-    order: integer("order").notNull().default(0), // Order within siblings
+// Note: html is NOT stored in SurrealDB - it's in KeyDB
+export interface NodeWithHTML extends Node {
+  html?: string | null;
+}
 
-    // Logseq identification
-    pageName: text("page_name").notNull(), // e.g., "guides/setup/intro"
-    slug: text("slug").notNull(), // e.g., "intro"
+export type NewNode = {
+  uuid: string; // Used to create nodes:uuid
+  workspaceId: string;
+  parentUuid?: string | null;
+  order: number;
+  pageName: string;
+  slug: string;
+  title: string;
+  html?: string | null; // Will be stored in KeyDB
+  metadata?: Node["metadata"];
+};
 
-    // Content (HTML only - Git is source of truth for markdown)
-    title: text("title").notNull(),
-    html: text("html"), // Rendered HTML (NULL for pages, HTML for blocks)
-    metadata: json("metadata").$type<{
-      tags?: string[];
-      properties?: Record<string, unknown>;
-      frontmatter?: Record<string, unknown>;
-    }>(),
+// Extract UUID from SurrealDB record ID
+export function getNodeUuidFromRecord(recordId: string): string {
+  return recordId.replace("nodes:", "");
+}
 
-    // Timestamps
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  },
-  (table) => ({
-    // Hierarchy queries - parent + order for sibling ordering
-    parentOrderIdx: index("parent_order_idx").on(table.parentUuid, table.order),
-
-    // Block queries - get all blocks for a page (getAllBlocksForPage)
-    workspacePageNameIdx: index("workspace_pagename_idx").on(
-      table.workspaceId,
-      table.pageName
-    ),
-  })
-);
-
-export type Node = typeof nodes.$inferSelect;
-export type NewNode = typeof nodes.$inferInsert;
+// Build SurrealDB record ID from UUID
+export function nodeRecordId(uuid: string): string {
+  return uuid.startsWith("nodes:") ? uuid : `nodes:${uuid}`;
+}

@@ -8,6 +8,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - 2025-11-23
+
+- **DATABASE.md**: Comprehensive database documentation
+  - Complete schema docs (users, workspaces, nodes, git_repositories, deployment_history)
+  - Query patterns with examples (reads, writes, batch operations)
+  - Index documentation and performance considerations
+  - Migration workflow and troubleshooting
+
 ### Changed - 2025-11-23
 
 - **Documentation Cleanup**: Removed stale/redundant docs, updated remaining for accuracy

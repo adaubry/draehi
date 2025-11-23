@@ -229,6 +229,7 @@ docs/
 ├── CHANGELOG.md            # Version history, changes log
 ├── ROADMAP.md              # Development phases, future plans
 ├── DIRECTORY.md            # This file (project navigation)
+├── DATABASE.md             # Database guide (Drizzle, schemas, queries)
 ├── SCRIPTS.md              # Setup scripts documentation
 ├── TESTING.md              # Testing guide
 ├── BASH_GUIDELINES.md      # Bash scripting best practices

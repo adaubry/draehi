@@ -24,14 +24,14 @@ Modern conventions and best practices for Create, Read, Update, Delete operation
 ### Data Layer Structure
 
 ```
-src/lib/queries.ts          ← Single source of truth for all queries
-src/db/schema.ts            ← Database schema definitions
-src/app/api/*/route.ts      ← API endpoints (client interactions)
-src/app/(login)/actions.ts  ← Server Actions (auth mutations)
+modules/*/queries.ts        ← Read operations per module
+modules/*/actions.ts        ← Write operations per module
+modules/*/schema.ts         ← Database schema definitions
+app/api/*/route.ts          ← API endpoints
 drizzle/                    ← Migrations
 ```
 
-**Key Principle:** All database reads go through `queries.ts`, mutations through Server Actions or API routes.
+**Key Principle:** All database operations go through module queries/actions files.
 
 ### Database Schema
 
@@ -47,7 +47,7 @@ drizzle/                    ← Migrations
 
 ### 1. Query Centralization
 
-✅ **DO:** Define all read queries in `src/lib/queries.ts`
+✅ **DO:** Define read queries in `modules/*/queries.ts`
 ❌ **DON'T:** Scatter database queries across components
 
 ```typescript
@@ -711,5 +711,4 @@ function validateSlug(slug: string): boolean {
 
 ---
 
-**Last Updated:** 2025-11-16
-**Version:** 2.0.0 (Next.js 16, Post-MVP)
+**Last Updated:** 2025-11-23

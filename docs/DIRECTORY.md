@@ -2,7 +2,7 @@
 
 Guide to navigating Draehi's modular monolith architecture.
 
-**Last Updated:** 2025-11-16
+**Last Updated:** 2025-11-23
 
 ---
 
@@ -16,6 +16,8 @@ draehi/
 ├── lib/                    # Shared utilities
 ├── drizzle/                # Database migrations
 ├── docs/                   # Documentation
+├── scripts/                # Setup & test scripts
+├── test-data/              # Test fixtures
 ├── public/                 # Static assets
 └── [config files]          # Project configuration
 ```
@@ -29,40 +31,47 @@ draehi/
 ```
 app/
 ├── (auth)/                 # Auth route group
-│   ├── login/             # Login page ✅
+│   ├── login/              # Login page
 │   │   └── page.tsx
-│   └── signup/            # Signup page ✅
+│   └── signup/             # Signup page
 │       └── page.tsx
-├── (dashboard)/           # Dashboard route group (protected) ✅
-│   ├── layout.tsx         # Dashboard layout with nav
-│   ├── page.tsx           # Main dashboard
-│   ├── actions.ts         # Manual deployment trigger
-│   └── settings/          # Workspace settings ✅
-│       └── page.tsx       # Repository connection form
-├── [workspaceSlug]/       # Public workspace viewer ✅ Phase 4
-│   ├── layout.tsx         # Workspace layout with sidebar
-│   ├── page.tsx           # Index page with auto-redirect
-│   └── [...path]/         # Catch-all for nested pages ✅
-│       └── page.tsx       # Dynamic page renderer
-├── api/                   # API routes
-│   └── webhooks/          # Git webhook handlers
-│       └── github/        # GitHub webhooks ✅
-│           └── route.ts   # Webhook endpoint
-├── page.tsx               # Landing page ✅
-├── layout.tsx             # Root layout
-├── loading.tsx            # Global loading state
-└── error.tsx              # Global error boundary
+├── (dashboard)/            # Dashboard route group (protected)
+│   ├── layout.tsx          # Dashboard layout with nav
+│   └── dashboard/
+│       ├── page.tsx        # Main dashboard
+│       ├── actions.ts      # Manual deployment trigger
+│       └── dashboard-client.tsx  # Client-side dashboard UI
+├── [workspaceSlug]/        # Public workspace viewer
+│   ├── layout.tsx          # Workspace layout with sidebar
+│   ├── loading.tsx         # Loading state
+│   ├── page.tsx            # Index page with auto-redirect
+│   ├── all-pages/          # All pages view
+│   │   └── page.tsx
+│   └── [...path]/          # Catch-all for nested pages
+│       └── page.tsx        # Dynamic page renderer
+├── api/                    # API routes
+│   ├── toc/                # Table of contents endpoint
+│   │   └── route.ts
+│   └── webhooks/           # Git webhook handlers
+│       └── github/
+│           └── route.ts    # GitHub webhooks
+├── blocks.css              # Logseq block styling
+├── globals.css             # Global styles
+├── page.tsx                # Landing page
+├── layout.tsx              # Root layout
+└── favicon.ico
 ```
 
 **Key Routes:**
-- `/` - Landing page (marketing) ✅
-- `/login` - User login ✅
-- `/signup` - User signup ✅
-- `/dashboard` - User dashboard (protected) ✅
-- `/dashboard/settings` - Repository connection ✅
-- `/api/webhooks/github` - GitHub webhook handler ✅
-- `/:workspaceSlug` - Public workspace home ✅ Phase 4
-- `/:workspaceSlug/:path1/:path2/...` - Nested pages (unlimited depth) ✅ Phase 4
+- `/` - Landing page (marketing)
+- `/login` - User login
+- `/signup` - User signup
+- `/dashboard` - User dashboard (protected, includes settings)
+- `/api/webhooks/github` - GitHub webhook handler
+- `/api/toc` - Table of contents API
+- `/:workspaceSlug` - Public workspace home
+- `/:workspaceSlug/all-pages` - All pages view
+- `/:workspaceSlug/:path...` - Nested pages (unlimited depth)
 
 ---
 
@@ -76,40 +85,40 @@ Each module is self-contained with:
 - `schema.ts` - Database schema (Drizzle)
 - `queries.ts` - Read operations
 - `actions.ts` - Write operations (Server Actions)
-- `types.ts` - TypeScript types
-- `utils.ts` - Module-specific utilities
+- Additional files as needed
 
 ```
 modules/
-├── auth/                   # Authentication & authorization ✅
-│   ├── schema.ts          # users table
-│   ├── queries.ts         # getUserById, getUserByUsername, verifyPassword
-│   ├── actions.ts         # createUser, hashPassword
-│   ├── session-actions.ts # login, signup, logout
-│   └── types.ts           # User type
-├── workspace/             # Workspace management ✅
-│   ├── schema.ts          # workspaces table
-│   ├── queries.ts         # getWorkspaceByUserId, getWorkspaceBySlug
-│   ├── actions.ts         # createWorkspace, updateWorkspace
-│   └── types.ts           # Workspace type
-├── content/               # Content/Nodes module ✅
-│   ├── schema.ts          # nodes table
-│   ├── queries.ts         # getNode, getNodeChildren, getBreadcrumbs
-│   ├── actions.ts         # (internal only - no user mutations)
-│   └── types.ts           # Node, Breadcrumb types
-├── git/                   # Git integration ✅
-│   ├── schema.ts          # git_repositories, deployment_history
-│   ├── queries.ts         # getRepositoryByWorkspaceId, getDeployments
-│   ├── actions.ts         # connectRepository, updateRepository, createDeployment
-│   ├── clone.ts           # Git clone/cleanup logic (shell commands)
-│   └── sync.ts            # Repository sync orchestration
-├── logseq/                # Logseq graph processing ✅ Phase 3
-│   ├── export.ts          # Call Rust export-logseq-notes
-│   ├── parse.ts           # Parse Rust output
-│   └── types.ts           # Logseq-specific types
-└── storage/               # Asset storage ✅ Phase 3
-    ├── s3.ts              # S3 client (MinIO/AWS)
-    └── upload.ts          # Asset upload logic
+├── auth/                   # Authentication & authorization
+│   ├── schema.ts           # users table
+│   ├── queries.ts          # getUserById, verifyPassword
+│   ├── actions.ts          # createUser, hashPassword
+│   └── session-actions.ts  # login, signup, logout
+├── workspace/              # Workspace management
+│   ├── schema.ts           # workspaces table
+│   ├── queries.ts          # getWorkspaceByUserId, getWorkspaceBySlug
+│   └── actions.ts          # createWorkspace, updateWorkspace
+├── content/                # Content/Nodes module
+│   ├── schema.ts           # nodes table
+│   ├── queries.ts          # getNode, getNodeChildren, getBreadcrumbs
+│   └── actions.ts          # node operations (internal only)
+├── git/                    # Git integration
+│   ├── schema.ts           # git_repositories, deployment_history
+│   ├── queries.ts          # getRepositoryByWorkspaceId
+│   ├── actions.ts          # connectRepository, updateRepository
+│   ├── clone.ts            # Git clone/cleanup logic
+│   └── sync.ts             # Repository sync orchestration
+├── logseq/                 # Logseq graph processing
+│   ├── export.ts           # Call Rust export-logseq-notes
+│   ├── ingest.ts           # Content ingestion pipeline
+│   ├── parse.ts            # Parse Rust output
+│   ├── markdown-parser.ts  # Parse block structure
+│   ├── process-references.ts # Process [[page]] and ((uuid))
+│   ├── types.ts            # Logseq-specific types
+│   └── export-tool/        # Vendored Rust tool
+└── storage/                # Asset storage
+    ├── s3.ts               # S3 client (MinIO/AWS)
+    └── upload.ts           # Asset upload logic
 ```
 
 **Module Dependencies:**
@@ -118,6 +127,7 @@ modules/
 - `content` → depends on `workspace`
 - `git` → depends on `workspace`, `content`, `logseq`
 - `logseq` → depends on `content`
+- `storage` → no dependencies
 
 ---
 
@@ -127,32 +137,22 @@ modules/
 
 ```
 components/
-├── ui/                     # shadcn/ui base components (Vercel-style)
-│   ├── button.tsx         # Button component
-│   ├── input.tsx          # Input component
-│   ├── card.tsx           # Card component
-│   ├── skeleton.tsx       # Loading skeleton
-│   └── ...                # Other primitives
-├── viewer/                # Public viewer components ✅ Phase 4
-│   ├── Sidebar.tsx        # Hierarchical tree navigation
-│   ├── Breadcrumbs.tsx    # Path breadcrumb navigation
-│   └── NodeContent.tsx    # HTML renderer with prose styling
-├── workspace/             # Workspace-specific components (future)
-│   ├── page-list.tsx      # List of pages
-│   └── search.tsx         # Search component
-├── content/               # Content rendering components (future)
-│   ├── code-block.tsx     # Syntax-highlighted code
-│   └── image-viewer.tsx   # Optimized image display
-└── dashboard/             # Dashboard components (future)
-    ├── deployment-card.tsx
-    ├── repo-connection.tsx
-    └── settings-form.tsx
+├── ui/                     # Base UI components
+│   └── ScrollBar.tsx       # Custom scrollbar
+└── viewer/                 # Public viewer components
+    ├── BlockTree.tsx       # Logseq block tree with collapse
+    ├── Breadcrumbs.tsx     # Path breadcrumb navigation
+    ├── MobileMenuTrigger.tsx # Mobile hamburger button
+    ├── MobileSidebar.tsx   # Mobile drawer sidebar
+    ├── NodeContent.tsx     # HTML renderer with prose styling
+    ├── PageBlocksContextProvider.tsx # Block context
+    ├── Sidebar.tsx         # Hierarchical tree navigation
+    └── TableOfContents.tsx # Page TOC component
 ```
 
 **Component Guidelines:**
 - Default to Server Components
 - Use "use client" only for interactivity
-- Follow Vercel design aesthetic
 - Mobile-first (320px minimum)
 
 ---
@@ -163,20 +163,42 @@ components/
 
 ```
 lib/
-├── db.ts                   # Drizzle database client ✅
-├── session.ts              # Session management (iron-session) ✅
-├── utils.ts                # General utilities (namespace extraction, slug generation) ✅
-├── types.ts                # Shared TypeScript types ✅
-├── queries.ts              # Centralized query functions (future)
-├── cache.ts                # Caching utilities (future)
-├── validation.ts           # Zod schemas for validation (future)
-└── constants.ts            # App-wide constants (future)
+├── db.ts                   # Drizzle database client
+├── session.ts              # Session management (iron-session)
+├── utils.ts                # General utilities (cn, slug generation)
+├── types.ts                # Shared TypeScript types
+├── shell.ts                # Shell execution with PATH handling
+├── navigation-context.tsx  # Navigation history context
+└── page-blocks-context.tsx # Page blocks context
 ```
 
 **Key Files:**
 - `db.ts` - Single database connection, allows build without DATABASE_URL
 - `session.ts` - Session helpers (getSession, getCurrentUser, requireAuth)
-- `utils.ts` - Namespace extraction, slug generation (cn, extractNamespaceAndSlug)
+- `utils.ts` - Utility functions (cn for classnames)
+- `shell.ts` - Shell execution with proper PATH for Rust binaries
+
+---
+
+## `/scripts` - Setup & Test Scripts
+
+**Purpose:** Development automation
+
+```
+scripts/
+├── setup.sh                # Master setup script
+├── install-rust-tools.sh   # Install export-logseq-notes
+├── setup-database.sh       # DB schema setup
+├── setup-minio.sh          # Local S3 setup
+├── minio.sh                # MinIO management
+├── test-e2e.sh             # Backend E2E tests
+├── test-frontend-e2e.sh    # Frontend E2E tests
+├── test-asset-upload.ts    # Asset upload testing
+├── compare-with-logseq.ts  # Structure comparison
+├── cleanup-test-user.ts    # Test cleanup utility
+├── setup-test-workspace.ts # Test workspace setup
+└── trigger-sync.ts         # Manual sync trigger
+```
 
 ---
 
@@ -187,17 +209,13 @@ lib/
 ```
 drizzle/
 ├── migrations/             # Auto-generated migrations
-│   ├── 0000_init.sql
-│   ├── 0001_add_git.sql
-│   └── ...
-├── meta/                   # Migration metadata
-└── schema.ts               # Aggregated schema (generated)
+└── meta/                   # Migration metadata
 ```
 
 **Migration Workflow:**
 1. Edit schema in `modules/*/schema.ts`
-2. Run `drizzle-kit generate` to create migration
-3. Run `drizzle-kit migrate` to apply
+2. Run `npm run db:generate` to create migration
+3. Run `npm run db:push` to apply
 4. Commit migration files
 
 ---
@@ -211,27 +229,12 @@ docs/
 ├── CHANGELOG.md            # Version history, changes log
 ├── ROADMAP.md              # Development phases, future plans
 ├── DIRECTORY.md            # This file (project navigation)
+├── SCRIPTS.md              # Setup scripts documentation
+├── TESTING.md              # Testing guide
+├── BASH_GUIDELINES.md      # Bash scripting best practices
 ├── CRUD_GUIDELINES.md      # CRUD operation patterns
-├── PERFORMANCE_GUIDELINES.md  # Performance optimization guide
-└── conversation.md         # Original vision/conversation
-```
-
-**Documentation Philosophy:**
-- Precise context for AI agents
-- Up-to-date with codebase
-- Mandatory updates before commits
-
----
-
-## `/public` - Static Assets
-
-**Purpose:** Static files served directly
-
-```
-public/
-├── images/                 # Static images
-├── fonts/                  # Custom fonts
-└── favicon.ico             # Favicon
+├── PERFORMANCE_GUIDELINES.md # Performance optimization guide
+└── ASSET_TROUBLESHOOTING.md  # Asset/MinIO troubleshooting
 ```
 
 ---
@@ -242,16 +245,16 @@ public/
 
 | File | Purpose |
 |------|---------|
-| `CLAUDE.md` | AI agent instructions (this location) |
+| `CLAUDE.md` | AI agent instructions |
 | `README.md` | User-facing documentation |
 | `package.json` | Dependencies, scripts |
 | `tsconfig.json` | TypeScript configuration |
 | `next.config.ts` | Next.js configuration |
-| `tailwind.config.ts` | Tailwind CSS v4 configuration |
 | `drizzle.config.ts` | Drizzle ORM configuration |
 | `eslint.config.mjs` | ESLint rules |
 | `postcss.config.mjs` | PostCSS configuration |
 | `.env.local` | Environment variables (not committed) |
+| `.test.env` | Test environment variables |
 | `.gitignore` | Git ignore rules |
 
 ---
@@ -261,13 +264,12 @@ public/
 **Looking for...**
 
 - **Database schema?** → `modules/*/schema.ts`
-- **Read queries?** → `modules/*/queries.ts` or `lib/queries.ts`
+- **Read queries?** → `modules/*/queries.ts`
 - **Write operations?** → `modules/*/actions.ts`
-- **UI components?** → `components/ui/*`
+- **UI components?** → `components/viewer/*`
 - **API endpoints?** → `app/api/*`
 - **Page routes?** → `app/*/page.tsx`
-- **Types?** → `modules/*/types.ts` or `lib/types.ts`
-- **Utilities?** → `lib/utils.ts`
+- **Utilities?** → `lib/*.ts`
 - **Documentation?** → `docs/*`
 
 **Working on a feature?**
@@ -281,23 +283,4 @@ public/
 
 ---
 
-## Module Interaction Example
-
-**User triggers deployment:**
-
-1. **User pushes to Git** → Webhook fires
-2. **`app/api/webhooks/github/route.ts`** → Receives webhook
-3. **`modules/git/webhook.ts`** → Validates webhook
-4. **`modules/git/actions.ts`** → Triggers deployment
-5. **`modules/git/sync.ts`** → Pulls latest changes
-6. **`modules/logseq/export.ts`** → Runs Rust tool
-7. **`modules/logseq/parse.ts`** → Parses output
-8. **`modules/logseq/ingest.ts`** → Stores in database
-9. **`modules/content/actions.ts`** → Updates nodes
-10. **Cache invalidation** → `revalidateTag("workspace-123")`
-11. **`modules/git/actions.ts`** → Records deployment history
-
----
-
-**Last Updated:** 2025-11-16
-**Status:** Phase 4 Complete - Public Viewer live, Phases 0-4 done
+**Last Updated:** 2025-11-23

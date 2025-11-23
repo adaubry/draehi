@@ -1,12 +1,12 @@
 "use server";
 
-import { db } from "@/lib/db";
-import { workspaces, type NewWorkspace } from "./schema";
+import { create, update } from "@/lib/surreal";
+import { type Workspace, type NewWorkspace, workspaceRecordId } from "./schema";
+import { userRecordId } from "../auth/schema";
 import { getWorkspaceByUserId } from "./queries";
 import { slugify } from "@/lib/utils";
-import { eq } from "drizzle-orm";
 
-export async function createWorkspace(userId: number, name: string) {
+export async function createWorkspace(userId: string, name: string) {
   // Check if user already has a workspace
   const existing = await getWorkspaceByUserId(userId);
   if (existing) {
@@ -15,30 +15,24 @@ export async function createWorkspace(userId: number, name: string) {
 
   const slug = slugify(name);
 
-  const [workspace] = await db
-    .insert(workspaces)
-    .values({
-      userId,
-      slug,
-      name,
-    })
-    .returning();
+  const workspace = await create<Workspace>("workspaces", {
+    user: userRecordId(userId),
+    slug,
+    name,
+    embed_depth: 5,
+  });
 
   return { workspace };
 }
 
 export async function updateWorkspace(
-  id: number,
+  id: string,
   data: { name?: string; domain?: string }
 ) {
-  const [workspace] = await db
-    .update(workspaces)
-    .set({
-      ...data,
-      updatedAt: new Date(),
-    })
-    .where(eq(workspaces.id, id))
-    .returning();
+  const workspace = await update<Workspace>(workspaceRecordId(id), {
+    ...data,
+    updated_at: new Date().toISOString(),
+  });
 
   return { workspace };
 }

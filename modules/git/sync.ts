@@ -1,12 +1,12 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
 import { cloneRepository, getLatestCommit, cleanupRepository } from "./clone";
 import { updateRepository, createDeployment, updateDeployment } from "./actions";
 import { ingestLogseqGraph } from "../content/actions";
+import { getDeploymentIdFromRecord } from "./schema";
 
 export async function syncRepository(
-  workspaceId: number,
+  workspaceId: string,
   repoUrl: string,
   branch: string,
   accessToken: string
@@ -45,12 +45,15 @@ export async function syncRepository(
       "building"
     );
 
-    // Process Logseq graph (Phase 3)
+    // Get deployment ID for updates
+    const deploymentId = getDeploymentIdFromRecord(deployment.deployment.id);
+
+    // Process Logseq graph
     const ingestionResult = await ingestLogseqGraph(workspaceId, repoPath);
 
     if (!ingestionResult.success) {
       // Update deployment as failed
-      await updateDeployment(deployment.deployment.id, {
+      await updateDeployment(deploymentId, {
         status: "failed",
         errorLog: ingestionResult.error,
         buildLog: ingestionResult.buildLog,
@@ -68,7 +71,7 @@ export async function syncRepository(
     }
 
     // Update deployment as success
-    await updateDeployment(deployment.deployment.id, {
+    await updateDeployment(deploymentId, {
       status: "success",
       buildLog: ingestionResult.buildLog,
     });
@@ -95,9 +98,6 @@ export async function syncRepository(
 
     await updateRepository(workspaceId, updateData);
 
-    // Invalidate cache for public viewer
-    // Note: Using revalidatePath instead of revalidateTag for simpler cache invalidation
-    // This will be optimized in future with proper tag-based caching
     console.log(`Deployment successful for workspace ${workspaceId}`);
 
     return {

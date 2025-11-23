@@ -1,87 +1,88 @@
 "use server";
 
-import { db } from "@/lib/db";
-import { nodes, type NewNode, type Node } from "./schema";
+import { createWithId, query, queryOne, remove } from "@/lib/surreal";
+import {
+  setBlockHTMLBatch,
+  clearWorkspaceCache,
+  setPageBlockOrder,
+} from "@/lib/keydb";
+import { type Node, type NewNode, nodeRecordId } from "./schema";
+import { workspaceRecordId } from "../workspace/schema";
 import { extractNamespaceAndSlug } from "@/lib/utils";
-import { eq, and } from "drizzle-orm";
 import { exportLogseqNotes } from "../logseq/export";
 import { parseLogseqOutput, processAssets } from "../logseq/parse";
-import { parseLogseqDirectory, flattenBlocks } from "../logseq/markdown-parser";
-import { processLogseqReferences, processEmbeds } from "../logseq/process-references";
+import {
+  parseLogseqDirectory,
+  flattenBlocks,
+} from "../logseq/markdown-parser";
+import {
+  processLogseqReferences,
+  processEmbeds,
+} from "../logseq/process-references";
 import { marked } from "marked";
 import path from "path";
-import { randomUUID } from "crypto";
+import crypto from "crypto";
 
 // Internal only - called during git sync/deployment
 export async function upsertNode(
-  workspaceId: number,
+  workspaceId: string,
   pageName: string,
   data: {
     title: string;
     html?: string;
     content?: string;
-    metadata?: NewNode["metadata"];
+    metadata?: Node["metadata"];
   }
 ) {
   const { slug } = extractNamespaceAndSlug(pageName);
 
   // Check if exists
-  const existing = await db.query.nodes.findFirst({
-    where: and(
-      eq(nodes.workspaceId, workspaceId),
-      eq(nodes.pageName, pageName)
-    ),
-  });
+  const existing = await queryOne<Node>(
+    "SELECT * FROM nodes WHERE workspace = $ws AND page_name = $pageName LIMIT 1",
+    { ws: workspaceRecordId(workspaceId), pageName }
+  );
+
+  // Generate stable UUID
+  const pageUuidSeed = `${workspaceId}::${pageName}`;
+  const pageUuidHash = crypto.createHash("sha256").update(pageUuidSeed).digest("hex");
+  const pageUuid = `${pageUuidHash.slice(0, 8)}-${pageUuidHash.slice(8, 12)}-${pageUuidHash.slice(12, 16)}-${pageUuidHash.slice(16, 20)}-${pageUuidHash.slice(20, 32)}`;
 
   if (existing) {
-    // Update
-    const [node] = await db
-      .update(nodes)
-      .set({
-        ...data,
-        updatedAt: new Date(),
-      })
-      .where(eq(nodes.uuid, existing.uuid))
-      .returning();
-
+    // Update via query
+    const [node] = await query<Node>(
+      `UPDATE ${existing.id} SET
+        title = $title,
+        metadata = $metadata,
+        updated_at = time::now()
+      RETURN AFTER`,
+      { title: data.title, metadata: data.metadata || {} }
+    );
     return { node };
   } else {
-    // Insert with stable UUID based on workspaceId + pageName
-    const pageUuidSeed = `${workspaceId}::${pageName}`;
-    const pageUuidHash = require("crypto")
-      .createHash("sha256")
-      .update(pageUuidSeed)
-      .digest("hex");
-    const pageUuid = `${pageUuidHash.slice(0, 8)}-${pageUuidHash.slice(
-      8,
-      12
-    )}-${pageUuidHash.slice(12, 16)}-${pageUuidHash.slice(
-      16,
-      20
-    )}-${pageUuidHash.slice(20, 32)}`;
-
-    const [node] = await db
-      .insert(nodes)
-      .values({
-        uuid: pageUuid,
-        workspaceId,
-        pageName,
-        slug,
-        ...data,
-      })
-      .returning();
-
+    // Insert with specific ID
+    const node = await createWithId<Node>(`nodes:${pageUuid}`, {
+      workspace: workspaceRecordId(workspaceId),
+      page_name: pageName,
+      slug,
+      title: data.title,
+      metadata: data.metadata || {},
+      order: 0,
+    });
     return { node };
   }
 }
 
 export async function deleteNode(uuid: string) {
-  await db.delete(nodes).where(eq(nodes.uuid, uuid));
+  await remove(nodeRecordId(uuid));
   return { success: true };
 }
 
-export async function deleteAllNodes(workspaceId: number) {
-  await db.delete(nodes).where(eq(nodes.workspaceId, workspaceId));
+export async function deleteAllNodes(workspaceId: string) {
+  await query("DELETE nodes WHERE workspace = $ws", {
+    ws: workspaceRecordId(workspaceId),
+  });
+  // Also clear KeyDB cache
+  await clearWorkspaceCache(workspaceId);
   return { success: true };
 }
 
@@ -90,7 +91,7 @@ export async function deleteAllNodes(workspaceId: number) {
  * Called during deployment to process and store pages AND blocks
  */
 export async function ingestLogseqGraph(
-  workspaceId: number,
+  workspaceId: string,
   repoPath: string
 ): Promise<{
   success: boolean;
@@ -105,9 +106,10 @@ export async function ingestLogseqGraph(
     buildLog.push("Starting Logseq graph ingestion...");
 
     // Get workspace to access slug for reference links
-    const workspace = await db.query.workspaces.findFirst({
-      where: (workspaces, { eq }) => eq(workspaces.id, workspaceId),
-    });
+    const workspace = await queryOne<{ id: string; slug: string }>(
+      "SELECT id, slug FROM workspaces WHERE id = $ws",
+      { ws: workspaceRecordId(workspaceId) }
+    );
 
     if (!workspace) {
       return {
@@ -119,14 +121,14 @@ export async function ingestLogseqGraph(
 
     const workspaceSlug = workspace.slug;
 
-    // Step 1: Parse markdown files for block structure (pages + journals)
+    // Step 1: Parse markdown files for block structure
     buildLog.push("Parsing markdown files for block structure...");
     const pagesDir = path.join(repoPath, "pages");
     const journalsDir = path.join(repoPath, "journals");
 
     const [regularPages, journalPages] = await Promise.all([
       parseLogseqDirectory(pagesDir),
-      parseLogseqDirectory(journalsDir).catch(() => []), // journals/ might not exist
+      parseLogseqDirectory(journalsDir).catch(() => []),
     ]);
 
     const markdownPages = [...regularPages, ...journalPages];
@@ -159,23 +161,20 @@ export async function ingestLogseqGraph(
       };
     }
 
-    // Step 4: Delete existing nodes (idempotent)
-    buildLog.push("Clearing existing nodes...");
+    // Step 4: Delete existing nodes and clear KeyDB cache
+    buildLog.push("Clearing existing nodes and cache...");
     await deleteAllNodes(workspaceId);
 
     // Step 5: Create page nodes AND block nodes
     buildLog.push("Creating page and block nodes...");
-    const allNodes: NewNode[] = [];
+    const allNodeData: Array<{ uuid: string; data: Record<string, unknown> }> =
+      [];
+    const allBlockHTML: Array<{ uuid: string; html: string }> = [];
+    const pageBlockOrders: Map<string, string[]> = new Map();
     let totalBlocks = 0;
 
     for (const mdPage of markdownPages) {
-      // Find corresponding HTML page for metadata
-      // Normalize names to match export tool's transformation:
-      // 1. URL decode (e.g., %3F → ?)
-      // 2. Remove special chars like ? ! / \ : * ( ) , .
-      // 3. Replace spaces and hyphens with underscores
-      // 4. Collapse multiple underscores to single
-      // 5. Lowercase
+      // Normalize name for matching
       let normalizedMdName = mdPage.pageName;
       try {
         normalizedMdName = decodeURIComponent(normalizedMdName);
@@ -183,25 +182,21 @@ export async function ingestLogseqGraph(
         // If not valid URI component, use as-is
       }
       normalizedMdName = normalizedMdName
-        .replace(/[?!\/\\:*"<>|(),.]/g, "") // Remove special chars including parens, commas, dots
-        .replace(/[\s\-]+/g, "_") // Replace spaces/hyphens with underscore
-        .replace(/_{2,}/g, "_") // Collapse multiple underscores (___  → _)
+        .replace(/[?!\\/\\\\:*\"<>|(),.]/g, "")
+        .replace(/[\\s\\-]+/g, "_")
+        .replace(/_{2,}/g, "_")
         .toLowerCase();
 
       let htmlPage = parseResult.pages.find(
         (p) => p.name.toLowerCase() === normalizedMdName
       );
 
-      // Fallback: fuzzy match if exact match fails
-      // Export tool has inconsistent transformations (removes underscores in numbers like 07_09 → 0709)
+      // Fuzzy match fallback
       if (!htmlPage && normalizedMdName.includes("_")) {
-        // Try matching by removing all underscores (handles cases like changelog_07_09 → changelog0709)
         const noUnderscores = normalizedMdName.replace(/_/g, "");
         const candidates = parseResult.pages.filter(
           (p) => p.name.toLowerCase().replace(/_/g, "") === noUnderscores
         );
-
-        // Only use fuzzy match if we get exactly 1 candidate (avoid false positives)
         if (candidates.length === 1) {
           htmlPage = candidates[0];
           buildLog.push(`Fuzzy matched: ${mdPage.pageName} → ${htmlPage.name}`);
@@ -217,10 +212,9 @@ export async function ingestLogseqGraph(
 
       const { slug } = extractNamespaceAndSlug(mdPage.pageName);
 
-      // Create page node (parentUuid=null, html=null)
-      // Use stable UUID based on workspaceId + pageName for idempotency
+      // Generate stable page UUID
       const pageUuidSeed = `${workspaceId}::${mdPage.pageName}`;
-      const pageUuidHash = require("crypto")
+      const pageUuidHash = crypto
         .createHash("sha256")
         .update(pageUuidSeed)
         .digest("hex");
@@ -232,27 +226,25 @@ export async function ingestLogseqGraph(
         20
       )}-${pageUuidHash.slice(20, 32)}`;
 
-      const pageNode: NewNode = {
+      // Page node data
+      allNodeData.push({
         uuid: pageUuid,
-        workspaceId,
-        parentUuid: null,
-        order: 0,
-        pageName: mdPage.pageName,
-        slug,
-        title: htmlPage.title,
-        html: null, // Pages don't have HTML
-        metadata: {
-          tags: htmlPage.metadata?.tags || [],
-          properties: {
-            ...mdPage.properties,
-            ...htmlPage.metadata?.properties,
+        data: {
+          workspace: workspaceRecordId(workspaceId),
+          page_name: mdPage.pageName,
+          slug,
+          title: htmlPage.title,
+          order: 0,
+          metadata: {
+            tags: htmlPage.metadata?.tags || [],
+            properties: {
+              ...mdPage.properties,
+              ...htmlPage.metadata?.properties,
+            },
           },
         },
-      };
+      });
 
-      allNodes.push(pageNode);
-
-      // Skip block processing if page has no blocks (property-only pages)
       if (mdPage.blocks.length === 0) {
         buildLog.push(
           `Page ${mdPage.pageName} has no blocks (property-only page)`
@@ -260,12 +252,14 @@ export async function ingestLogseqGraph(
         continue;
       }
 
-      // Create block nodes with markdown-rendered HTML
+      // Create block nodes
       const flatBlocks = flattenBlocks(mdPage.blocks);
       totalBlocks += flatBlocks.length;
 
+      const blockUuidsInOrder: string[] = [];
+
       for (const block of flatBlocks) {
-        // Render markdown to HTML for this block
+        // Render markdown to HTML
         let blockHTML = await marked.parse(block.content, {
           async: true,
           gfm: true,
@@ -277,55 +271,68 @@ export async function ingestLogseqGraph(
           `<$1$2 uuid="${block.uuid}">`
         );
 
-        // Upload assets (images, PDFs) to S3 and replace local paths with S3 URLs
+        // Process assets and references
         blockHTML = await processAssets(blockHTML, workspaceId, repoPath);
-
-        // Process YouTube embeds (convert URLs to responsive iframes)
         blockHTML = processEmbeds(blockHTML);
-
-        // Process Logseq references ([[page]], ((uuid)), TODO markers)
         blockHTML = processLogseqReferences(
           blockHTML,
           workspaceSlug,
           mdPage.pageName
         );
 
-        const blockNode: NewNode = {
-          workspaceId,
+        // Block node data
+        allNodeData.push({
           uuid: block.uuid,
-          parentUuid: block.parentUuid || pageUuid, // Top-level blocks point to page; nested blocks point to parent block
-          order: block.order,
-          pageName: mdPage.pageName,
-          slug,
-          title: "", // Blocks don't have titles
-          html: blockHTML.trim(),
-          metadata: {
-            properties: block.properties,
+          data: {
+            workspace: workspaceRecordId(workspaceId),
+            parent: nodeRecordId(block.parentUuid || pageUuid),
+            page_name: mdPage.pageName,
+            slug,
+            title: "",
+            order: block.order,
+            metadata: {
+              properties: block.properties,
+            },
           },
-        };
+        });
 
-        allNodes.push(blockNode);
+        // Store HTML for KeyDB
+        allBlockHTML.push({
+          uuid: block.uuid,
+          html: blockHTML.trim(),
+        });
+
+        blockUuidsInOrder.push(block.uuid);
       }
+
+      pageBlockOrders.set(mdPage.pageName, blockUuidsInOrder);
     }
 
     buildLog.push(
-      `Inserting ${allNodes.length} nodes (${markdownPages.length} pages and ${totalBlocks} blocks)...`
+      `Inserting ${allNodeData.length} nodes (${markdownPages.length} pages and ${totalBlocks} blocks)...`
     );
 
-    // Insert in batches to avoid PostgreSQL parameter limit (65534)
-    // Each node has ~15 fields, so batch size of 1000 = ~15000 parameters
-    const BATCH_SIZE = 1000;
-    const insertedNodes: Node[] = [];
-
-    for (let i = 0; i < allNodes.length; i += BATCH_SIZE) {
-      const batch = allNodes.slice(i, i + BATCH_SIZE);
-      const batchResult = await db.insert(nodes).values(batch).returning();
-      insertedNodes.push(...batchResult);
+    // Batch insert nodes into SurrealDB
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < allNodeData.length; i += BATCH_SIZE) {
+      const batch = allNodeData.slice(i, i + BATCH_SIZE);
+      for (const { uuid, data } of batch) {
+        await createWithId(`nodes:${uuid}`, data);
+      }
       buildLog.push(
-        `  Inserted batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(
-          allNodes.length / BATCH_SIZE
+        `  Inserted node batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(
+          allNodeData.length / BATCH_SIZE
         )}`
       );
+    }
+
+    // Batch insert HTML into KeyDB
+    buildLog.push(`Caching ${allBlockHTML.length} block HTMLs in KeyDB...`);
+    await setBlockHTMLBatch(workspaceId, allBlockHTML);
+
+    // Store page block orders
+    for (const [pageName, uuids] of pageBlockOrders) {
+      await setPageBlockOrder(workspaceId, pageName, uuids);
     }
 
     buildLog.push("Ingestion complete!");

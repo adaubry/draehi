@@ -1,35 +1,52 @@
-import { pgTable, text, timestamp, integer, json } from "drizzle-orm/pg-core";
-import { workspaces } from "../workspace/schema";
+// SurrealDB git repository and deployment type definitions
+// Schema is defined in lib/surreal.ts initSchema()
 
-export const gitRepositories = pgTable("git_repositories", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  workspaceId: integer("workspace_id")
-    .notNull()
-    .references(() => workspaces.id, { onDelete: "cascade" })
-    .unique(), // One repo per workspace
-  repoUrl: text("repo_url").notNull(),
-  branch: text("branch").notNull().default("main"),
-  deployKey: text("deploy_key"), // Encrypted deploy key or token
-  lastSync: timestamp("last_sync"),
-  syncStatus: text("sync_status").notNull().default("idle"), // idle, syncing, success, error
-  errorLog: text("error_log"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export interface GitRepository {
+  id: string; // SurrealDB record ID: git_repositories:xxx
+  workspace: string; // Record link to workspaces:xxx
+  repo_url: string;
+  branch: string;
+  deploy_key?: string; // Encrypted deploy key or token
+  last_sync?: string;
+  sync_status: string; // idle, syncing, success, error
+  error_log?: string;
+  created_at: string;
+  updated_at: string;
+}
 
-export const deploymentHistory = pgTable("deployment_history", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  workspaceId: integer("workspace_id")
-    .notNull()
-    .references(() => workspaces.id, { onDelete: "cascade" }),
-  commitSha: text("commit_sha").notNull(),
-  status: text("status").notNull(), // pending, building, success, failed
-  deployedAt: timestamp("deployed_at").notNull().defaultNow(),
-  errorLog: text("error_log"),
-  buildLog: json("build_log").$type<string[]>(), // Array of log lines
-});
+export interface Deployment {
+  id: string; // SurrealDB record ID: deployment_history:xxx
+  workspace: string; // Record link to workspaces:xxx
+  commit_sha: string;
+  status: string; // pending, building, success, failed
+  deployed_at: string;
+  error_log?: string;
+  build_log?: string[];
+}
 
-export type GitRepository = typeof gitRepositories.$inferSelect;
-export type NewGitRepository = typeof gitRepositories.$inferInsert;
-export type Deployment = typeof deploymentHistory.$inferSelect;
-export type NewDeployment = typeof deploymentHistory.$inferInsert;
+export type NewGitRepository = Omit<
+  GitRepository,
+  "id" | "created_at" | "updated_at"
+>;
+export type NewDeployment = Omit<Deployment, "id" | "deployed_at">;
+
+// Extract ID from SurrealDB record ID
+export function getGitRepoIdFromRecord(recordId: string): string {
+  return recordId.replace("git_repositories:", "");
+}
+
+export function gitRepoRecordId(id: string): string {
+  return id.startsWith("git_repositories:")
+    ? id
+    : `git_repositories:${id}`;
+}
+
+export function getDeploymentIdFromRecord(recordId: string): string {
+  return recordId.replace("deployment_history:", "");
+}
+
+export function deploymentRecordId(id: string): string {
+  return id.startsWith("deployment_history:")
+    ? id
+    : `deployment_history:${id}`;
+}

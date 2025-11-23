@@ -1,24 +1,30 @@
 "use server";
 
-import { db } from "@/lib/db";
-import { workspaces } from "./schema";
-import { eq } from "drizzle-orm";
+import { queryOne, selectOne } from "@/lib/surreal";
+import { type Workspace, workspaceRecordId } from "./schema";
+import { userRecordId } from "../auth/schema";
 import { cache } from "react";
 
-export const getWorkspaceById = cache(async (id: number) => {
-  return await db.query.workspaces.findFirst({
-    where: eq(workspaces.id, id),
-  });
-});
+export const getWorkspaceById = cache(
+  async (id: string): Promise<Workspace | null> => {
+    return await selectOne<Workspace>(workspaceRecordId(id));
+  }
+);
 
-export const getWorkspaceBySlug = cache(async (slug: string) => {
-  return await db.query.workspaces.findFirst({
-    where: eq(workspaces.slug, slug),
-  });
-});
+export const getWorkspaceBySlug = cache(
+  async (slug: string): Promise<Workspace | null> => {
+    return await queryOne<Workspace>(
+      "SELECT * FROM workspaces WHERE slug = $slug LIMIT 1",
+      { slug }
+    );
+  }
+);
 
-export const getWorkspaceByUserId = cache(async (userId: number) => {
-  return await db.query.workspaces.findFirst({
-    where: eq(workspaces.userId, userId),
-  });
-});
+export const getWorkspaceByUserId = cache(
+  async (userId: string): Promise<Workspace | null> => {
+    return await queryOne<Workspace>(
+      "SELECT * FROM workspaces WHERE user = $user LIMIT 1",
+      { user: userRecordId(userId) }
+    );
+  }
+);

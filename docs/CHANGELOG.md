@@ -8,6 +8,32 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed - 2025-11-23 (SurrealDB + KeyDB Migration)
+
+- **Database Migration**: Switched from PostgreSQL/Drizzle to SurrealDB + KeyDB
+  - SurrealDB for structured data (users, workspaces, nodes, git_repositories, deployment_history)
+  - KeyDB (Redis-compatible) for pre-rendered HTML cache
+  - All services containerized with Docker Compose
+  - One-command setup: `npm run docker:setup`
+
+- **New Files**:
+  - `lib/surreal.ts` - SurrealDB client with typed query helpers
+  - `lib/keydb.ts` - KeyDB client for HTML cache operations
+  - `docker-compose.yml` - SurrealDB, KeyDB, MinIO services
+  - `Dockerfile` - Multi-stage build for Next.js app
+  - `scripts/docker-setup.sh` - One-command Docker setup
+  - `scripts/init-surreal-schema.ts` - Schema initialization
+  - `.env.docker` - Docker environment template
+
+- **Updated Modules**:
+  - All `modules/*/schema.ts` - Now TypeScript interfaces (not Drizzle tables)
+  - All `modules/*/queries.ts` - Use SurrealDB client with SurrealQL
+  - All `modules/*/actions.ts` - Use SurrealDB + KeyDB for writes
+  - IDs changed from `number` to `string` (SurrealDB record IDs)
+
+- **Removed Dependencies**: `drizzle-orm`, `drizzle-kit`, `postgres`
+- **Added Dependencies**: `surrealdb`, `redis`
+
 ### Added - 2025-11-23
 
 - **DATABASE.md**: Comprehensive database documentation

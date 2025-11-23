@@ -1,18 +1,17 @@
 "use server";
 
-import { db } from "@/lib/db";
+import { create, update, query } from "@/lib/surreal";
 import {
-  gitRepositories,
-  deploymentHistory,
-  type NewGitRepository,
-  type NewDeployment,
+  type GitRepository,
+  type Deployment,
+  gitRepoRecordId,
+  deploymentRecordId,
 } from "./schema";
+import { workspaceRecordId } from "../workspace/schema";
 import { getRepositoryByWorkspaceId } from "./queries";
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 
 export async function connectRepository(
-  workspaceId: number,
+  workspaceId: string,
   repoUrl: string,
   branch = "main",
   deployKey?: string
@@ -23,18 +22,15 @@ export async function connectRepository(
     return { error: "Repository already connected" };
   }
 
-  const [repo] = await db
-    .insert(gitRepositories)
-    .values({
-      workspaceId,
-      repoUrl,
-      branch,
-      deployKey,
-      syncStatus: "idle",
-    })
-    .returning();
+  const repo = await create<GitRepository>("git_repositories", {
+    workspace: workspaceRecordId(workspaceId),
+    repo_url: repoUrl,
+    branch,
+    deploy_key: deployKey,
+    sync_status: "idle",
+  });
 
-  // Trigger initial sync in background (no revalidation in promise to avoid render errors)
+  // Trigger initial sync in background
   const { syncRepository } = await import("./sync");
   if (deployKey) {
     syncRepository(workspaceId, repoUrl, branch, deployKey).catch((error) => {
@@ -46,60 +42,67 @@ export async function connectRepository(
 }
 
 export async function updateRepository(
-  workspaceId: number,
+  workspaceId: string,
   data: {
     syncStatus?: string;
     lastSync?: Date;
     errorLog?: string;
-    branch?: string; // Allow auto-correction of branch
+    branch?: string;
   }
 ) {
-  const [repo] = await db
-    .update(gitRepositories)
-    .set({
-      ...data,
-      updatedAt: new Date(),
-    })
-    .where(eq(gitRepositories.workspaceId, workspaceId))
-    .returning();
+  // Find the repo first
+  const existing = await getRepositoryByWorkspaceId(workspaceId);
+  if (!existing) {
+    return { error: "Repository not found" };
+  }
+
+  const updateData: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (data.syncStatus) updateData.sync_status = data.syncStatus;
+  if (data.lastSync) updateData.last_sync = data.lastSync.toISOString();
+  if (data.errorLog !== undefined) updateData.error_log = data.errorLog;
+  if (data.branch) updateData.branch = data.branch;
+
+  const repo = await update<GitRepository>(existing.id, updateData);
 
   return { repo };
 }
 
 export async function createDeployment(
-  workspaceId: number,
+  workspaceId: string,
   commitSha: string,
   status: string,
   errorLog?: string,
   buildLog?: string[]
 ) {
-  const [deployment] = await db
-    .insert(deploymentHistory)
-    .values({
-      workspaceId,
-      commitSha,
-      status,
-      errorLog,
-      buildLog,
-    })
-    .returning();
+  const deployment = await create<Deployment>("deployment_history", {
+    workspace: workspaceRecordId(workspaceId),
+    commit_sha: commitSha,
+    status,
+    error_log: errorLog,
+    build_log: buildLog,
+  });
 
   return { deployment };
 }
 
 export async function updateDeployment(
-  id: number,
+  id: string,
   data: {
     status?: string;
     errorLog?: string;
     buildLog?: string[];
   }
 ) {
-  const [deployment] = await db
-    .update(deploymentHistory)
-    .set(data)
-    .where(eq(deploymentHistory.id, id))
-    .returning();
+  const updateData: Record<string, unknown> = {};
+
+  if (data.status) updateData.status = data.status;
+  if (data.errorLog !== undefined) updateData.error_log = data.errorLog;
+  if (data.buildLog) updateData.build_log = data.buildLog;
+
+  const deployment = await update<Deployment>(deploymentRecordId(id), updateData);
 
   return { deployment };
 }

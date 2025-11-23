@@ -1,19 +1,25 @@
-import { pgTable, text, timestamp, integer } from "drizzle-orm/pg-core";
-import { users } from "../auth/schema";
+// SurrealDB workspace type definitions
+// Schema is defined in lib/surreal.ts initSchema()
 
-export const workspaces = pgTable("workspaces", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  userId: integer("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" })
-    .unique(), // One workspace per user
-  slug: text("slug").notNull().unique(),
-  name: text("name").notNull(),
-  domain: text("domain"), // Custom domain (future)
-  embedDepth: integer("embed_depth").notNull().default(5), // Max depth for embeds
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export interface Workspace {
+  id: string; // SurrealDB record ID: workspaces:xxx
+  user: string; // Record link to users:xxx
+  slug: string;
+  name: string;
+  domain?: string; // Custom domain (future)
+  embed_depth: number; // Max depth for embeds
+  created_at: string;
+  updated_at: string;
+}
 
-export type Workspace = typeof workspaces.$inferSelect;
-export type NewWorkspace = typeof workspaces.$inferInsert;
+export type NewWorkspace = Omit<Workspace, "id" | "created_at" | "updated_at">;
+
+// Extract ID from SurrealDB record ID
+export function getWorkspaceIdFromRecord(recordId: string): string {
+  return recordId.replace("workspaces:", "");
+}
+
+// Build SurrealDB record ID from ID
+export function workspaceRecordId(id: string): string {
+  return id.startsWith("workspaces:") ? id : `workspaces:${id}`;
+}

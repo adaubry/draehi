@@ -71,7 +71,6 @@ npm run build
 # - ROADMAP.md (update phase status if needed)
 # - README.md (update features/status if needed)
 # - DIRECTORY.md (if structure changed)
-# - PROJECT_STATUS.md (update current phase/metrics)
 # - Any GUIDELINES files (if patterns changed)
 
 # 4. Only after successful build and docs updates, commit and push
@@ -85,7 +84,7 @@ git push origin main
 - Never push without updating CHANGELOG.md
 - **ALWAYS update all affected markdown documentation after making changes**
 
-### Testing (Phase 4 Complete)
+### Testing
 
 ```bash
 # Automated E2E test suite (backend)
@@ -94,17 +93,10 @@ git push origin main
 # Frontend display validation
 ./scripts/test-frontend-e2e.sh
 
-# Pre-flight checks (before changes)
-./scripts/test-phase4.sh
-./scripts/verify-implementation.sh
-
-# Content validation
-npx tsx scripts/validate-content.ts
-
 # Structure comparison with Logseq docs
 npx tsx scripts/compare-with-logseq.ts
 
-# See docs/TEST_SUMMARY.md and docs/TESTING.md for full guide
+# See docs/TESTING.md for full guide
 ```
 
 ## Architecture Overview
@@ -175,31 +167,37 @@ draehi/
 │   │   ├── export-tool/       # Vendored Rust tool
 │   │   └── types.ts           # Logseq types
 │   └── storage/               # S3-compatible storage
-│       ├── client.ts          # S3 client abstraction
+│       ├── s3.ts              # S3 client abstraction
 │       └── upload.ts          # Asset uploads
 ├── components/                # React components
-│   ├── ui/                    # shadcn/ui components (TODO: not yet implemented)
-│   └── viewer/                # Workspace viewer components (TODO: migrate to shadcn/ui)
+│   ├── ui/                    # Base UI components
+│   │   └── ScrollBar.tsx      # Custom scrollbar
+│   └── viewer/                # Workspace viewer components
 │       ├── BlockTree.tsx      # Logseq block tree with collapse
 │       ├── Breadcrumbs.tsx    # Navigation breadcrumbs
 │       ├── NodeContent.tsx    # Pre-rendered HTML display
-│       └── Sidebar.tsx        # Page navigation sidebar
+│       ├── Sidebar.tsx        # Page navigation sidebar
+│       ├── TableOfContents.tsx # Page TOC component
+│       ├── MobileSidebar.tsx  # Mobile drawer sidebar
+│       └── MobileMenuTrigger.tsx # Hamburger menu trigger
 ├── lib/                       # Shared utilities
 │   ├── db.ts                  # Database client
+│   ├── session.ts             # iron-session wrapper
 │   ├── utils.ts               # Shared utilities
+│   ├── types.ts               # Shared types
 │   ├── shell.ts               # Shell execution (PATH handling)
-│   └── session.ts             # iron-session wrapper
+│   ├── navigation-context.tsx # Navigation history context
+│   └── page-blocks-context.tsx # Page blocks context
 ├── scripts/                   # Setup & test scripts
 │   ├── setup.sh               # Master setup script
 │   ├── install-rust-tools.sh  # Install export-logseq-notes
 │   ├── setup-database.sh      # DB schema setup
 │   ├── setup-minio.sh         # Local S3 setup
+│   ├── minio.sh               # MinIO management
 │   ├── test-e2e.sh            # Backend E2E tests
 │   ├── test-frontend-e2e.sh   # Frontend E2E tests
-│   ├── test-phase4.sh         # Pre-flight validation
-│   ├── verify-implementation.sh # Source code verification
-│   ├── validate-content.ts    # Content validation
 │   ├── compare-with-logseq.ts # Structure comparison
+│   ├── test-asset-upload.ts   # Asset upload testing
 │   ├── cleanup-test-user.ts   # Test cleanup utility
 │   ├── setup-test-workspace.ts # Test workspace setup
 │   └── trigger-sync.ts        # Manual sync trigger
@@ -215,12 +213,11 @@ draehi/
 │   ├── SCRIPTS.md             # Setup scripts docs
 │   ├── BASH_GUIDELINES.md     # Bash best practices
 │   ├── CRUD_GUIDELINES.md     # Data operations
-│   └── PERFORMANCE_GUIDELINES.md # Performance patterns
+│   ├── PERFORMANCE_GUIDELINES.md # Performance patterns
+│   └── ASSET_TROUBLESHOOTING.md  # Asset/MinIO troubleshooting
 ├── CLAUDE.md                  # AI agent instructions (this file)
 └── README.md                  # User-facing docs
 ```
-
-**Note:** All test documentation is in /docs (TEST_SUMMARY.md, TESTING.md). Old diagnostic scripts removed for maintainability.
 
 ### Database Schema
 
@@ -284,7 +281,7 @@ The database uses Drizzle PostgreSQL with the following main tables:
 # CRUD / Data Layer
 
 1. Centralized Queries
-   All DB queries in src/lib/queries.ts
+   All DB queries in modules/*/queries.ts
    Use Drizzle relational API
    No inline queries in components/routes
 

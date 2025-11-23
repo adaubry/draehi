@@ -8,6 +8,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed - 2025-11-23
+
+- **Documentation Cleanup**: Removed stale/redundant docs, updated remaining for accuracy
+  - Removed: PHASE4_FINAL_TEST_RESULTS.md, PROJECT_STATUS.md, NAVIGATION_GUIDELINES.md, SIDEBAR.md
+  - Updated: DIRECTORY.md, SCRIPTS.md, TESTING.md, ROADMAP.md, CRUD_GUIDELINES.md, PERFORMANCE_GUIDELINES.md
+  - Fixed: Incorrect file paths, non-existent scripts, outdated structure
+  - Updated CLAUDE.md to reflect accurate project structure
+
 ### Added - 2025-11-19
 
 - **Asset Ingestion**: Integrated S3/MinIO asset upload pipeline

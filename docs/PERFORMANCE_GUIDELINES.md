@@ -831,5 +831,4 @@ async function Page() {
 
 ---
 
-**Last Updated:** 2025-11-16
-**Version:** 2.0.0 (Next.js 16, Post-MVP)
+**Last Updated:** 2025-11-23

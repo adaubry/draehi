@@ -17,19 +17,21 @@ export async function syncAuth0UserToDb(
 ) {
   try {
     // Check if user already exists by auth0_sub
-    const existing = await query<User>(
+    const existingResult = await query<User>(
       "SELECT * FROM users WHERE auth0_sub = $auth0Sub LIMIT 1;",
       { auth0Sub }
     );
 
-    if (existing.length > 0) {
+    const existingArray = existingResult as unknown as any[];
+    const existingUser = existingArray?.[0]?.[0];
+    if (existingUser) {
       // User exists - just return it
-      return { user: existing[0] };
+      return { user: existingUser };
     }
 
     // User doesn't exist - create new user
     // Use a random ID suffix since SurrealDB generates table:id format
-    const users = await query<User>(
+    const result = await query<User>(
       `CREATE users CONTENT {
          auth0_sub: $auth0Sub,
          email: $email,
@@ -41,7 +43,8 @@ export async function syncAuth0UserToDb(
       { auth0Sub, email, nickname, name }
     );
 
-    const user = users[0];
+    const resultArray = result as unknown as any[];
+    const user = resultArray?.[0]?.[0];
     if (!user) {
       return { error: "Failed to create user" };
     }
@@ -76,12 +79,13 @@ export async function deleteAuth0User(auth0Sub: string) {
     }
 
     // Find user by auth0_sub
-    const users = await query<{ id: string }>(
+    const usersResult = await query<{ id: string }>(
       "SELECT id FROM users WHERE auth0_sub = $auth0Sub LIMIT 1;",
       { auth0Sub }
     );
 
-    const user = users[0];
+    const usersArray = usersResult as unknown as any[];
+    const user = usersArray?.[0]?.[0];
     if (!user) {
       return { success: true }; // Already deleted
     }

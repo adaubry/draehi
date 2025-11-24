@@ -29,6 +29,28 @@ export async function syncAuth0UserToDb(
       return { user: existingUser };
     }
 
+    // Check if email already exists (user might have different auth0_sub)
+    const emailCheckResult = await query<User>(
+      "SELECT * FROM users WHERE email = $email LIMIT 1;",
+      { email }
+    );
+
+    const emailCheckArray = emailCheckResult as unknown as any[];
+    const existingByEmail = emailCheckArray?.[0]?.[0];
+    if (existingByEmail) {
+      // User exists with this email but different auth0_sub - update auth0_sub
+      console.log("User exists with email but different auth0_sub, updating...");
+      const updateResult = await query<User>(
+        "UPDATE $thing SET auth0_sub = $auth0Sub RETURN *;",
+        { thing: existingByEmail.id, auth0Sub }
+      );
+      const updatedArray = updateResult as unknown as any[];
+      const updatedUser = updatedArray?.[0]?.[0];
+      if (updatedUser) {
+        return { user: updatedUser };
+      }
+    }
+
     // User doesn't exist - create new user
     // Use a random ID suffix since SurrealDB generates table:id format
     const result = await query<User>(

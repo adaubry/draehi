@@ -1,80 +1,118 @@
 "use server";
 
-import { create, remove, query } from "@/lib/surreal";
-import { type User, type NewUser, userRecordId } from "./schema";
-import { getUserByUsername } from "./queries";
-import bcrypt from "bcryptjs";
+import { query, remove } from "@/lib/surreal";
+import { type User } from "./schema";
+import { createWorkspace } from "@/modules/workspace/actions";
 
-export async function createUser(username: string, password: string) {
-  // Check if user exists
-  const existing = await getUserByUsername(username);
-  if (existing) {
-    return { error: "Username already exists" };
-  }
-
-  // Hash password
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  // Create user
-  const user = await create<User>("users", {
-    username,
-    password: hashedPassword,
-  });
-
-  return { user };
-}
-
-export async function verifyPassword(username: string, password: string) {
-  const user = await getUserByUsername(username);
-  if (!user) {
-    return { error: "Invalid credentials" };
-  }
-
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) {
-    return { error: "Invalid credentials" };
-  }
-
-  return { user };
-}
-
-export async function deleteUser(userId: string) {
+/**
+ * AUTH0 SYNC: Create/update user in SurrealDB from Auth0
+ * Called by: /app/api/webhooks/auth0/route.ts
+ * Auth0 manages auth, we sync identities to SurrealDB
+ */
+export async function syncAuth0UserToDb(
+  auth0Sub: string,
+  email: string,
+  nickname: string,
+  name?: string
+) {
   try {
-    // Delete user - SurrealDB handles cascading via graph relations
-    // We need to manually delete related records since SurrealDB doesn't auto-cascade
-    // 1. Find user's workspace
-    const workspaces = await query<{ id: string }>(
-      "SELECT id FROM workspaces WHERE user = $user",
-      { user: userRecordId(userId) }
+    // Check if user already exists by auth0_sub
+    const existing = await query<User>(
+      "SELECT * FROM users WHERE auth0_sub = $auth0Sub LIMIT 1;",
+      { auth0Sub }
     );
 
-    for (const workspace of workspaces) {
-      // Delete workspace's git repos
-      await query("DELETE git_repositories WHERE workspace = $ws", {
-        ws: workspace.id,
-      });
-
-      // Delete workspace's deployment history
-      await query("DELETE deployment_history WHERE workspace = $ws", {
-        ws: workspace.id,
-      });
-
-      // Delete workspace's nodes
-      await query("DELETE nodes WHERE workspace = $ws", {
-        ws: workspace.id,
-      });
-
-      // Delete workspace
-      await remove(workspace.id);
+    if (existing.length > 0) {
+      // User exists - just return it
+      return { user: existing[0] };
     }
 
+    // User doesn't exist - create new user
+    // Use a random ID suffix since SurrealDB generates table:id format
+    const users = await query<User>(
+      `CREATE users CONTENT {
+         auth0_sub: $auth0Sub,
+         email: $email,
+         username: $nickname,
+         name: $name,
+         created_at: time::now()
+       }
+       RETURN *;`,
+      { auth0Sub, email, nickname, name }
+    );
+
+    const user = users[0];
+    if (!user) {
+      return { error: "Failed to create user" };
+    }
+
+    // Create default workspace for new user
+    try {
+      const workspaceName = nickname || email?.split("@")[0] || "My Workspace";
+      const workspaceResult = await createWorkspace(user.id, workspaceName);
+      if (workspaceResult.error) {
+        console.error("Failed to create default workspace:", workspaceResult.error);
+      }
+    } catch (error) {
+      console.error("Failed to create default workspace:", error);
+    }
+
+    return { user };
+  } catch (error) {
+    console.error("Auth0 user sync failed:", error);
+    return { error: "Failed to sync user" };
+  }
+}
+
+/**
+ * AUTH0 DELETE: Remove user from SurrealDB
+ * Called by: /app/api/webhooks/auth0/route.ts (user.deleted event)
+ * Cascades deletion to all user workspaces and data
+ */
+export async function deleteAuth0User(auth0Sub: string) {
+  try {
+    if (!auth0Sub) {
+      return { error: "Auth0 sub required" };
+    }
+
+    // Find user by auth0_sub
+    const users = await query<{ id: string }>(
+      "SELECT id FROM users WHERE auth0_sub = $auth0Sub LIMIT 1;",
+      { auth0Sub }
+    );
+
+    const user = users[0];
+    if (!user) {
+      return { success: true }; // Already deleted
+    }
+
+    // Cascade delete all user data
+    await query(
+      "DELETE nodes WHERE workspace IN (SELECT id FROM workspaces WHERE user = $userId);",
+      { userId: user.id }
+    );
+
+    await query(
+      "DELETE git_repositories WHERE workspace IN (SELECT id FROM workspaces WHERE user = $userId);",
+      { userId: user.id }
+    );
+
+    await query(
+      "DELETE deployment_history WHERE workspace IN (SELECT id FROM workspaces WHERE user = $userId);",
+      { userId: user.id }
+    );
+
+    await query(
+      "DELETE workspaces WHERE user = $userId;",
+      { userId: user.id }
+    );
+
     // Delete user
-    await remove(userRecordId(userId));
+    await remove(user.id);
 
     return { success: true };
   } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : "Failed to delete user",
-    };
+    console.error("Auth0 user deletion failed:", error);
+    return { error: "Failed to delete user" };
   }
 }

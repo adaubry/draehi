@@ -36,7 +36,7 @@ export type PageWithBlocks = {
  */
 export async function ingestLogseqRepository(
   repoPath: string,
-  workspaceId: number
+  workspaceId: string
 ): Promise<{ success: boolean; pages?: PageWithBlocks[]; error?: string }> {
   try {
     // Step 1: Parse markdown files to extract block structure with UUIDs
@@ -122,7 +122,7 @@ export async function ingestLogseqRepository(
  */
 export function pageWithBlocksToNodes(
   page: PageWithBlocks,
-  workspaceId: number
+  workspaceId: string
 ): NewNode[] {
   const nodes: NewNode[] = [];
 
@@ -172,6 +172,7 @@ export function pageWithBlocksToNodes(
 
     nodes.push(blockNode);
   }
+  return nodes;
 
   return nodes;
 }

@@ -16,16 +16,16 @@ export async function triggerDeployment() {
 
   const repository = await getRepositoryByWorkspaceId(workspace.id);
 
-  if (!repository || !repository.deployKey) {
+  if (!repository || !repository.deploy_key) {
     throw new Error("No repository connected");
   }
 
   // Trigger sync in background (no revalidation in promise to avoid render errors)
   syncRepository(
     workspace.id,
-    repository.repoUrl,
+    repository.repo_url,
     repository.branch,
-    repository.deployKey
+    repository.deploy_key
   ).catch((error) => {
     console.error("Manual deployment failed:", error);
   });

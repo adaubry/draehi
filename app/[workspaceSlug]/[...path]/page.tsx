@@ -1,3 +1,4 @@
+import { ensurePageName } from '@/modules/content/schema';
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -43,22 +44,22 @@ async function NodePageContent({
   // Get all blocks for this page (if it's a page node)
   const blocks =
     node.parentUuid === null
-      ? await getAllBlocksForPage(workspace.id, node.pageName)
+      ? await getAllBlocksForPage(workspace.id, ensurePageName(node))
       : [];
 
   // Get backlinks (only for page nodes)
   const citedBy = node.parentUuid === null
-    ? await getPageBacklinks(workspace.id, node.pageName)
+    ? await getPageBacklinks(workspace.id, ensurePageName(node))
     : [];
 
   const related = node.parentUuid === null
-    ? await getBlockBacklinks(workspace.id, node.pageName)
+    ? await getBlockBacklinks(workspace.id, ensurePageName(node))
     : [];
 
   const pagePath = path.join("/");
 
   return (
-    <PageBlocksContextProvider blocks={blocks} pageUuid={node.uuid}>
+    <PageBlocksContextProvider blocks={blocks} pageUuid={node.uuid || node.id}>
       <div className="flex flex-col gap-6">
         {/* Breadcrumbs */}
         <Breadcrumbs currentTitle={node.title} workspaceSlug={workspaceSlug} />
@@ -102,7 +103,7 @@ async function NodePageContent({
                 </h2>
                 <div className="space-y-2">
                   {citedBy.map((page) => {
-                    const segments = page.pageName.split("/").map(s =>
+                    const segments = ensurePageName(page).split("/").map(s =>
                       s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
                     );
                     const href = `/${workspaceSlug}/${segments.join("/")}`;
@@ -130,7 +131,7 @@ async function NodePageContent({
                 </h2>
                 <div className="space-y-2">
                   {related.map((page) => {
-                    const segments = page.pageName.split("/").map(s =>
+                    const segments = ensurePageName(page).split("/").map(s =>
                       s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, "")
                     );
                     const href = `/${workspaceSlug}/${segments.join("/")}`;

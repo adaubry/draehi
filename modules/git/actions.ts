@@ -1,6 +1,6 @@
 "use server";
 
-import { create, update, query } from "@/lib/surreal";
+import { create, update, query as surrealQuery } from "@/lib/surreal";
 import {
   type GitRepository,
   type Deployment,
@@ -9,6 +9,9 @@ import {
 } from "./schema";
 import { workspaceRecordId } from "../workspace/schema";
 import { getRepositoryByWorkspaceId } from "./queries";
+
+// Alias for clarity in updateRepository
+const query = surrealQuery;
 
 export async function connectRepository(
   workspaceId: string,
@@ -23,7 +26,7 @@ export async function connectRepository(
   }
 
   const repo = await create<GitRepository>("git_repositories", {
-    workspace: workspaceRecordId(workspaceId),
+    workspace: workspaceId,  // Pass workspaceId directly - SurrealDB SDK handles RecordId
     repo_url: repoUrl,
     branch,
     deploy_key: deployKey,
@@ -56,18 +59,41 @@ export async function updateRepository(
     return { error: "Repository not found" };
   }
 
-  const updateData: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
+  try {
+    // Use raw query to properly handle datetime fields
+    let updateQuery = "UPDATE $thing SET ";
+    const params: Record<string, unknown> = { thing: existing.id };
+    const updates: string[] = [];
 
-  if (data.syncStatus) updateData.sync_status = data.syncStatus;
-  if (data.lastSync) updateData.last_sync = data.lastSync.toISOString();
-  if (data.errorLog !== undefined) updateData.error_log = data.errorLog;
-  if (data.branch) updateData.branch = data.branch;
+    updates.push("updated_at = time::now()");
 
-  const repo = await update<GitRepository>(existing.id, updateData);
+    if (data.syncStatus) {
+      updates.push("sync_status = $syncStatus");
+      params.syncStatus = data.syncStatus;
+    }
+    if (data.lastSync) {
+      updates.push("last_sync = $lastSync");
+      params.lastSync = data.lastSync.toISOString();
+    }
+    if (data.errorLog !== undefined) {
+      updates.push("error_log = $errorLog");
+      params.errorLog = data.errorLog;
+    }
+    if (data.branch) {
+      updates.push("branch = $branch");
+      params.branch = data.branch;
+    }
 
-  return { repo };
+    updateQuery += updates.join(", ") + " RETURN *;";
+
+    const result = await query<GitRepository>(updateQuery, params);
+    const repo = result[0];
+
+    return { repo };
+  } catch (error) {
+    console.error("Failed to update repository:", error);
+    return { error: "Failed to update repository" };
+  }
 }
 
 export async function createDeployment(
@@ -78,31 +104,52 @@ export async function createDeployment(
   buildLog?: string[]
 ) {
   const deployment = await create<Deployment>("deployment_history", {
-    workspace: workspaceRecordId(workspaceId),
+    workspace: workspaceId,  // Pass workspaceId directly - SurrealDB SDK handles RecordId
     commit_sha: commitSha,
     status,
     error_log: errorLog,
     build_log: buildLog,
   });
 
-  return { deployment };
+  return deployment;
 }
 
 export async function updateDeployment(
-  id: string,
+  id: string | unknown,
   data: {
     status?: string;
     errorLog?: string;
     buildLog?: string[];
   }
 ) {
-  const updateData: Record<string, unknown> = {};
+  try {
+    // Use raw query to properly handle record references
+    // SurrealDB SDK requires RecordId objects, not string parameters
+    let updateQuery = "UPDATE $thing SET ";
+    const params: Record<string, unknown> = { thing: id };
+    const updates: string[] = [];
 
-  if (data.status) updateData.status = data.status;
-  if (data.errorLog !== undefined) updateData.error_log = data.errorLog;
-  if (data.buildLog) updateData.build_log = data.buildLog;
+    if (data.status) {
+      updates.push("status = $status");
+      params.status = data.status;
+    }
+    if (data.errorLog !== undefined) {
+      updates.push("error_log = $errorLog");
+      params.errorLog = data.errorLog;
+    }
+    if (data.buildLog) {
+      updates.push("build_log = $buildLog");
+      params.buildLog = data.buildLog;
+    }
 
-  const deployment = await update<Deployment>(deploymentRecordId(id), updateData);
+    updateQuery += updates.join(", ") + " RETURN *;";
 
-  return { deployment };
+    const result = await query<Deployment>(updateQuery, params);
+    const deployment = result[0];
+
+    return { deployment };
+  } catch (error) {
+    console.error("Failed to update deployment:", error);
+    return { error: "Failed to update deployment" };
+  }
 }

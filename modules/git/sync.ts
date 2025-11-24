@@ -3,7 +3,6 @@
 import { cloneRepository, getLatestCommit, cleanupRepository } from "./clone";
 import { updateRepository, createDeployment, updateDeployment } from "./actions";
 import { ingestLogseqGraph } from "../content/actions";
-import { getDeploymentIdFromRecord } from "./schema";
 
 export async function syncRepository(
   workspaceId: string,
@@ -45,15 +44,15 @@ export async function syncRepository(
       "building"
     );
 
-    // Get deployment ID for updates
-    const deploymentId = getDeploymentIdFromRecord(deployment.deployment.id);
+    // Note: deployment.id is a RecordId object from SurrealDB
+    // Pass it directly to updateDeployment (do NOT convert to string)
 
     // Process Logseq graph
     const ingestionResult = await ingestLogseqGraph(workspaceId, repoPath);
 
     if (!ingestionResult.success) {
       // Update deployment as failed
-      await updateDeployment(deploymentId, {
+      await updateDeployment(deployment.id, {
         status: "failed",
         errorLog: ingestionResult.error,
         buildLog: ingestionResult.buildLog,
@@ -71,7 +70,7 @@ export async function syncRepository(
     }
 
     // Update deployment as success
-    await updateDeployment(deploymentId, {
+    await updateDeployment(deployment.id, {
       status: "success",
       buildLog: ingestionResult.buildLog,
     });

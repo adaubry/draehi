@@ -12,7 +12,7 @@ import path from "path";
  * @returns Public URL of uploaded asset
  */
 export async function uploadAsset(
-  workspaceId: number,
+  workspaceId: string,
   repoPath: string,
   assetPath: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {

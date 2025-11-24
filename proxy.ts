@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
-  // Simple cookie check for session
-  const sessionCookie = request.cookies.get("draehi_session");
+  // Check for Auth0 session cookie
+  const sessionCookie = request.cookies.get("appSession");
   const isLoggedIn = !!sessionCookie;
 
   const isAuthPage =

@@ -7,14 +7,27 @@ import { useEffect, useState, useActionState } from "react";
 
 type DashboardClientProps = {
   workspace: {
-    id: number;
+    id: string;
     name: string;
     slug: string;
   };
-  repository: any;
-  deployments: any[];
+  repository: {
+    id: string;
+    repo_url: string;
+    branch: string;
+    sync_status: string;
+    last_sync: string | null;
+    error_log: string | null;
+    updated_at: string;
+  } | null;
+  deployments: {
+    id: string;
+    commit_sha: string;
+    status: string;
+    deployed_at: string;
+  }[];
   user: {
-    id: number;
+    id: string;
     username: string;
   };
   errorIsStale: boolean;
@@ -52,14 +65,14 @@ export function DashboardClient({
 
   // Auto-refresh when syncing
   useEffect(() => {
-    if (repository?.syncStatus === "syncing") {
+    if (repository?.sync_status === "syncing") {
       const interval = setInterval(() => {
         router.refresh();
       }, 3000); // Refresh every 3 seconds
 
       return () => clearInterval(interval);
     }
-  }, [repository?.syncStatus, router]);
+  }, [repository?.sync_status, router]);
 
   return (
     <div className="space-y-8">
@@ -114,7 +127,7 @@ export function DashboardClient({
                   Repository URL
                 </dt>
                 <dd className="mt-1 text-sm font-mono break-all">
-                  {repository.repoUrl}
+                  {repository.repo_url}
                 </dd>
               </div>
               <div>
@@ -126,16 +139,16 @@ export function DashboardClient({
                 <dd className="mt-1">
                   <span
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      repository.syncStatus === "success"
+                      repository.sync_status === "success"
                         ? "bg-green-100 text-green-800"
-                        : repository.syncStatus === "error"
+                        : repository.sync_status === "error"
                           ? "bg-red-100 text-red-800"
-                          : repository.syncStatus === "syncing"
+                          : repository.sync_status === "syncing"
                             ? "bg-blue-100 text-blue-800 animate-pulse"
                             : "bg-gray-100 text-gray-800"
                     }`}
                   >
-                    {repository.syncStatus}
+                    {repository.sync_status}
                   </span>
                 </dd>
               </div>
@@ -144,14 +157,14 @@ export function DashboardClient({
                   Last Sync
                 </dt>
                 <dd className="mt-1 text-sm">
-                  {repository.lastSync
-                    ? new Date(repository.lastSync).toLocaleString()
+                  {repository.last_sync
+                    ? new Date(repository.last_sync).toLocaleString()
                     : "Never"}
                 </dd>
               </div>
             </dl>
 
-            {repository.errorLog && (
+            {repository.error_log && (
               <div className={`p-4 border rounded-md ${
                 errorIsStale
                   ? "bg-gray-50 border-gray-200"
@@ -163,18 +176,18 @@ export function DashboardClient({
                   }`}>
                     {errorIsStale ? "Previous Error (Resolved):" : "Last Error:"}
                   </p>
-                  {repository.updatedAt && (
+                  {repository.updated_at && (
                     <p className={`text-xs ${
                       errorIsStale ? "text-gray-500" : "text-red-600"
                     }`}>
-                      {new Date(repository.updatedAt).toLocaleString()}
+                      {new Date(repository.updated_at).toLocaleString()}
                     </p>
                   )}
                 </div>
                 <pre className={`text-xs whitespace-pre-wrap ${
                   errorIsStale ? "text-gray-600" : "text-red-700"
                 }`}>
-                  {repository.errorLog}
+                  {repository.error_log}
                 </pre>
               </div>
             )}
@@ -183,10 +196,10 @@ export function DashboardClient({
               <form action={triggerDeployment}>
                 <button
                   type="submit"
-                  disabled={repository.syncStatus === "syncing"}
+                  disabled={repository.sync_status === "syncing"}
                   className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {repository.syncStatus === "syncing" ? "Deploying..." : "Trigger Deployment"}
+                  {repository.sync_status === "syncing" ? "Deploying..." : "Trigger Deployment"}
                 </button>
               </form>
             </div>
@@ -205,9 +218,9 @@ export function DashboardClient({
                 className="flex items-center justify-between py-3 border-b last:border-b-0"
               >
                 <div className="flex-1">
-                  <p className="text-sm font-mono">{deployment.commitSha.slice(0, 7)}</p>
+                  <p className="text-sm font-mono">{deployment.commit_sha.slice(0, 7)}</p>
                   <p className="text-xs text-gray-500">
-                    {new Date(deployment.deployedAt).toLocaleString()}
+                    {new Date(deployment.deployed_at).toLocaleString()}
                   </p>
                 </div>
                 <span

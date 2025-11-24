@@ -104,8 +104,9 @@ export const getAllBlocksForPageWithHTML = cache(
   }
 );
 
-function getNodeUuidFromRecord(recordId: string): string {
-  return recordId.replace("nodes:", "");
+function getNodeUuidFromRecord(recordId: string | unknown): string {
+  const idStr = String(recordId);
+  return idStr.replace("nodes:", "");
 }
 
 export const getPageBacklinks = cache(

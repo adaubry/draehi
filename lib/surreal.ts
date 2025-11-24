@@ -12,8 +12,17 @@ const config = {
 };
 
 export async function getSurreal(): Promise<Surreal> {
+  // Return existing connection if still healthy
   if (surrealInstance) {
-    return surrealInstance;
+    try {
+      // Quick health check - if this fails, reconnect
+      await surrealInstance.query("SELECT * FROM $auth;");
+      return surrealInstance;
+    } catch (error) {
+      // Connection died, reset and reconnect
+      console.warn("SurrealDB connection lost, reconnecting:", error);
+      surrealInstance = null;
+    }
   }
 
   const db = new Surreal();
@@ -60,8 +69,12 @@ export async function create<T = unknown>(
   data: Record<string, unknown>
 ): Promise<T> {
   const db = await getSurreal();
-  const [result] = await db.create<T>(table, data);
-  return result;
+  const result = await db.query<unknown[]>(
+    `CREATE ${table} CONTENT $data RETURN *;`,
+    { data }
+  );
+  const records = result[0] as T[];
+  return records[0];
 }
 
 // Create record with specific ID
@@ -70,8 +83,12 @@ export async function createWithId<T = unknown>(
   data: Record<string, unknown>
 ): Promise<T> {
   const db = await getSurreal();
-  const [result] = await db.create<T>(thing, data);
-  return result;
+  const result = await db.query<unknown[]>(
+    `CREATE $thing CONTENT $data RETURN *;`,
+    { thing, data }
+  );
+  const records = result[0] as T[];
+  return records[0];
 }
 
 // Update record
@@ -80,8 +97,26 @@ export async function update<T = unknown>(
   data: Record<string, unknown>
 ): Promise<T> {
   const db = await getSurreal();
-  const [result] = await db.merge<T>(thing, data);
-  return result;
+
+  // Convert ISO date strings to SurrealDB datetime format
+  // SurrealDB expects datetime objects, not ISO strings
+  const cleanData: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+      // This looks like an ISO datetime string, but SurrealDB will handle it
+      // Actually, for datetime fields we need to use time::from() or just pass the string
+      cleanData[key] = value;
+    } else {
+      cleanData[key] = value;
+    }
+  }
+
+  const result = await db.query<unknown[]>(
+    `UPDATE $thing MERGE $data RETURN *;`,
+    { thing, data: cleanData }
+  );
+  const records = result[0] as T[];
+  return records[0];
 }
 
 // Delete record
@@ -93,7 +128,8 @@ export async function remove(thing: string): Promise<void> {
 // Select all from table
 export async function selectAll<T = unknown>(table: string): Promise<T[]> {
   const db = await getSurreal();
-  return (await db.select<T>(table)) as T[];
+  const result = await db.select(table) as unknown;
+  return (Array.isArray(result) ? result : []) as T[];
 }
 
 // Select one by ID
@@ -101,81 +137,13 @@ export async function selectOne<T = unknown>(
   thing: string
 ): Promise<T | null> {
   const db = await getSurreal();
-  const result = await db.select<T>(thing);
-  return Array.isArray(result) ? result[0] || null : result || null;
+  const result = await db.select(thing) as unknown;
+  return Array.isArray(result) ? (result[0] as T) || null : (result as T) || null;
 }
 
-// Initialize schema (run once on startup)
-export async function initSchema(): Promise<void> {
-  const db = await getSurreal();
-
-  // Users table
-  await db.query(`
-    DEFINE TABLE users SCHEMAFULL;
-    DEFINE FIELD username ON users TYPE string;
-    DEFINE FIELD password ON users TYPE string;
-    DEFINE FIELD created_at ON users TYPE datetime DEFAULT time::now();
-    DEFINE INDEX users_username_unique ON users FIELDS username UNIQUE;
-  `);
-
-  // Workspaces table with user link
-  await db.query(`
-    DEFINE TABLE workspaces SCHEMAFULL;
-    DEFINE FIELD user ON workspaces TYPE record<users>;
-    DEFINE FIELD slug ON workspaces TYPE string;
-    DEFINE FIELD name ON workspaces TYPE string;
-    DEFINE FIELD domain ON workspaces TYPE option<string>;
-    DEFINE FIELD embed_depth ON workspaces TYPE int DEFAULT 5;
-    DEFINE FIELD created_at ON workspaces TYPE datetime DEFAULT time::now();
-    DEFINE FIELD updated_at ON workspaces TYPE datetime DEFAULT time::now();
-    DEFINE INDEX workspaces_user_unique ON workspaces FIELDS user UNIQUE;
-    DEFINE INDEX workspaces_slug_unique ON workspaces FIELDS slug UNIQUE;
-  `);
-
-  // Nodes table (pages + blocks) with self-referential hierarchy
-  await db.query(`
-    DEFINE TABLE nodes SCHEMAFULL;
-    DEFINE FIELD workspace ON nodes TYPE record<workspaces>;
-    DEFINE FIELD parent ON nodes TYPE option<record<nodes>>;
-    DEFINE FIELD order ON nodes TYPE int DEFAULT 0;
-    DEFINE FIELD page_name ON nodes TYPE string;
-    DEFINE FIELD slug ON nodes TYPE string;
-    DEFINE FIELD title ON nodes TYPE string;
-    DEFINE FIELD metadata ON nodes TYPE option<object>;
-    DEFINE FIELD created_at ON nodes TYPE datetime DEFAULT time::now();
-    DEFINE FIELD updated_at ON nodes TYPE datetime DEFAULT time::now();
-    DEFINE INDEX nodes_workspace_pagename ON nodes FIELDS workspace, page_name;
-    DEFINE INDEX nodes_parent_order ON nodes FIELDS parent, order;
-  `);
-
-  // Git repositories table
-  await db.query(`
-    DEFINE TABLE git_repositories SCHEMAFULL;
-    DEFINE FIELD workspace ON git_repositories TYPE record<workspaces>;
-    DEFINE FIELD repo_url ON git_repositories TYPE string;
-    DEFINE FIELD branch ON git_repositories TYPE string DEFAULT 'main';
-    DEFINE FIELD deploy_key ON git_repositories TYPE option<string>;
-    DEFINE FIELD last_sync ON git_repositories TYPE option<datetime>;
-    DEFINE FIELD sync_status ON git_repositories TYPE string DEFAULT 'idle';
-    DEFINE FIELD error_log ON git_repositories TYPE option<string>;
-    DEFINE FIELD created_at ON git_repositories TYPE datetime DEFAULT time::now();
-    DEFINE FIELD updated_at ON git_repositories TYPE datetime DEFAULT time::now();
-    DEFINE INDEX git_repositories_workspace_unique ON git_repositories FIELDS workspace UNIQUE;
-  `);
-
-  // Deployment history table
-  await db.query(`
-    DEFINE TABLE deployment_history SCHEMAFULL;
-    DEFINE FIELD workspace ON deployment_history TYPE record<workspaces>;
-    DEFINE FIELD commit_sha ON deployment_history TYPE string;
-    DEFINE FIELD status ON deployment_history TYPE string;
-    DEFINE FIELD deployed_at ON deployment_history TYPE datetime DEFAULT time::now();
-    DEFINE FIELD error_log ON deployment_history TYPE option<string>;
-    DEFINE FIELD build_log ON deployment_history TYPE option<array<string>>;
-  `);
-
-  console.log("SurrealDB schema initialized");
-}
+// Schema is initialized via scripts/init-surreal-schema.ts
+// Do NOT define schema here - use the dedicated script for idempotent "IF NOT EXISTS" behavior
+// See: scripts/init-surreal-schema.ts
 
 // Type definitions for records
 export interface SurrealUser {

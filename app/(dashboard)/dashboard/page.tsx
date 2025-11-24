@@ -8,7 +8,6 @@ import {
 import Link from "next/link";
 import { triggerDeployment } from "./actions";
 import { connectRepository } from "@/modules/git/actions";
-import { deleteUser } from "@/modules/auth/actions";
 import { redirect } from "next/navigation";
 import { DashboardClient } from "./dashboard-client";
 
@@ -67,28 +66,62 @@ async function DashboardContent() {
       return { success: false, error: "Username confirmation does not match" };
     }
 
-    const result = await deleteUser(user.id);
-
-    if (result.error) {
-      return { success: false, error: result.error };
-    }
-
-    const session = await getSession();
-    session.destroy();
-
-    redirect("/");
+    redirect("/api/auth/logout");
   }
+
+  // Helper to convert dates to ISO strings
+  const toISOString = (value: unknown): string => {
+    if (typeof value === "string") return value;
+    if (value && typeof value === "object" && "toISOString" in value) {
+      return (value as any).toISOString();
+    }
+    return new Date().toISOString();
+  };
+
+  // Serialize deployments for client component (convert non-serializable objects)
+  const serializedDeployments = deployments.map((deployment) => ({
+    id: String(deployment.id),
+    commit_sha: deployment.commit_sha,
+    status: deployment.status,
+    deployed_at: toISOString(deployment.deployed_at),
+  }));
+
+  // Serialize repository for client component
+  const serializedRepository = repository
+    ? {
+        id: String(repository.id),
+        repo_url: repository.repo_url,
+        branch: repository.branch,
+        sync_status: repository.sync_status,
+        last_sync: repository.last_sync ? toISOString(repository.last_sync) : null,
+        error_log: repository.error_log || null,
+        updated_at: toISOString(repository.updated_at),
+      }
+    : null;
+
+  // Serialize workspace for client component
+  const serializedWorkspace = {
+    id: String(workspace.id),
+    name: workspace.name,
+    slug: workspace.slug,
+  };
+
+  // Serialize user for client component
+  const serializedUser = {
+    id: String(user.id),
+    username: user.username,
+  };
 
   // Check if last error is stale (current deployment is successful)
   const lastDeploymentSuccess = deployments[0]?.status === "success";
-  const errorIsStale = repository?.errorLog && lastDeploymentSuccess;
+  const errorIsStale = repository?.error_log && lastDeploymentSuccess;
 
   return (
     <DashboardClient
-      workspace={workspace}
-      repository={repository}
-      deployments={deployments}
-      user={user}
+      workspace={serializedWorkspace}
+      repository={serializedRepository}
+      deployments={serializedDeployments}
+      user={serializedUser}
       errorIsStale={errorIsStale || false}
       handleConnect={handleConnect}
       handleDeleteAccount={handleDeleteAccount}

@@ -50,12 +50,12 @@ export async function upsertNode(
   if (existing) {
     // Update via query
     const [node] = await query<Node>(
-      `UPDATE ${existing.id} SET
+      `UPDATE $thing SET
         title = $title,
         metadata = $metadata,
         updated_at = time::now()
       RETURN AFTER`,
-      { title: data.title, metadata: data.metadata || {} }
+      { thing: existing.id, title: data.title, metadata: data.metadata || {} }
     );
     return { node };
   } else {

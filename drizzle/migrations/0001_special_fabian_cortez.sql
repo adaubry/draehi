@@ -1,2 +1,0 @@
-ALTER TABLE "workspaces" ADD COLUMN "embed_depth" integer DEFAULT 5 NOT NULL;--> statement-breakpoint
-CREATE INDEX "workspace_pagename_nodetype_idx" ON "nodes" USING btree ("workspace_id","page_name","node_type");

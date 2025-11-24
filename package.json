@@ -16,7 +16,9 @@
     "minio:setup": "./scripts/setup-minio.sh"
   },
   "dependencies": {
+    "@auth0/nextjs-auth0": "^4.13.1",
     "@aws-sdk/client-s3": "^3.932.0",
+    "@clerk/nextjs": "^6.35.4",
     "@tailwindcss/typography": "^0.5.19",
     "bcryptjs": "^2.4.3",
     "cheerio": "^1.1.2",
@@ -24,6 +26,7 @@
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
     "iron-session": "^8.0.3",
+    "jose": "^6.1.2",
     "lucide-react": "^0.554.0",
     "marked": "^17.0.0",
     "next": "16.0.3",

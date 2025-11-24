@@ -143,7 +143,7 @@ function extractBodyContent(html: string): string {
  */
 export async function logseqPageToNode(
   page: LogseqPage,
-  workspaceId: number,
+  workspaceId: string,
   repoPath: string
 ): Promise<NewNode> {
   const { createHash } = await import("crypto");
@@ -165,6 +165,8 @@ export async function logseqPageToNode(
     title: page.title,
     html,
     metadata: page.metadata,
+    parentUuid: null,
+    order: 0,
   };
 }
 
@@ -199,7 +201,7 @@ function parsePageName(pageName: string): {
  */
 export async function processAssets(
   html: string,
-  workspaceId: number,
+  workspaceId: string,
   repoPath: string
 ): Promise<string> {
   // Match asset references: ../assets/image.png, ./image.png, etc.

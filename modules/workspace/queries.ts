@@ -21,10 +21,12 @@ export const getWorkspaceBySlug = cache(
 );
 
 export const getWorkspaceByUserId = cache(
-  async (userId: string): Promise<Workspace | null> => {
+  async (userId: string | unknown): Promise<Workspace | null> => {
+    // Pass userId directly - SurrealDB SDK handles RecordId comparison
+    // userId can be a RecordId object or string, both work in query parameters
     return await queryOne<Workspace>(
       "SELECT * FROM workspaces WHERE user = $user LIMIT 1",
-      { user: userRecordId(userId) }
+      { user: userId }
     );
   }
 );

@@ -1,3 +1,4 @@
+import { ensurePageName } from '@/modules/content/schema';
 import { NextRequest, NextResponse } from "next/server";
 import { getWorkspaceBySlug } from "@/modules/workspace/queries";
 import { getAllBlocksForPage, getNodeByPath } from "@/modules/content/queries";
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get blocks for this page
-    const blocks = await getAllBlocksForPage(workspace.id, node.pageName);
+    const blocks = await getAllBlocksForPage(workspace.id, ensurePageName(node));
 
     return NextResponse.json({ blocks });
   } catch (error) {

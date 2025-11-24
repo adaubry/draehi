@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { gitRepositories } from "@/modules/git/schema";
-import { eq } from "drizzle-orm";
+import { query } from "@/lib/surreal";
 import { syncRepository } from "@/modules/git/sync";
+import { GitRepository } from "@/modules/git/schema";
 import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
@@ -13,10 +12,7 @@ export async function POST(request: NextRequest) {
 
     // Only process push events
     if (event !== "push") {
-      return NextResponse.json(
-        { message: "Event ignored" },
-        { status: 200 }
-      );
+      return NextResponse.json({ message: "Event ignored" }, { status: 200 });
     }
 
     const body = await request.json();
@@ -33,9 +29,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Find matching repository in database
-    const repository = await db.query.gitRepositories.findFirst({
-      where: eq(gitRepositories.repoUrl, repoUrl),
-    });
+    const repositories = await query<GitRepository>(
+      `SELECT * FROM git_repositories WHERE repo_url = $repo_url`,
+      { repo_url: repoUrl }
+    );
+
+    const repository = repositories[0];
 
     if (!repository) {
       return NextResponse.json(
@@ -53,12 +52,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Trigger sync (don't await - run in background)
-    if (repository.deployKey) {
+    if (repository.deploy_key) {
       syncRepository(
-        repository.workspaceId,
-        repository.repoUrl,
+        repository.workspace,
+        repository.repo_url,
         repository.branch,
-        repository.deployKey
+        repository.deploy_key
       ).catch((error) => {
         console.error("Webhook sync failed:", error);
       });

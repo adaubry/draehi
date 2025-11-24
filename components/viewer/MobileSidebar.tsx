@@ -1,5 +1,6 @@
 "use client";
 
+import { ensurePageName } from '@/modules/content/schema';
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -26,14 +27,14 @@ function buildTree(nodes: Node[]): TreeNode[] {
   const pageNodes = nodes.filter((n) => n.parentUuid === null);
 
   pageNodes.forEach((node) => {
-    nodeMap.set(node.pageName, { node, children: [] });
+    nodeMap.set(ensurePageName(node), { node, children: [] });
   });
 
   pageNodes.forEach((node) => {
-    const treeNode = nodeMap.get(node.pageName);
+    const treeNode = nodeMap.get(ensurePageName(node));
     if (!treeNode) return;
 
-    const segments = node.pageName.split("/");
+    const segments = ensurePageName(node).split("/");
     if (segments.length === 1) {
       rootNodes.push(treeNode);
     } else {
@@ -64,7 +65,7 @@ function TreeItem({
   const pathname = usePathname();
   const { node, children } = treeNode;
 
-  const segments = node.pageName.split("/").map((s) =>
+  const segments = ensurePageName(node).split("/").map((s) =>
     s
       .toLowerCase()
       .replace(/\s+/g, "-")

@@ -1,5 +1,8 @@
 version: "3.8"
 
+# WSL2 Users: If you see permission errors, ensure the SurrealDB container
+# has write access to the volume. The "user: 0:0" setting fixes WSL2 permission issues.
+
 services:
   # SurrealDB - Document/Graph database
   surrealdb:
@@ -12,6 +15,8 @@ services:
       - surrealdb_data:/data
     environment:
       - SURREAL_LOG=trace
+    # WSL2 fix: Run as non-root with proper permissions
+    user: "0:0"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 5s

@@ -77,7 +77,17 @@ export async function setBlockHTMLBatch(
     multi.set(blockKey(workspaceId, block.uuid), block.html);
   }
 
-  await multi.exec();
+  try {
+    await multi.exec();
+  } catch (error) {
+    console.error(
+      `Failed to batch set HTML for ${blocks.length} blocks in workspace ${workspaceId}:`,
+      error
+    );
+    throw new Error(
+      `KeyDB batch operation failed: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
 }
 
 // Get multiple block HTMLs at once

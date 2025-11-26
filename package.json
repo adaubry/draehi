@@ -11,7 +11,7 @@
     "docker:setup": "BUILD_MODE=dev ./scripts/docker-setup.sh",
     "docker:setup:prod": "BUILD_MODE=prod ./scripts/docker-setup.sh",
     "docker:stop": "docker compose down",
-    "docker:clean": "npm run db:flush && npm run db:purge && ./scripts/docker-clean.sh --clean",
+    "docker:clean": "npm run db:flush && npm run db:purge && ./scripts/docker-setup.sh --clean",
     "docker:stop:force": "docker compose kill",
     "docker:clean:force": "docker compose down -v && npm run db:purge",
     "docker:shell:surreal": "docker exec -it draehi-surrealdb bash",

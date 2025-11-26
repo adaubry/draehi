@@ -35,7 +35,8 @@ export const getNodeByPath = cache(
 
     // Find the page whose slugified pageName matches the URL path
     const matchingPage = pages.find((page) => {
-      const pageSegments = page.page_name
+      if (!page?.page_name) return false;
+      const pageSegments = String(page.page_name)
         .split("/")
         .map((s) =>
           s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, "")
@@ -53,10 +54,12 @@ export const getNodeByPath = cache(
 export const getAllNodes = cache(
   async (workspaceId: string): Promise<Node[]> => {
     // Only return page nodes for navigation (parent = NONE)
-    return await query<Node>(
+    const nodes = await query<Node>(
       "SELECT * FROM nodes WHERE workspace = $ws AND parent = NONE ORDER BY page_name",
       { ws: workspaceRecordId(workspaceId) }
     );
+    // Serialize to plain objects for Server->Client boundary
+    return nodes.map((n) => JSON.parse(JSON.stringify(n)));
   }
 );
 

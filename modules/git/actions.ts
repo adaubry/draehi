@@ -72,7 +72,7 @@ export async function updateRepository(
       params.syncStatus = data.syncStatus;
     }
     if (data.lastSync) {
-      updates.push("last_sync = time::from($lastSync)");
+      updates.push("last_sync = $lastSync");
       params.lastSync = data.lastSync.toISOString();
     }
     if (data.errorLog !== undefined) {

@@ -216,10 +216,20 @@ npm run flush:db
 #    deployment_history → git_repositories → nodes → workspaces → users
 ```
 
-**Auth0 Cleanup Requirements:**
+**Auth0 Cleanup Setup:**
+
+Auth0 user deletion requires Management API credentials with `delete:users` permission:
+
+1. Go to Auth0 Dashboard → Applications → Your App
+2. Click "Machine to Machine Applications" tab
+3. Find and authorize "Auth0 Management API"
+4. Grant `delete:users` and `get:users` permissions
+5. Retry `npm run flush:db`
+
+**If Auth0 cleanup fails:**
+- Script gracefully continues with SurrealDB cleanup
+- Error message shows exact missing permissions
 - Set `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_CLIENT_SECRET` in `.env.local`
-- If not set, the script skips Auth0 cleanup (only clears SurrealDB)
-- Management API credentials need permission to delete users
 
 ### Rust Tools (export-logseq-notes)
 

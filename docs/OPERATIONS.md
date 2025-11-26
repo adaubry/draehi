@@ -210,8 +210,19 @@ export-logseq-notes --help
 
 ### "Container is unhealthy" Issue
 
-Services need time to initialize. Health checks include `start_period` grace periods:
+**Note:** SurrealDB shows "unhealthy" in `docker ps` even when working correctly. This is because:
+- Docker's health check tries to run `curl` inside the container
+- SurrealDB's official image is distroless (no curl)
+- The health check command fails, but the service itself works fine
 
+**SurrealDB is actually healthy if:**
+```bash
+curl http://localhost:8000/health  # Returns HTTP 200 ✅
+```
+
+**Other services** (KeyDB, MinIO) show correct health status.
+
+If services genuinely fail to start, check initialization time. Health checks include `start_period` grace periods:
 - **SurrealDB**: 30s (database setup)
 - **KeyDB**: 15s (startup)
 - **MinIO**: 15s (startup)

@@ -94,7 +94,7 @@ services:
       - SURREAL_PASS=root
     depends_on:
       surrealdb:
-        condition: service_healthy
+        condition: service_started
     profiles:
       - dev  # Only start in dev mode
     restart: unless-stopped

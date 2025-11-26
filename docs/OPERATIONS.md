@@ -26,6 +26,20 @@ All services are now running:
 - **Surrealist GUI**: http://localhost:8080 (query database visually)
 - **Application**: Start with `npm run dev` (outside Docker)
 
+### Connecting Surrealist to SurrealDB
+
+Surrealist automatically loads pre-configured connections from `surrealist-instance.json`:
+
+1. Open http://localhost:8080 in your browser
+2. You should see "Local Development" connection in the connections list
+3. Click to connect and query the database
+
+If the connection doesn't appear:
+- Browser localStorage may have cached old settings
+- Clear browser cache (DevTools → Application → Clear site data)
+- Reload the page
+- Try manually adding connection: `ws://surrealdb:8000/rpc` with username `root`, password `root`
+
 ---
 
 ## 📦 Docker Management
@@ -375,6 +389,50 @@ npx tsx scripts/test-userid-comparison.ts
 
 # Key: Keep user.id as RecordId object, don't convert to string
 ```
+
+### Surrealist Connection Troubleshooting
+
+**Problem: Surrealist shows "You must be connected to a SurrealDB instance before performing this operation"**
+
+Solution steps:
+
+1. **Verify WebSocket connectivity:**
+   ```bash
+   curl -i http://localhost:8000/health
+   # Should return HTTP 200
+   ```
+
+2. **Check browser console for errors:**
+   - Open http://localhost:8080
+   - Press F12 → Console tab
+   - Look for connection errors
+
+3. **Clear browser cache and retry:**
+   - DevTools → Application tab
+   - Click "Clear site data"
+   - Reload page
+
+4. **Manually add connection if auto-load fails:**
+   - Connection type: **WebSocket**
+   - URL: `ws://localhost:8000/rpc` (from host) or `ws://surrealdb:8000/rpc` (from Docker)
+   - Username: `root`
+   - Password: `root`
+   - Namespace: `draehi`
+   - Database: `main`
+
+5. **Check instance.json is mounted:**
+   ```bash
+   docker exec draehi-surrealist cat /home/surrealist/.surrealist/instance.json
+   # Should show connection configuration
+   ```
+
+**Common errors and fixes:**
+
+| Error | Cause | Fix |
+| ----- | ----- | --- |
+| "There was a problem with authentication" | WebSocket connection failing | Check namespace/database are set |
+| "Connection refused" | SurrealDB not responding | Verify `curl http://localhost:8000/health` works |
+| "timeout" | Network issue or slow startup | Wait 30s for SurrealDB health check to pass |
 
 ### Database Query Debugging
 

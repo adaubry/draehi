@@ -88,6 +88,8 @@ services:
     container_name: draehi-surrealist
     ports:
       - "8080:8080"
+    volumes:
+      - ./surrealist-instance.json:/home/surrealist/.surrealist/instance.json
     environment:
       - SURREAL_URL=http://surrealdb:8000
       - SURREAL_USER=root

@@ -8,6 +8,26 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - 2025-11-26 (Surrealist Configuration & WebSocket Connection)
+
+- **Surrealist Auto-Configuration**: Pre-configured database connections via `surrealist-instance.json`
+  - Auto-loaded connection: "Local Development" (ws://surrealdb:8000/rpc)
+  - Mounted to Surrealist container at `/home/surrealist/.surrealist/instance.json`
+  - Eliminates manual connection setup in UI
+  - Credentials: root/root with namespace `draehi` and database `main`
+
+- **WebSocket Connection Verification**: New test script to validate Surrealist connectivity
+  - `scripts/test-surrealist-connection.ts` - Tests WebSocket connection end-to-end
+  - Verifies: Connection → Authentication → Namespace/DB selection → Query execution
+  - Confirms Surrealist can connect using pre-configured settings
+
+- **Surrealist Troubleshooting Guide**: Updated `docs/OPERATIONS.md` with connection debugging
+  - Steps to verify WebSocket connectivity
+  - Browser cache clearing instructions
+  - Manual connection setup fallback
+  - Common errors and fixes table
+  - Mounted file verification commands
+
 ### Added - 2025-11-26 (Docker Dev/Prod Modes & Unified Operations Documentation)
 
 - **Docker Build Modes**: Support for dev and prod container variants

@@ -1,0 +1,22 @@
+{
+  "telemetry": false,
+  "connections": [
+    {
+      "id": "local-dev",
+      "name": "Local Development",
+      "type": "ws",
+      "url": "ws://surrealdb:8000/rpc",
+      "username": "root",
+      "password": "root",
+      "namespace": "draehi",
+      "database": "main",
+      "auth": {
+        "username": "root",
+        "password": "root"
+      }
+    }
+  ],
+  "cloud": {
+    "enabled": false
+  }
+}

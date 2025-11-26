@@ -17,6 +17,7 @@
     "docker:shell:minio": "docker exec -it draehi-minio bash",
     "docker:shell:app": "docker exec -it draehi-app bash",
     "db:init": "npx tsx scripts/init-surreal-schema.ts",
+    "flush:db": "npx tsx scripts/flush-db.ts",
     "minio": "./scripts/minio.sh",
     "minio:setup": "./scripts/setup-minio.sh"
   },

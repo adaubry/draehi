@@ -161,6 +161,9 @@ npx tsx scripts/test-deployment-flow.ts      # Deployments (5s)
 
 # Total time: ~3 minutes
 # All tests should pass ✅
+
+# 4. Clean up after tests (optional)
+npm run flush:db  # Wipes all data + Auth0 users + local sessions
 ```
 
 ---
@@ -181,15 +184,22 @@ npx tsx scripts/init-surreal-schema.ts
 
 ### Flush Database (Test Cleanup)
 
-Completely clear all data (useful after tests):
+Completely clear all data and Auth0 users (useful after tests):
 
 ```bash
 npm run flush:db
-# or: npx tsx scripts/flush-db.ts
 
-# Deletes all records in order:
-# deployment_history → git_repositories → nodes → workspaces → users
+# Clears (in order):
+# 1. Local session tokens
+# 2. Auth0 users (via Management API, if configured)
+# 3. SurrealDB records:
+#    deployment_history → git_repositories → nodes → workspaces → users
 ```
+
+**Auth0 Cleanup Requirements:**
+- Set `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_CLIENT_SECRET` in `.env.local`
+- If not set, the script skips Auth0 cleanup (only clears SurrealDB)
+- Management API credentials need permission to delete users
 
 ### Rust Tools (export-logseq-notes)
 

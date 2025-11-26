@@ -115,6 +115,7 @@ export function BlockTree({
 }: BlockTreeProps) {
   // Find the page node (parentUuid is null)
   const pageNode = blocks.find((b) => b.parentUuid === null);
+  console.log("[Display] BlockTree: Rendering tree for page path", pagePath, "with", blocks.length, "total blocks");
 
   // Find top-level blocks (children of the page)
   const topLevelBlocks = blocks
@@ -125,6 +126,8 @@ export function BlockTree({
         b.parentUuid === pageNode.uuid
     )
     .sort((a, b) => a.order - b.order);
+
+  console.log("[Display] BlockTree: Found", topLevelBlocks.length, "top-level blocks");
 
   return (
     <ul className="logseq-blocks">

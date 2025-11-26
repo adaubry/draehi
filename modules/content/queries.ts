@@ -54,10 +54,12 @@ export const getNodeByPath = cache(
 export const getAllNodes = cache(
   async (workspaceId: string): Promise<Node[]> => {
     // Only return page nodes for navigation (parent = NONE)
+    console.log(`[Display] getAllNodes: Fetching page nodes for workspace ${workspaceId}`);
     const nodes = await query<Node>(
       "SELECT * FROM nodes WHERE workspace = $ws AND parent = NONE ORDER BY page_name",
       { ws: workspaceRecordId(workspaceId) }
     );
+    console.log(`[Display] getAllNodes: Found ${nodes.length} page nodes`);
     // Serialize to plain objects for Server->Client boundary
     return nodes.map((n) => JSON.parse(JSON.stringify(n)));
   }
@@ -82,23 +84,33 @@ export const getPageBlocks = cache(
 export const getAllBlocksForPage = cache(
   async (workspaceId: string, pageName: string): Promise<Node[]> => {
     // Get all blocks for this page (excludes the page node itself)
-    return await query<Node>(
+    console.log(`[Display] getAllBlocksForPage: Fetching blocks for page "${pageName}" in workspace ${workspaceId}`);
+    const blocks = await query<Node>(
       "SELECT * FROM nodes WHERE workspace = $ws AND page_name = $pageName AND parent != NONE ORDER BY order",
       { ws: workspaceRecordId(workspaceId), pageName }
     );
+    console.log(`[Display] getAllBlocksForPage: Found ${blocks.length} blocks for page "${pageName}"`);
+    return blocks;
   }
 );
 
 // Get all blocks for a page with their HTML from KeyDB
 export const getAllBlocksForPageWithHTML = cache(
   async (workspaceId: string, pageName: string): Promise<NodeWithHTML[]> => {
+    console.log(`[Display] getAllBlocksForPageWithHTML: Fetching blocks with HTML for page "${pageName}"`);
     const blocks = await getAllBlocksForPage(workspaceId, pageName);
 
-    if (blocks.length === 0) return [];
+    if (blocks.length === 0) {
+      console.log(`[Display] getAllBlocksForPageWithHTML: No blocks found for page "${pageName}"`);
+      return [];
+    }
 
     // Batch fetch HTML from KeyDB
     const uuids = blocks.map((b) => getNodeUuidFromRecord(b.id));
+    console.log(`[Display] getAllBlocksForPageWithHTML: Batch fetching HTML for ${uuids.length} blocks from KeyDB`);
     const htmlMap = await getBlockHTMLBatch(workspaceId, uuids);
+    const htmlCount = Array.from(htmlMap.values()).filter(h => h !== null).length;
+    console.log(`[Display] getAllBlocksForPageWithHTML: Retrieved HTML for ${htmlCount}/${uuids.length} blocks`);
 
     return blocks.map((block) => ({
       ...block,

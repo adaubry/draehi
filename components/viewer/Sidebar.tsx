@@ -24,6 +24,7 @@ function buildTree(nodes: Node[]): TreeNode[] {
 
   // Filter only page nodes (parentUuid === null)
   const pageNodes = nodes.filter((n) => n.parentUuid === null);
+  console.log("[Display] buildTree: Processing", pageNodes.length, "page nodes from", nodes.length, "total nodes");
 
   pageNodes.forEach((node) => {
     nodeMap.set(ensurePageName(node), { node, children: [] });
@@ -102,6 +103,14 @@ function TreeItem({
 
 export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
   const pathname = usePathname();
+
+  // Log sidebar initialization
+  if (typeof window !== 'undefined') {
+    console.log("[Display] Sidebar initialized with nodes:", nodes.length);
+    const pageNodes = nodes.filter((n) => n.parentUuid === null);
+    console.log("[Display] Page nodes (parentUuid = null):", pageNodes.length);
+  }
+
   const tree = buildTree(nodes);
 
   // Auto-detect which mode to show based on current route

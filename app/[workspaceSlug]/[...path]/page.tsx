@@ -29,23 +29,31 @@ async function NodePageContent({
   workspaceSlug: string;
   path: string[];
 }) {
+  const pathStr = path.join("/");
+  console.log(`[Display] NodePage: Rendering page for path "${pathStr}" in workspace "${workspaceSlug}"`);
+
   // Get workspace by slug
   const workspace = await getWorkspaceBySlug(workspaceSlug);
   if (!workspace) {
+    console.error(`[Display] NodePage: Workspace not found "${workspaceSlug}"`);
     notFound();
   }
+  console.log(`[Display] NodePage: Workspace found ${workspace.id}`);
 
   // Get node by path
   const node = await getNodeByPath(workspace.id, path);
   if (!node) {
+    console.error(`[Display] NodePage: Node not found for path "${pathStr}"`);
     notFound();
   }
+  console.log(`[Display] NodePage: Node found "${node.title}" (${node.uuid}), isPage=${node.parentUuid === null}`);
 
   // Get all blocks for this page (if it's a page node)
   const blocks =
     node.parentUuid === null
       ? await getAllBlocksForPage(workspace.id, ensurePageName(node))
       : [];
+  console.log(`[Display] NodePage: Loaded ${blocks.length} blocks for page "${ensurePageName(node)}"`);
 
   // Get backlinks (only for page nodes)
   const citedBy = node.parentUuid === null

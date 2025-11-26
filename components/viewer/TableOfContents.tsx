@@ -159,23 +159,25 @@ export function TableOfContents({ workspaceSlug }: TOCProps) {
     // Format: /{workspaceSlug}/{...path}
     const segments = pathname.split("/").filter(Boolean);
     if (segments.length < 2) {
+      console.log("[Display] TOC: Insufficient segments in pathname:", segments);
       setLoading(false);
       return;
     }
 
     const pagePath = segments.slice(1).join("/");
+    console.log("[Display] TOC: Fetching for pagePath:", pagePath);
 
     // Fetch blocks for current page
     fetch(`/api/toc?workspace=${workspaceSlug}&path=${encodeURIComponent(pagePath)}`)
       .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch TOC data");
+        console.log("[Display] TOC: API response status:", res.status);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
       .then((data) => {
         const { blocks } = data;
 
-        console.log("=== TOC Async Fetch ===");
-        console.log("Blocks fetched:", blocks.length);
+        console.log("[Display] TOC: Blocks fetched:", blocks.length);
 
         // Concatenate all HTML
         const allHTML = blocks
@@ -183,19 +185,21 @@ export function TableOfContents({ workspaceSlug }: TOCProps) {
           .map((b: Node) => b.html)
           .join("");
 
-        console.log("Total HTML length:", allHTML.length);
+        console.log("[Display] TOC: Total HTML length:", allHTML.length);
+        console.log("[Display] TOC: Blocks with HTML:", blocks.filter((b: Node) => b.html).length);
 
         // Extract headings
         const headings = extractHeadingsFromHTML(allHTML);
-        console.log("Headings extracted:", headings.length);
+        console.log("[Display] TOC: Headings extracted:", headings.length);
 
         // Build TOC tree
         const tree = buildTOCTree(headings);
+        console.log("[Display] TOC: Built tree with", tree.length, "root items");
         setTocItems(tree);
         setLoading(false);
       })
       .catch((err) => {
-        console.error("TOC fetch error:", err);
+        console.error("[Display] TOC: Fetch error:", err);
         setError(err.message);
         setLoading(false);
       });

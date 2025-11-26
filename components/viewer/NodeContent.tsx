@@ -1,11 +1,18 @@
 // TODO: Consider migrating to shadcn/ui Typography components
 "use client";
 
+import { useEffect } from "react";
+
 type NodeContentProps = {
   html: string;
 };
 
 export function NodeContent({ html }: NodeContentProps) {
+  useEffect(() => {
+    console.log("[Display] NodeContent mounted with HTML length:", html.length);
+    console.log("[Display] HTML preview (first 200 chars):", html.substring(0, 200));
+  }, [html]);
+
   return (
     <div
       className="

@@ -60,7 +60,9 @@ export async function getBlockHTML(
   uuid: string
 ): Promise<string | null> {
   const client = await getKeyDB();
-  return await client.get(blockKey(workspaceId, uuid));
+  const html = await client.get(blockKey(workspaceId, uuid));
+  console.log(`[Display] getBlockHTML: Block ${uuid} found=${html !== null}, size=${html?.length || 0} bytes`);
+  return html;
 }
 
 // Set multiple block HTMLs at once (pipeline for performance)
@@ -69,6 +71,9 @@ export async function setBlockHTMLBatch(
   blocks: Array<{ uuid: string; html: string }>
 ): Promise<void> {
   if (blocks.length === 0) return;
+
+  const totalSize = blocks.reduce((sum, b) => sum + b.html.length, 0);
+  console.log(`[Display] setBlockHTMLBatch: Storing ${blocks.length} blocks (~${totalSize} bytes total) to KeyDB`);
 
   const client = await getKeyDB();
   const multi = client.multi();
@@ -79,9 +84,10 @@ export async function setBlockHTMLBatch(
 
   try {
     await multi.exec();
+    console.log(`[Display] setBlockHTMLBatch: Successfully stored ${blocks.length} blocks to KeyDB`);
   } catch (error) {
     console.error(
-      `Failed to batch set HTML for ${blocks.length} blocks in workspace ${workspaceId}:`,
+      `[Display] setBlockHTMLBatch: Failed to batch set HTML for ${blocks.length} blocks in workspace ${workspaceId}:`,
       error
     );
     throw new Error(
@@ -97,15 +103,24 @@ export async function getBlockHTMLBatch(
 ): Promise<Map<string, string | null>> {
   if (uuids.length === 0) return new Map();
 
+  console.log(`[Display] getBlockHTMLBatch: Fetching HTML for ${uuids.length} blocks from KeyDB`);
   const client = await getKeyDB();
   const keys = uuids.map((uuid) => blockKey(workspaceId, uuid));
   const values = await client.mGet(keys);
 
   const result = new Map<string, string | null>();
+  let foundCount = 0;
+  let totalSize = 0;
+
   uuids.forEach((uuid, i) => {
     result.set(uuid, values[i]);
+    if (values[i] !== null) {
+      foundCount++;
+      totalSize += values[i].length;
+    }
   });
 
+  console.log(`[Display] getBlockHTMLBatch: Found ${foundCount}/${uuids.length} blocks, total size ${totalSize} bytes`);
   return result;
 }
 

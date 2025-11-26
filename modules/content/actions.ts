@@ -238,15 +238,16 @@ export async function ingestLogseqGraph(
         20
       )}-${pageUuidHash.slice(20, 32)}`;
 
-      // Page node data - must explicitly set parent to null to distinguish from blocks
+      // Page node data - omit parent field (SurrealDB will default to NONE for optional fields)
+      const pageTitle = (htmlPage.title || "").trim() || mdPage.pageName;
       allNodeData.push({
         uuid: pageUuid,
         data: {
           workspace: workspaceId,
-          parent: null,
+          // parent field omitted - this distinguishes page nodes from blocks
           page_name: mdPage.pageName,
           slug,
-          title: htmlPage.title,
+          title: pageTitle,
           order: 0,
           metadata: {
             tags: htmlPage.metadata?.tags || [],
@@ -324,14 +325,25 @@ export async function ingestLogseqGraph(
       pageBlockOrders.set(mdPage.pageName, blockUuidsInOrder);
     }
 
-    const insertMsg = `Inserting ${allNodeData.length} nodes (${pageCount} pages and ${totalBlocks} blocks)...`;
+    // Deduplicate nodes by UUID (in case of parsing duplicates)
+    const seenUuids = new Set<string>();
+    const uniqueNodeData = allNodeData.filter(({ uuid }) => {
+      if (seenUuids.has(uuid)) {
+        console.log(`[Ingestion] Skipping duplicate node: ${uuid}`);
+        return false;
+      }
+      seenUuids.add(uuid);
+      return true;
+    });
+
+    const insertMsg = `Inserting ${uniqueNodeData.length} nodes (${pageCount} pages and ${totalBlocks} blocks)...`;
     buildLog.push(insertMsg);
     console.log(`[Ingestion] ${insertMsg}`);
 
     // Batch insert nodes into SurrealDB
     const BATCH_SIZE = 500;
-    for (let i = 0; i < allNodeData.length; i += BATCH_SIZE) {
-      const batch = allNodeData.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < uniqueNodeData.length; i += BATCH_SIZE) {
+      const batch = uniqueNodeData.slice(i, i + BATCH_SIZE);
       for (const { uuid, data } of batch) {
         try {
           await createWithId(`nodes:${uuid}`, data);
@@ -340,11 +352,11 @@ export async function ingestLogseqGraph(
           throw err;
         }
       }
-      const batchMsg = `  Inserted node batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(allNodeData.length / BATCH_SIZE)}`;
+      const batchMsg = `  Inserted node batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(uniqueNodeData.length / BATCH_SIZE)}`;
       buildLog.push(batchMsg);
       console.log(`[Ingestion] ${batchMsg}`);
     }
-    console.log(`[Ingestion] All ${allNodeData.length} nodes inserted into SurrealDB`);
+    console.log(`[Ingestion] All ${uniqueNodeData.length} nodes inserted into SurrealDB`);
 
     // Batch insert HTML into KeyDB
     const cacheMsg = `Caching ${allBlockHTML.length} block HTMLs in KeyDB...`;

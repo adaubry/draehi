@@ -10,7 +10,7 @@ Complete reference for all development operations: setup, Docker management, tes
 # 1. Install dependencies
 npm install
 
-# 2. Start all services (SurrealDB, KeyDB, MinIO) with debugging tools
+# 2. Start all services (SurrealDB, KeyDB, MinIO, Surrealist GUI)
 npm run docker:setup
 
 # 3. Initialize database schema
@@ -21,7 +21,9 @@ source .test.env
 ./scripts/test-db.sh
 ```
 
-All services are now running. The application can be started with `npm run dev` (outside Docker).
+All services are now running:
+- **Surrealist GUI**: http://localhost:8080 (query database visually)
+- **Application**: Start with `npm run dev` (outside Docker)
 
 ---
 
@@ -29,11 +31,13 @@ All services are now running. The application can be started with `npm run dev` 
 
 ### Start Services
 
-**Development mode** (with bash, curl, debugging tools):
+**Development mode** (with bash, curl, debugging tools + Surrealist GUI):
 ```bash
 npm run docker:setup
-# or: BUILD_MODE=dev docker compose up
+# or: BUILD_MODE=dev docker compose up --profile dev
 ```
+
+Includes Surrealist (SurrealDB GUI) at `http://localhost:8080`
 
 **Production mode** (lean, minimal containers):
 ```bash

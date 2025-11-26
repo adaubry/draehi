@@ -82,6 +82,23 @@ services:
       exit 0;
       "
 
+  # Surrealist - GUI for SurrealDB (dev mode only)
+  surrealist:
+    image: surrealdb/surrealist:latest
+    container_name: draehi-surrealist
+    ports:
+      - "8080:8080"
+    environment:
+      - SURREAL_URL=http://surrealdb:8000
+      - SURREAL_USER=root
+      - SURREAL_PASS=root
+    depends_on:
+      surrealdb:
+        condition: service_healthy
+    profiles:
+      - dev  # Only start in dev mode
+    restart: unless-stopped
+
   # Next.js app (optional - can run outside Docker for dev)
   app:
     build:

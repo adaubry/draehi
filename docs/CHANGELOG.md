@@ -8,7 +8,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Added - 2025-11-26 (Docker Dev/Prod Modes)
+### Added - 2025-11-26 (Docker Dev/Prod Modes & Unified Operations Documentation)
 
 - **Docker Build Modes**: Support for dev and prod container variants
   - Dev mode: Includes bash, curl, wget, nc, vim, htop for debugging
@@ -30,12 +30,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Next.js app: 45s start period (build + startup)
   - Prevents unhealthy container states during startup
 
-- **Documentation**: New `docs/DOCKER_MODES.md` guide covering:
-  - Quick start for dev and prod modes
-  - Debugging tools included in each container
-  - Shell access and debugging examples
-  - Size comparison between modes
-  - Production deployment best practices
+- **Unified Documentation**: New `docs/OPERATIONS.md` consolidates all development operations
+  - Single comprehensive guide for setup, Docker, and testing
+  - Replaced: SCRIPTS.md, TESTING.md (content moved, files kept for reference)
+  - Covers: Docker management, test execution, debugging workflows, configuration
+  - Includes quick start, common tasks, and troubleshooting reference
+  - Updated DIRECTORY.md to point to OPERATIONS.md as entry point
 
 ### Changed - 2025-11-23 (SurrealDB + KeyDB Migration)
 

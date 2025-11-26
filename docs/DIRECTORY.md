@@ -226,17 +226,24 @@ drizzle/
 
 ```
 docs/
-├── CHANGELOG.md            # Version history, changes log
-├── ROADMAP.md              # Development phases, future plans
-├── DIRECTORY.md            # This file (project navigation)
-├── DATABASE.md             # Database guide (Drizzle, schemas, queries)
-├── SCRIPTS.md              # Setup scripts documentation
-├── TESTING.md              # Testing guide
-├── BASH_GUIDELINES.md      # Bash scripting best practices
-├── CRUD_GUIDELINES.md      # CRUD operation patterns
-├── PERFORMANCE_GUIDELINES.md # Performance optimization guide
-└── ASSET_TROUBLESHOOTING.md  # Asset/MinIO troubleshooting
+├── CHANGELOG.md               # Version history, changes log
+├── ROADMAP.md                 # Development phases, future plans
+├── DIRECTORY.md               # This file (project navigation)
+├── OPERATIONS.md              # ⭐ START HERE: Setup, Docker, testing (unified guide)
+├── DATABASE.md                # Database schema and query reference
+├── DOCKER_MODES.md            # Dev/prod Docker modes (see OPERATIONS.md)
+├── BASH_GUIDELINES.md         # Bash scripting best practices
+├── CRUD_GUIDELINES.md         # CRUD operation patterns
+├── PERFORMANCE_GUIDELINES.md  # Performance optimization guide
+└── ASSET_TROUBLESHOOTING.md   # Asset/MinIO troubleshooting
 ```
+
+**⭐ Quick Start:** Start with [OPERATIONS.md](OPERATIONS.md) for setup, Docker, and testing.
+
+**Deprecated (consolidated into OPERATIONS.md):**
+- `SCRIPTS.md` - Now in OPERATIONS.md § Setup Scripts & Docker Management
+- `TESTING.md` - Now in OPERATIONS.md § Testing & Debugging
+- `DOCKER_MODES.md` - Referenced in OPERATIONS.md § Dev vs Prod Modes
 
 ---
 

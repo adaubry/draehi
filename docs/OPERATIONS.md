@@ -22,6 +22,7 @@ source .test.env
 ```
 
 All services are now running:
+
 - **Surrealist GUI**: http://localhost:8080 (query database visually)
 - **Application**: Start with `npm run dev` (outside Docker)
 
@@ -32,6 +33,7 @@ All services are now running:
 ### Start Services
 
 **Development mode** (with bash, curl, debugging tools + Surrealist GUI):
+
 ```bash
 npm run docker:setup
 # or: BUILD_MODE=dev docker compose up --profile dev
@@ -40,6 +42,7 @@ npm run docker:setup
 Includes Surrealist (SurrealDB GUI) at `http://localhost:8080`
 
 **Production mode** (lean, minimal containers):
+
 ```bash
 npm run docker:setup:prod
 # or: BUILD_MODE=prod docker compose up
@@ -48,6 +51,7 @@ npm run docker:setup:prod
 ### Stop & Clean Up
 
 **Standard cleanup** (flushes database + Auth0 before stopping):
+
 ```bash
 # Stop all containers
 npm run docker:stop
@@ -57,6 +61,7 @@ npm run docker:clean
 ```
 
 **Force cleanup** (stops immediately without flushing):
+
 ```bash
 # Stop containers without flushing
 npm run docker:stop:force
@@ -66,6 +71,7 @@ npm run docker:clean:force
 ```
 
 **Note:** `docker:stop` and `docker:clean` automatically call `npm run flush:db` before stopping/cleaning, which:
+
 - Clears local session tokens
 - Deletes Auth0 users (if credentials configured)
 - Wipes all SurrealDB data
@@ -78,7 +84,7 @@ Access container shells for debugging:
 ```bash
 npm run docker:shell:keydb    # KeyDB (Redis) ✅ Works
 npm run docker:shell:minio    # MinIO (S3) ✅ Works
-npm run docker:shell:app      # Next.js app ✅ Works
+
 ```
 
 **Note:** SurrealDB's official image is minimal (distroless) without bash. Use `docker logs` or HTTP health endpoint for debugging instead.
@@ -223,10 +229,11 @@ Auth0 user deletion requires Management API credentials with `delete:users` perm
 1. Go to Auth0 Dashboard → Applications → Your App
 2. Click "Machine to Machine Applications" tab
 3. Find and authorize "Auth0 Management API"
-4. Grant `delete:users` and `get:users` permissions
+4. Grant `delete:users` permission
 5. Retry `npm run flush:db`
 
 **If Auth0 cleanup fails:**
+
 - Script gracefully continues with SurrealDB cleanup
 - Error message shows exact missing permissions
 - Set `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_CLIENT_SECRET` in `.env.local`
@@ -251,11 +258,13 @@ export-logseq-notes --help
 ### "Container is unhealthy" Issue
 
 **Note:** SurrealDB shows "unhealthy" in `docker ps` even when working correctly. This is because:
+
 - Docker's health check tries to run `curl` inside the container
 - SurrealDB's official image is distroless (no curl)
 - The health check command fails, but the service itself works fine
 
 **SurrealDB is actually healthy if:**
+
 ```bash
 curl http://localhost:8000/health  # Returns HTTP 200 ✅
 ```
@@ -263,6 +272,7 @@ curl http://localhost:8000/health  # Returns HTTP 200 ✅
 **Other services** (KeyDB, MinIO) show correct health status.
 
 If services genuinely fail to start, check initialization time. Health checks include `start_period` grace periods:
+
 - **SurrealDB**: 30s (database setup)
 - **KeyDB**: 15s (startup)
 - **MinIO**: 15s (startup)
@@ -274,13 +284,14 @@ Edit `docker-compose.yml` and increase `start_period` values:
 
 ```yaml
 healthcheck:
-  start_period: 60s  # Increase from 30s to 60s
+  start_period: 60s # Increase from 30s to 60s
   interval: 5s
   timeout: 5s
   retries: 10
 ```
 
 Then rebuild:
+
 ```bash
 BUILD_MODE=dev docker compose up --build
 ```
@@ -321,6 +332,7 @@ npm run docker:stop && npm run docker:setup
 ### Accessing Container Shells
 
 **KeyDB (Redis):**
+
 ```bash
 npm run docker:shell:keydb
 
@@ -332,6 +344,7 @@ keydb-cli
 ```
 
 **MinIO (S3):**
+
 ```bash
 npm run docker:shell:minio
 
@@ -342,6 +355,7 @@ exit
 ```
 
 **SurrealDB:**
+
 ```bash
 npm run docker:shell:surreal
 
@@ -393,11 +407,13 @@ df -h          # Disk usage
 ### Test Configuration (`.test.env`)
 
 Copy from template:
+
 ```bash
 cp .test.env.example .test.env
 ```
 
 Contents:
+
 ```bash
 # SurrealDB
 SURREAL_URL=http://localhost:8000
@@ -417,11 +433,13 @@ TEST_APP_URL=http://localhost:3000
 ### Application Environment (`.env.local`)
 
 Copy from template:
+
 ```bash
 cp .env.example .env.local
 ```
 
 Key variables for Docker mode:
+
 ```bash
 NODE_ENV=development
 SURREAL_URL=http://localhost:8000
@@ -443,13 +461,13 @@ S3_BUCKET=draehi-assets
 
 ### What's the Difference?
 
-| Feature | Dev Mode | Prod Mode |
-|---------|----------|-----------|
-| Shell access | ✅ bash included | ❌ No bash |
-| Debugging tools | curl, wget, nc, vim, htop | None |
-| Size | ~500MB (app) | ~400MB (app) |
-| Security | ⚠️ Dev-only | ✅ Hardened |
-| Use case | Local development | Deployment |
+| Feature         | Dev Mode                  | Prod Mode    |
+| --------------- | ------------------------- | ------------ |
+| Shell access    | ✅ bash included          | ❌ No bash   |
+| Debugging tools | curl, wget, nc, vim, htop | None         |
+| Size            | ~500MB (app)              | ~400MB (app) |
+| Security        | ⚠️ Dev-only               | ✅ Hardened  |
+| Use case        | Local development         | Deployment   |
 
 ### Dev Mode (Default)
 
@@ -460,6 +478,7 @@ npm run docker:setup
 Includes: bash, curl, wget, netcat, vim, htop for interactive debugging.
 
 **Typical dev workflow:**
+
 ```bash
 npm run docker:shell:surreal
 # Inside container: test SurrealDB health
@@ -475,6 +494,7 @@ npm run docker:setup:prod
 Lean containers without shell access. ~100MB smaller total.
 
 **For deployment:**
+
 - No shell = reduced attack surface
 - Debugging via logs only: `docker logs [container]`
 - Monitoring via external tools (APM, log aggregation)
@@ -555,14 +575,14 @@ npx tsx scripts/test-db-comprehensive.ts
 
 ## 🚨 Troubleshooting Reference
 
-| Issue | Command to Debug | Solution |
-|-------|------------------|----------|
-| Containers not starting | `docker logs draehi-surrealdb` | Increase `start_period` in docker-compose.yml |
-| "Connection refused" | `docker ps` | Run `npm run docker:setup` |
-| Tests failing | `npx tsx scripts/test-db-comprehensive.ts` | Check `.test.env` is sourced |
-| Database empty | `npm run docker:shell:surreal` then `curl http://localhost:8000/sql -u root:root -d "SELECT count() FROM users;"` | Run `npx tsx scripts/init-surreal-schema.ts` |
-| Performance slow | `npm run docker:shell:app` then `htop` | Check CPU/memory, restart containers |
-| "Workspace not found" | `npx tsx scripts/test-userid-comparison.ts` | RecordId vs string issue, see test output |
+| Issue                   | Command to Debug                                                                                                  | Solution                                      |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| Containers not starting | `docker logs draehi-surrealdb`                                                                                    | Increase `start_period` in docker-compose.yml |
+| "Connection refused"    | `docker ps`                                                                                                       | Run `npm run docker:setup`                    |
+| Tests failing           | `npx tsx scripts/test-db-comprehensive.ts`                                                                        | Check `.test.env` is sourced                  |
+| Database empty          | `npm run docker:shell:surreal` then `curl http://localhost:8000/sql -u root:root -d "SELECT count() FROM users;"` | Run `npx tsx scripts/init-surreal-schema.ts`  |
+| Performance slow        | `npm run docker:shell:app` then `htop`                                                                            | Check CPU/memory, restart containers          |
+| "Workspace not found"   | `npx tsx scripts/test-userid-comparison.ts`                                                                       | RecordId vs string issue, see test output     |
 
 ---
 

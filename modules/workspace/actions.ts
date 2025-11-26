@@ -15,15 +15,19 @@ export async function createWorkspace(userId: string | unknown, name: string) {
 
     const slug = slugify(name);
 
-    // Create workspace - pass userId directly (it's a RecordId object from SurrealDB)
-    // The database handles the record reference automatically
+    // Create workspace - pass userId directly as parameter
+    // SurrealDB SDK will handle the record reference conversion
     const result = await query<Workspace>(
-      "CREATE workspaces SET user = $userId, slug = $slug, name = $name, embed_depth = 5 RETURN *;",
+      `CREATE workspaces CONTENT {
+        user: $userId,
+        slug: $slug,
+        name: $name,
+        embed_depth: 5
+      } RETURN *;`,
       { userId, slug, name }
     );
 
-    const workspaceArray = result as unknown as any[];
-    const workspace = workspaceArray?.[0]?.[0];
+    const workspace = result?.[0];
     if (!workspace) {
       return { error: "Failed to create workspace" };
     }

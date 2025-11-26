@@ -83,21 +83,24 @@ npm run docker:setup:prod
 
 ### Stop & Clean Up
 
-**Standard cleanup** (flushes database + Auth0 before stopping):
+**Standard cleanup** (recommended):
 
 ```bash
-# Stop all containers
+# Just stop containers (preserves data)
 npm run docker:stop
 
-# Remove all containers and volumes (clean slate)
+# Complete clean slate: flushes SurrealDB, KeyDB, MinIO + removes volumes
 npm run docker:clean
 ```
 
-**Force cleanup** (stops immediately without flushing):
+**Force cleanup** (stops immediately without data preservation):
 
 ```bash
-# Stop containers without flushing
+# Kill containers immediately (no graceful shutdown)
 npm run docker:stop:force
+
+# Force stop + remove everything + purge rogue tables
+npm run docker:clean:force
 
 # Remove containers and volumes without flushing
 npm run docker:clean:force
@@ -138,6 +141,43 @@ docker stats
 
 # Inspect specific container
 docker inspect draehi-surrealdb
+```
+
+---
+
+## 🗄️ Database Management
+
+### Initialize & Maintain
+
+```bash
+# Initialize schema (creates tables, fields, indexes)
+npm run db:init
+
+# Complete flush: SurrealDB + KeyDB + MinIO + Auth0
+npm run db:flush
+
+# Remove all tables (for clean schema reinitialization)
+npm run db:purge
+
+# Then reinitialize
+npm run db:init
+```
+
+### Workflow: Complete Clean Slate
+
+```bash
+# 1. Stop and clean everything
+npm run docker:clean
+
+# 2. Start services fresh
+npm run docker:setup
+
+# 3. Initialize schema
+npm run db:init
+
+# 4. Verify with test
+source .test.env
+npx tsx scripts/test-db-comprehensive.ts
 ```
 
 ---

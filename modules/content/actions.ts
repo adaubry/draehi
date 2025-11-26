@@ -7,7 +7,6 @@ import {
   setPageBlockOrder,
 } from "@/lib/keydb";
 import { type Node, type NewNode, nodeRecordId } from "./schema";
-import { workspaceRecordId } from "../workspace/schema";
 import { extractNamespaceAndSlug } from "@/lib/utils";
 import { exportLogseqNotes } from "../logseq/export";
 import { parseLogseqOutput, processAssets } from "../logseq/parse";
@@ -39,7 +38,7 @@ export async function upsertNode(
   // Check if exists
   const existing = await queryOne<Node>(
     "SELECT * FROM nodes WHERE workspace = $ws AND page_name = $pageName LIMIT 1",
-    { ws: workspaceRecordId(workspaceId), pageName }
+    { ws: workspaceId, pageName }
   );
 
   // Generate stable UUID
@@ -61,7 +60,7 @@ export async function upsertNode(
   } else {
     // Insert with specific ID
     const node = await createWithId<Node>(`nodes:${pageUuid}`, {
-      workspace: workspaceRecordId(workspaceId),
+      workspace: workspaceId,
       page_name: pageName,
       slug,
       title: data.title,
@@ -79,7 +78,7 @@ export async function deleteNode(uuid: string) {
 
 export async function deleteAllNodes(workspaceId: string) {
   await query("DELETE nodes WHERE workspace = $ws", {
-    ws: workspaceRecordId(workspaceId),
+    ws: workspaceId,
   });
   // Also clear KeyDB cache
   await clearWorkspaceCache(workspaceId);
@@ -106,9 +105,10 @@ export async function ingestLogseqGraph(
     buildLog.push("Starting Logseq graph ingestion...");
 
     // Get workspace to access slug for reference links
+    // Pass workspaceId directly - it should already be in the correct format
     const workspace = await queryOne<{ id: string; slug: string }>(
       "SELECT id, slug FROM workspaces WHERE id = $ws",
-      { ws: workspaceRecordId(workspaceId) }
+      { ws: workspaceId }
     );
 
     if (!workspace) {
@@ -230,7 +230,7 @@ export async function ingestLogseqGraph(
       allNodeData.push({
         uuid: pageUuid,
         data: {
-          workspace: workspaceRecordId(workspaceId),
+          workspace: workspaceId,
           page_name: mdPage.pageName,
           slug,
           title: htmlPage.title,
@@ -284,8 +284,8 @@ export async function ingestLogseqGraph(
         allNodeData.push({
           uuid: block.uuid,
           data: {
-            workspace: workspaceRecordId(workspaceId),
-            parent: nodeRecordId(block.parentUuid || pageUuid),
+            workspace: workspaceId,
+            parent: `nodes:${block.parentUuid || pageUuid}`,
             page_name: mdPage.pageName,
             slug,
             title: "",

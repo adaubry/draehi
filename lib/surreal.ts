@@ -15,8 +15,9 @@ export async function getSurreal(): Promise<Surreal> {
   // Return existing connection if still healthy
   if (surrealInstance) {
     try {
-      // Quick health check - if this fails, reconnect
-      await surrealInstance.query("SELECT * FROM $auth;");
+      // Quick health check - test that connection is alive
+      // Use RETURN statement which is valid in SurrealDB
+      await surrealInstance.query("RETURN true;");
       return surrealInstance;
     } catch (error) {
       // Connection died, reset and reconnect
@@ -83,10 +84,38 @@ export async function createWithId<T = unknown>(
   data: Record<string, unknown>
 ): Promise<T> {
   const db = await getSurreal();
-  const result = await db.query<unknown[]>(
-    `CREATE $thing CONTENT $data RETURN *;`,
-    { thing, data }
-  );
+
+  // Build SQL with proper SurrealDB syntax for record references
+  // SurrealDB requires raw SQL for record fields (can't use parameterized values)
+  // Example: nodes:`uuid-here` for record references (backticks on UUID only)
+  const contentEntries: string[] = [];
+  const params: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(data)) {
+    if (
+      typeof value === "string" &&
+      value.includes(":") &&
+      (value.startsWith("users:") ||
+        value.startsWith("workspaces:") ||
+        value.startsWith("nodes:"))
+    ) {
+      // This is a record ID string - include as raw SQL with backticks around the ID part only
+      // e.g., "workspaces:abc-def" becomes workspaces:`abc-def`
+      const [table, id] = value.split(":", 2);
+      contentEntries.push(`${key}: ${table}:\`${id}\``);
+    } else {
+      // Regular parameter - use parameterized query
+      contentEntries.push(`${key}: $${key}`);
+      params[key] = value;
+    }
+  }
+
+  const contentSql = contentEntries.join(", ");
+  // thing is already formatted as "table:uuid", include with backticks around UUID only
+  const [thingTable, thingId] = thing.split(":", 2);
+  const sql = `CREATE ${thingTable}:\`${thingId}\` CONTENT { ${contentSql} } RETURN *;`;
+
+  const result = await db.query<unknown[]>(sql, params);
   const records = result[0] as T[];
   return records[0];
 }

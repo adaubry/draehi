@@ -17,13 +17,12 @@ export async function syncAuth0UserToDb(
 ) {
   try {
     // Check if user already exists by auth0_sub (Auth0 ensures uniqueness)
-    const existingResult = await query<User>(
+    const existingUsers = await query<User>(
       "SELECT * FROM users WHERE auth0_sub = $auth0Sub LIMIT 1;",
       { auth0Sub }
     );
 
-    const existingArray = existingResult as unknown as any[];
-    const existingUser = existingArray?.[0]?.[0];
+    const existingUser = existingUsers?.[0];
     if (existingUser) {
       // User exists - ensure they have a workspace
       await ensureWorkspace(existingUser.id, existingUser.username);
@@ -31,7 +30,7 @@ export async function syncAuth0UserToDb(
     }
 
     // User doesn't exist - create new user
-    const result = await query<User>(
+    const createdUsers = await query<User>(
       `CREATE users CONTENT {
          auth0_sub: $auth0Sub,
          username: $nickname,
@@ -41,8 +40,7 @@ export async function syncAuth0UserToDb(
       { auth0Sub, nickname }
     );
 
-    const resultArray = result as unknown as any[];
-    const user = resultArray?.[0]?.[0];
+    const user = createdUsers?.[0];
     if (!user) {
       return { error: "Failed to create user" };
     }
@@ -56,20 +54,19 @@ export async function syncAuth0UserToDb(
   }
 }
 
-async function ensureWorkspace(userId: string, username: string): Promise<void> {
+async function ensureWorkspace(userId: string | unknown, username: string): Promise<void> {
   try {
-    const workspaceResult = await query<{ id: string }>(
+    const workspaces = await query<{ id: string }>(
       "SELECT id FROM workspaces WHERE user = $userId LIMIT 1;",
       { userId }
     );
-    const workspaceArray = workspaceResult as unknown as any[];
-    const hasWorkspace = workspaceArray?.[0]?.[0];
+    const hasWorkspace = workspaces?.[0];
 
     if (!hasWorkspace) {
       await createWorkspace(userId, username || "My Workspace");
     }
   } catch (error) {
-    console.warn("Failed to ensure workspace for user:", error);
+    console.error("Failed to ensure workspace for user:", error);
   }
 }
 
@@ -85,13 +82,12 @@ export async function deleteAuth0User(auth0Sub: string) {
     }
 
     // Find user by auth0_sub
-    const usersResult = await query<{ id: string }>(
+    const users = await query<{ id: string }>(
       "SELECT id FROM users WHERE auth0_sub = $auth0Sub LIMIT 1;",
       { auth0Sub }
     );
 
-    const usersArray = usersResult as unknown as any[];
-    const user = usersArray?.[0]?.[0];
+    const user = users?.[0];
     if (!user) {
       return { success: true }; // Already deleted
     }

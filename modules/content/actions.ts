@@ -102,7 +102,9 @@ export async function ingestLogseqGraph(
   const buildLog: string[] = [];
 
   try {
-    buildLog.push("Starting Logseq graph ingestion...");
+    const initMsg = "Starting Logseq graph ingestion...";
+    buildLog.push(initMsg);
+    console.log(`[Ingestion] ${initMsg}`);
 
     // Get workspace to access slug for reference links
     // Pass workspaceId directly - it should already be in the correct format
@@ -112,17 +114,21 @@ export async function ingestLogseqGraph(
     );
 
     if (!workspace) {
+      console.error(`[Ingestion] ERROR: Workspace not found for ID: ${workspaceId}`);
       return {
         success: false,
         error: "Workspace not found",
         buildLog,
       };
     }
+    console.log(`[Ingestion] Workspace found: ${workspace.slug}`);
 
     const workspaceSlug = workspace.slug;
 
     // Step 1: Parse markdown files for block structure
-    buildLog.push("Parsing markdown files for block structure...");
+    const parseMsg = "Parsing markdown files for block structure...";
+    buildLog.push(parseMsg);
+    console.log(`[Ingestion] ${parseMsg}`);
     const pagesDir = path.join(repoPath, "pages");
     const journalsDir = path.join(repoPath, "journals");
 
@@ -132,9 +138,9 @@ export async function ingestLogseqGraph(
     ]);
 
     const markdownPages = [...regularPages, ...journalPages];
-    buildLog.push(
-      `Found ${regularPages.length} pages and ${journalPages.length} journals`
-    );
+    const foundMsg = `Found ${regularPages.length} pages and ${journalPages.length} journals`;
+    buildLog.push(foundMsg);
+    console.log(`[Ingestion] ${foundMsg}`);
 
     // Step 2: Export with Rust tool for HTML rendering
     buildLog.push("Rendering HTML with export-logseq-notes...");
@@ -162,16 +168,22 @@ export async function ingestLogseqGraph(
     }
 
     // Step 4: Delete existing nodes and clear KeyDB cache
-    buildLog.push("Clearing existing nodes and cache...");
+    const clearMsg = "Clearing existing nodes and cache...";
+    buildLog.push(clearMsg);
+    console.log(`[Ingestion] ${clearMsg}`);
     await deleteAllNodes(workspaceId);
+    console.log(`[Ingestion] Cache cleared`);
 
     // Step 5: Create page nodes AND block nodes
-    buildLog.push("Creating page and block nodes...");
+    const createMsg = "Creating page and block nodes...";
+    buildLog.push(createMsg);
+    console.log(`[Ingestion] ${createMsg}`);
     const allNodeData: Array<{ uuid: string; data: Record<string, unknown> }> =
       [];
     const allBlockHTML: Array<{ uuid: string; html: string }> = [];
     const pageBlockOrders: Map<string, string[]> = new Map();
     let totalBlocks = 0;
+    let pageCount = 0;
 
     for (const mdPage of markdownPages) {
       // Normalize name for matching
@@ -226,11 +238,12 @@ export async function ingestLogseqGraph(
         20
       )}-${pageUuidHash.slice(20, 32)}`;
 
-      // Page node data
+      // Page node data - must explicitly set parent to null to distinguish from blocks
       allNodeData.push({
         uuid: pageUuid,
         data: {
           workspace: workspaceId,
+          parent: null,
           page_name: mdPage.pageName,
           slug,
           title: htmlPage.title,
@@ -244,11 +257,13 @@ export async function ingestLogseqGraph(
           },
         },
       });
+      pageCount++;
+      console.log(`[Ingestion] Created page node: ${mdPage.pageName} (uuid: ${pageUuid})`);
 
       if (mdPage.blocks.length === 0) {
-        buildLog.push(
-          `Page ${mdPage.pageName} has no blocks (property-only page)`
-        );
+        const noBlocksMsg = `Page ${mdPage.pageName} has no blocks (property-only page)`;
+        buildLog.push(noBlocksMsg);
+        console.log(`[Ingestion] ${noBlocksMsg}`);
         continue;
       }
 
@@ -288,7 +303,7 @@ export async function ingestLogseqGraph(
             parent: `nodes:${block.parentUuid || pageUuid}`,
             page_name: mdPage.pageName,
             slug,
-            title: "",
+            title: block.content.substring(0, 100) || "Block",
             order: block.order,
             metadata: {
               properties: block.properties,
@@ -308,38 +323,49 @@ export async function ingestLogseqGraph(
       pageBlockOrders.set(mdPage.pageName, blockUuidsInOrder);
     }
 
-    buildLog.push(
-      `Inserting ${allNodeData.length} nodes (${markdownPages.length} pages and ${totalBlocks} blocks)...`
-    );
+    const insertMsg = `Inserting ${allNodeData.length} nodes (${pageCount} pages and ${totalBlocks} blocks)...`;
+    buildLog.push(insertMsg);
+    console.log(`[Ingestion] ${insertMsg}`);
 
     // Batch insert nodes into SurrealDB
     const BATCH_SIZE = 500;
     for (let i = 0; i < allNodeData.length; i += BATCH_SIZE) {
       const batch = allNodeData.slice(i, i + BATCH_SIZE);
       for (const { uuid, data } of batch) {
-        await createWithId(`nodes:${uuid}`, data);
+        try {
+          await createWithId(`nodes:${uuid}`, data);
+        } catch (err) {
+          console.error(`[Ingestion] ERROR creating node ${uuid}:`, err instanceof Error ? err.message : String(err));
+          throw err;
+        }
       }
-      buildLog.push(
-        `  Inserted node batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(
-          allNodeData.length / BATCH_SIZE
-        )}`
-      );
+      const batchMsg = `  Inserted node batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(allNodeData.length / BATCH_SIZE)}`;
+      buildLog.push(batchMsg);
+      console.log(`[Ingestion] ${batchMsg}`);
     }
+    console.log(`[Ingestion] All ${allNodeData.length} nodes inserted into SurrealDB`);
 
     // Batch insert HTML into KeyDB
-    buildLog.push(`Caching ${allBlockHTML.length} block HTMLs in KeyDB...`);
+    const cacheMsg = `Caching ${allBlockHTML.length} block HTMLs in KeyDB...`;
+    buildLog.push(cacheMsg);
+    console.log(`[Ingestion] ${cacheMsg}`);
     await setBlockHTMLBatch(workspaceId, allBlockHTML);
+    console.log(`[Ingestion] Block HTMLs cached in KeyDB`);
 
     // Store page block orders
+    console.log(`[Ingestion] Storing page block orders for ${pageBlockOrders.size} pages...`);
     for (const [pageName, uuids] of pageBlockOrders) {
       await setPageBlockOrder(workspaceId, pageName, uuids);
+      console.log(`[Ingestion]   Page block order stored: ${pageName} (${uuids.length} blocks)`);
     }
 
-    buildLog.push("Ingestion complete!");
+    const completeMsg = "Ingestion complete!";
+    buildLog.push(completeMsg);
+    console.log(`[Ingestion] ✓ ${completeMsg}`);
 
     return {
       success: true,
-      pageCount: markdownPages.length,
+      pageCount: pageCount,
       blockCount: totalBlocks,
       buildLog,
     };
@@ -347,6 +373,7 @@ export async function ingestLogseqGraph(
     const errorMsg =
       error instanceof Error ? error.message : "Unknown ingestion error";
     buildLog.push(`ERROR: ${errorMsg}`);
+    console.error(`[Ingestion] ✗ FAILED: ${errorMsg}`, error);
 
     return {
       success: false,

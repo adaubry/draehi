@@ -22,13 +22,18 @@ async function WorkspaceContent({
   children: React.ReactNode;
 }) {
   // Get workspace by slug
+  console.log(`[Layout] Loading workspace: ${workspaceSlug}`);
   const workspace = await getWorkspaceBySlug(workspaceSlug);
   if (!workspace) {
+    console.error(`[Layout] Workspace not found: ${workspaceSlug}`);
     notFound();
   }
+  console.log(`[Layout] Workspace loaded: ${workspace.id}`);
 
   // Get all nodes for navigation
+  console.log(`[Layout] Fetching all page nodes for navigation...`);
   const nodes = await getAllNodes(workspace.id);
+  console.log(`[Layout] Loaded ${nodes.length} page nodes for sidebar navigation`);
 
   return (
     <NavigationProvider workspaceSlug={workspaceSlug}>

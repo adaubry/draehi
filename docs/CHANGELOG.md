@@ -11,8 +11,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added - 2025-11-26 (Surrealist Configuration & WebSocket Connection)
 
 - **Surrealist Auto-Configuration**: Pre-configured database connections via `surrealist-instance.json`
-  - Auto-loaded connection: "Local Development" (ws://surrealdb:8000/rpc)
+  - Auto-loaded connection: "Local Development" (ws://localhost:8000/rpc)
   - Mounted to Surrealist container at `/home/surrealist/.surrealist/instance.json`
+  - Uses `localhost` for browser accessibility (not Docker internal `surrealdb` hostname)
   - Eliminates manual connection setup in UI
   - Credentials: root/root with namespace `draehi` and database `main`
 

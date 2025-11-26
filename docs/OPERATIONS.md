@@ -30,15 +30,18 @@ All services are now running:
 
 Surrealist automatically loads pre-configured connections from `surrealist-instance.json`:
 
-1. Open http://localhost:8080 in your browser
-2. You should see "Local Development" connection in the connections list
-3. Click to connect and query the database
+1. **Hard reload browser** (Ctrl+Shift+R or Cmd+Shift+R)
+2. **Clear browser storage** (DevTools → Application → Storage → Local Storage → right-click and delete all)
+3. Open http://localhost:8080
+4. You should see "Local Development" connection in the connections list
+5. Click to connect - should connect instantly
 
-If the connection doesn't appear:
-- Browser localStorage may have cached old settings
-- Clear browser cache (DevTools → Application → Clear site data)
-- Reload the page
-- Try manually adding connection: `ws://surrealdb:8000/rpc` with username `root`, password `root`
+**Important:** The instance.json uses `ws://localhost:8000/rpc` (accessible from your browser) not `ws://surrealdb:8000/rpc` (Docker internal). This allows the browser to reach SurrealDB on the host.
+
+If the connection still doesn't appear:
+- Check that Surrealist container is running: `docker ps | grep surrealist`
+- Verify instance.json exists and has correct URL: `docker exec draehi-surrealist cat /home/surrealist/.surrealist/instance.json`
+- Try manually adding connection using the UI instead of relying on auto-load
 
 ---
 
@@ -414,7 +417,7 @@ Solution steps:
 
 4. **Manually add connection if auto-load fails:**
    - Connection type: **WebSocket**
-   - URL: `ws://localhost:8000/rpc` (from host) or `ws://surrealdb:8000/rpc` (from Docker)
+   - URL: `ws://localhost:8000/rpc` (use localhost, not surrealdb - browsers can't resolve Docker hostnames)
    - Username: `root`
    - Password: `root`
    - Namespace: `draehi`

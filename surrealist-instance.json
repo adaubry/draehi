@@ -5,7 +5,7 @@
       "id": "local-dev",
       "name": "Local Development",
       "type": "ws",
-      "url": "ws://surrealdb:8000/rpc",
+      "url": "ws://localhost:8000/rpc",
       "username": "root",
       "password": "root",
       "namespace": "draehi",

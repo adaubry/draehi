@@ -11,12 +11,12 @@ import { createWorkspace } from "@/modules/workspace/actions";
  */
 export async function syncAuth0UserToDb(
   auth0Sub: string,
-  email: string,
+  _email: string,
   nickname: string,
-  name?: string
+  _name?: string
 ) {
   try {
-    // Check if user already exists by auth0_sub
+    // Check if user already exists by auth0_sub (Auth0 ensures uniqueness)
     const existingResult = await query<User>(
       "SELECT * FROM users WHERE auth0_sub = $auth0Sub LIMIT 1;",
       { auth0Sub }
@@ -25,76 +25,20 @@ export async function syncAuth0UserToDb(
     const existingArray = existingResult as unknown as any[];
     const existingUser = existingArray?.[0]?.[0];
     if (existingUser) {
-      // User exists - check if they have a workspace
-      try {
-        const workspaceResult = await query<{ id: string }>(
-          "SELECT id FROM workspaces WHERE user = $userId LIMIT 1;",
-          { userId: existingUser.id }
-        );
-        const workspaceArray = workspaceResult as unknown as any[];
-        const hasWorkspace = workspaceArray?.[0]?.[0];
-
-        if (!hasWorkspace) {
-          // User exists but has no workspace - create one
-          const workspaceName = existingUser.username || existingUser.email?.split("@")[0] || "My Workspace";
-          await createWorkspace(existingUser.id, workspaceName);
-        }
-      } catch (error) {
-        console.warn("Failed to check/create workspace for existing user:", error);
-      }
+      // User exists - ensure they have a workspace
+      await ensureWorkspace(existingUser.id, existingUser.username);
       return { user: existingUser };
     }
 
-    // Check if email already exists (user might have different auth0_sub)
-    const emailCheckResult = await query<User>(
-      "SELECT * FROM users WHERE email = $email LIMIT 1;",
-      { email }
-    );
-
-    const emailCheckArray = emailCheckResult as unknown as any[];
-    const existingByEmail = emailCheckArray?.[0]?.[0];
-    if (existingByEmail) {
-      // User exists with this email but different auth0_sub - update auth0_sub
-      console.log("User exists with email but different auth0_sub, updating...");
-      const updateResult = await query<User>(
-        "UPDATE $thing SET auth0_sub = $auth0Sub RETURN *;",
-        { thing: existingByEmail.id, auth0Sub }
-      );
-      const updatedArray = updateResult as unknown as any[];
-      const updatedUser = updatedArray?.[0]?.[0];
-      if (updatedUser) {
-        // Check if they have a workspace
-        try {
-          const workspaceResult = await query<{ id: string }>(
-            "SELECT id FROM workspaces WHERE user = $userId LIMIT 1;",
-            { userId: updatedUser.id }
-          );
-          const workspaceArray = workspaceResult as unknown as any[];
-          const hasWorkspace = workspaceArray?.[0]?.[0];
-
-          if (!hasWorkspace) {
-            const workspaceName = updatedUser.username || updatedUser.email?.split("@")[0] || "My Workspace";
-            await createWorkspace(updatedUser.id, workspaceName);
-          }
-        } catch (error) {
-          console.warn("Failed to check/create workspace for user:", error);
-        }
-        return { user: updatedUser };
-      }
-    }
-
     // User doesn't exist - create new user
-    // Use a random ID suffix since SurrealDB generates table:id format
     const result = await query<User>(
       `CREATE users CONTENT {
          auth0_sub: $auth0Sub,
-         email: $email,
          username: $nickname,
-         name: $name,
          created_at: time::now()
        }
        RETURN *;`,
-      { auth0Sub, email, nickname, name }
+      { auth0Sub, nickname }
     );
 
     const resultArray = result as unknown as any[];
@@ -104,20 +48,28 @@ export async function syncAuth0UserToDb(
     }
 
     // Create default workspace for new user
-    try {
-      const workspaceName = nickname || email?.split("@")[0] || "My Workspace";
-      const workspaceResult = await createWorkspace(user.id, workspaceName);
-      if (workspaceResult.error) {
-        console.error("Failed to create default workspace:", workspaceResult.error);
-      }
-    } catch (error) {
-      console.error("Failed to create default workspace:", error);
-    }
-
+    await ensureWorkspace(user.id, nickname);
     return { user };
   } catch (error) {
     console.error("Auth0 user sync failed:", error);
     return { error: "Failed to sync user" };
+  }
+}
+
+async function ensureWorkspace(userId: string, username: string): Promise<void> {
+  try {
+    const workspaceResult = await query<{ id: string }>(
+      "SELECT id FROM workspaces WHERE user = $userId LIMIT 1;",
+      { userId }
+    );
+    const workspaceArray = workspaceResult as unknown as any[];
+    const hasWorkspace = workspaceArray?.[0]?.[0];
+
+    if (!hasWorkspace) {
+      await createWorkspace(userId, username || "My Workspace");
+    }
+  } catch (error) {
+    console.warn("Failed to ensure workspace for user:", error);
   }
 }
 

@@ -3,10 +3,8 @@
 
 export interface User {
   id: string | unknown; // SurrealDB record ID: RecordId object or string (users:ID_VALUE)
-  auth0_sub: string; // Auth0 user ID (e.g., "auth0|...")
-  email: string;
-  username: string; // Auth0 nickname/username
-  name?: string;
+  auth0_sub: string; // Auth0 user ID (e.g., "google-oauth2|...")
+  username: string; // Display name from Auth0
   created_at: string;
 }
 

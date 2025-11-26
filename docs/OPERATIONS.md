@@ -28,20 +28,28 @@ All services are now running:
 
 ### Connecting Surrealist to SurrealDB
 
-Surrealist automatically loads pre-configured connections from `surrealist-instance.json`:
+**Manually add a WebSocket connection in Surrealist:**
 
-1. **Hard reload browser** (Ctrl+Shift+R or Cmd+Shift+R)
-2. **Clear browser storage** (DevTools → Application → Storage → Local Storage → right-click and delete all)
-3. Open http://localhost:8080
-4. You should see "Local Development" connection in the connections list
-5. Click to connect - should connect instantly
+1. Open http://localhost:8080
+2. Click **"New Connection"** button
+3. Fill in the connection details:
+   - **Connection Type:** WebSocket
+   - **Host:** `127.0.0.1`
+   - **Port:** `8000`
+   - **Username:** `root`
+   - **Password:** `root`
+   - **Namespace:** `draehi`
+   - **Database:** `main`
+4. Click **"Connect"** - should connect instantly
 
-**Important:** The instance.json uses `ws://localhost:8000/rpc` (accessible from your browser) not `ws://surrealdb:8000/rpc` (Docker internal). This allows the browser to reach SurrealDB on the host.
+**Troubleshooting connection:**
 
-If the connection still doesn't appear:
-- Check that Surrealist container is running: `docker ps | grep surrealist`
-- Verify instance.json exists and has correct URL: `docker exec draehi-surrealist cat /home/surrealist/.surrealist/instance.json`
-- Try manually adding connection using the UI instead of relying on auto-load
+If you get an authentication error:
+1. Try connecting **without namespace/database first** (leave blank)
+2. After connecting, select namespace and database from the UI
+3. If still failing, check SurrealDB health: `curl http://localhost:8000/health`
+
+**Note:** We provide `surrealist-instance.json` for future reference, but manual setup is more reliable for now.
 
 ---
 

@@ -9,11 +9,7 @@
       "username": "root",
       "password": "root",
       "namespace": "draehi",
-      "database": "main",
-      "auth": {
-        "username": "root",
-        "password": "root"
-      }
+      "database": "main"
     }
   ],
   "cloud": {

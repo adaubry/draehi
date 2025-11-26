@@ -43,6 +43,7 @@ npm run docker:setup:prod
 
 ### Stop & Clean Up
 
+**Standard cleanup** (flushes database + Auth0 before stopping):
 ```bash
 # Stop all containers
 npm run docker:stop
@@ -50,6 +51,21 @@ npm run docker:stop
 # Remove all containers and volumes (clean slate)
 npm run docker:clean
 ```
+
+**Force cleanup** (stops immediately without flushing):
+```bash
+# Stop containers without flushing
+npm run docker:stop:force
+
+# Remove containers and volumes without flushing
+npm run docker:clean:force
+```
+
+**Note:** `docker:stop` and `docker:clean` automatically call `npm run flush:db` before stopping/cleaning, which:
+- Clears local session tokens
+- Deletes Auth0 users (if credentials configured)
+- Wipes all SurrealDB data
+- Use `:force` variants to skip cleanup
 
 ### Access Container Shells
 

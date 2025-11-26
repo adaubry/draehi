@@ -12,6 +12,8 @@
     "docker:setup:prod": "BUILD_MODE=prod ./scripts/docker-setup.sh",
     "docker:stop": "./scripts/docker-setup.sh --stop",
     "docker:clean": "./scripts/docker-setup.sh --clean",
+    "docker:stop:force": "docker compose down",
+    "docker:clean:force": "docker compose down -v",
     "docker:shell:surreal": "docker exec -it draehi-surrealdb bash",
     "docker:shell:keydb": "docker exec -it draehi-keydb bash",
     "docker:shell:minio": "docker exec -it draehi-minio bash",

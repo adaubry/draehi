@@ -72,7 +72,8 @@ export async function updateRepository(
       params.syncStatus = data.syncStatus;
     }
     if (data.lastSync) {
-      updates.push("last_sync = $lastSync");
+      // For datetime fields, use cast to ensure proper type conversion
+      updates.push("last_sync = <datetime>$lastSync");
       params.lastSync = data.lastSync.toISOString();
     }
     if (data.errorLog !== undefined) {

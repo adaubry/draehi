@@ -30,15 +30,33 @@ export async function syncAuth0UserToDb(
     }
 
     // User doesn't exist - create new user
-    const createdUsers = await query<User>(
-      `CREATE users CONTENT {
-         auth0_sub: $auth0Sub,
-         username: $nickname,
-         created_at: time::now()
-       }
-       RETURN *;`,
-      { auth0Sub, nickname }
-    );
+    let createdUsers: User[] = [];
+    try {
+      createdUsers = await query<User>(
+        `CREATE users CONTENT {
+           auth0_sub: $auth0Sub,
+           username: $nickname,
+           created_at: time::now()
+         }
+         RETURN *;`,
+        { auth0Sub, nickname }
+      );
+    } catch (createError: any) {
+      // Handle race condition: user created by another request
+      if (createError?.message?.includes("already contains")) {
+        // Retry SELECT to get the user that was just created
+        const retryUsers = await query<User>(
+          "SELECT * FROM users WHERE auth0_sub = $auth0Sub LIMIT 1;",
+          { auth0Sub }
+        );
+        const retryUser = retryUsers?.[0];
+        if (retryUser) {
+          await ensureWorkspace(retryUser.id, retryUser.username);
+          return { user: retryUser };
+        }
+      }
+      throw createError;
+    }
 
     const user = createdUsers?.[0];
     if (!user) {

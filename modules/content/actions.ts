@@ -296,6 +296,7 @@ export async function ingestLogseqGraph(
         );
 
         // Block node data
+        const blockTitle = (block.content || "").substring(0, 100) || "Block";
         allNodeData.push({
           uuid: block.uuid,
           data: {
@@ -303,7 +304,7 @@ export async function ingestLogseqGraph(
             parent: `nodes:${block.parentUuid || pageUuid}`,
             page_name: mdPage.pageName,
             slug,
-            title: block.content.substring(0, 100) || "Block",
+            title: blockTitle,
             order: block.order,
             metadata: {
               properties: block.properties,

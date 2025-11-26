@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWorkspaceBySlug } from "@/modules/workspace/queries";
-import { getAllBlocksForPageWithHTML } from "@/modules/content/queries";
+import { getPageBlocksWithHTML } from "@/lib/keydb";
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,17 +24,13 @@ export async function GET(request: NextRequest) {
     // The path is the page name (URL decoded)
     const pageName = decodeURIComponent(pagePath);
 
-    // Get all blocks for this page
-    const blocks = await getAllBlocksForPageWithHTML(workspace.id, pageName);
+    // Get all blocks for this page from KeyDB (where rendered HTML is stored)
+    const blocks = await getPageBlocksWithHTML(workspace.id, pageName);
 
     return NextResponse.json({
       blocks: blocks.map((block) => ({
-        id: String(block.id),
-        title: block.title,
-        slug: block.slug,
+        uuid: block.uuid,
         html: block.html,
-        order: block.order,
-        created_at: block.created_at,
       })),
     });
   } catch (error) {

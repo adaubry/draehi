@@ -56,17 +56,12 @@ npm run docker:clean
 Access container shells for debugging:
 
 ```bash
-npm run docker:shell:surreal  # SurrealDB (limited - no bash in base image)
 npm run docker:shell:keydb    # KeyDB (Redis) ✅ Works
 npm run docker:shell:minio    # MinIO (S3) ✅ Works
 npm run docker:shell:app      # Next.js app ✅ Works
 ```
 
-**Note:** SurrealDB's official image doesn't include bash. For SurrealDB debugging, use logs instead:
-```bash
-docker logs draehi-surrealdb
-docker logs draehi-surrealdb -f  # Follow logs in real-time
-```
+**Note:** SurrealDB's official image is minimal (distroless) without bash. Use `docker logs` or HTTP health endpoint for debugging instead.
 
 ### Container Health & Logs
 
@@ -296,17 +291,13 @@ exit
 ```
 
 **SurrealDB:**
-⚠️ The official SurrealDB image doesn't include bash. Use `docker logs` instead for debugging.
-
 ```bash
-# View SurrealDB logs
-docker logs draehi-surrealdb
+npm run docker:shell:surreal
 
-# Follow in real-time
-docker logs -f draehi-surrealdb
-
-# Test health endpoint from host
-curl -v http://localhost:8000/health
+# Inside container:
+curl http://localhost:8000/health
+surreal version
+exit
 ```
 
 ### "Workspace not found" Error

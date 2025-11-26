@@ -53,13 +53,19 @@ npm run docker:clean
 
 ### Access Container Shells
 
-Debug any service interactively:
+Access container shells for debugging:
 
 ```bash
-npm run docker:shell:surreal  # SurrealDB
-npm run docker:shell:keydb    # KeyDB (Redis)
-npm run docker:shell:minio    # MinIO (S3)
-npm run docker:shell:app      # Next.js app
+npm run docker:shell:surreal  # SurrealDB (limited - no bash in base image)
+npm run docker:shell:keydb    # KeyDB (Redis) ✅ Works
+npm run docker:shell:minio    # MinIO (S3) ✅ Works
+npm run docker:shell:app      # Next.js app ✅ Works
+```
+
+**Note:** SurrealDB's official image doesn't include bash. For SurrealDB debugging, use logs instead:
+```bash
+docker logs draehi-surrealdb
+docker logs draehi-surrealdb -f  # Follow logs in real-time
 ```
 
 ### Container Health & Logs
@@ -233,22 +239,74 @@ Then rebuild:
 BUILD_MODE=dev docker compose up --build
 ```
 
+### Testing Service Connectivity
+
+```bash
+# SurrealDB - HTTP health check
+curl http://localhost:8000/health
+
+# KeyDB - Redis connectivity
+redis-cli -p 6379 ping
+# or: docker exec draehi-keydb keydb-cli ping
+
+# MinIO - S3 connectivity
+curl http://localhost:9000/minio/health
+# or access console: http://localhost:9001 (minioadmin/minioadmin)
+```
+
 ### "Connection refused" Error
 
 ```bash
 # Check if containers are running
 docker ps
 
-# Check if ports are correct
-docker logs draehi-surrealdb | grep "listening"
+# View logs for errors
+docker logs draehi-surrealdb
+docker logs draehi-keydb
+docker logs draehi-minio
 
-# Manually verify port access
-curl http://localhost:8000/health        # SurrealDB
-redis-cli -p 6379 ping                   # KeyDB
-curl http://localhost:9000/minio/health  # MinIO
+# Follow logs in real-time
+docker logs -f draehi-surrealdb
 
 # Restart services
 npm run docker:stop && npm run docker:setup
+```
+
+### Accessing Container Shells
+
+**KeyDB (Redis):**
+```bash
+npm run docker:shell:keydb
+
+# Inside container:
+keydb-cli
+> ping
+> info
+> exit
+```
+
+**MinIO (S3):**
+```bash
+npm run docker:shell:minio
+
+# Inside container:
+mc --version
+mc ls myminio/
+exit
+```
+
+**SurrealDB:**
+⚠️ The official SurrealDB image doesn't include bash. Use `docker logs` instead for debugging.
+
+```bash
+# View SurrealDB logs
+docker logs draehi-surrealdb
+
+# Follow in real-time
+docker logs -f draehi-surrealdb
+
+# Test health endpoint from host
+curl -v http://localhost:8000/health
 ```
 
 ### "Workspace not found" Error

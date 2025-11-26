@@ -4,6 +4,7 @@ ARG BUILD_MODE=dev
 
 # Base stage with Node
 FROM node:20-alpine AS base
+ARG BUILD_MODE=dev
 RUN apk add --no-cache libc6-compat curl
 
 # Install development/debugging tools if in dev mode

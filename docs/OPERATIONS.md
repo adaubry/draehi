@@ -28,28 +28,29 @@ All services are now running:
 
 ### Connecting Surrealist to SurrealDB
 
-**Manually add a WebSocket connection in Surrealist:**
+**IMPORTANT: Don't specify Namespace/Database when connecting!**
+
+SurrealDB only has a root user at the **root level**, not in individual databases. You must:
 
 1. Open http://localhost:8080
 2. Click **"New Connection"** button
-3. Fill in the connection details:
+3. Fill in connection details:
    - **Connection Type:** WebSocket
    - **Host:** `127.0.0.1`
    - **Port:** `8000`
    - **Username:** `root`
    - **Password:** `root`
-   - **Namespace:** `draehi`
-   - **Database:** `main`
+   - **Namespace:** *(leave blank)* ← IMPORTANT!
+   - **Database:** *(leave blank)* ← IMPORTANT!
 4. Click **"Connect"** - should connect instantly
 
-**Troubleshooting connection:**
+**After connecting, switch to database:**
+- In Surrealist, use the namespace/database dropdown at the top to switch to `draehi/main`
 
-If you get an authentication error:
-1. Try connecting **without namespace/database first** (leave blank)
-2. After connecting, select namespace and database from the UI
-3. If still failing, check SurrealDB health: `curl http://localhost:8000/health`
-
-**Note:** We provide `surrealist-instance.json` for future reference, but manual setup is more reliable for now.
+**Why this works:**
+- Root user only exists at KV level, not at database level
+- Must authenticate at root level first, then select database
+- Surrealist UI will handle the switch automatically
 
 ---
 

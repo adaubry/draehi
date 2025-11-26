@@ -8,6 +8,7 @@ import {
 import Link from "next/link";
 import { triggerDeployment } from "./actions";
 import { connectRepository } from "@/modules/git/actions";
+import { deleteAuth0User } from "@/modules/auth/actions";
 import { redirect } from "next/navigation";
 import { DashboardClient } from "./dashboard-client";
 
@@ -66,6 +67,15 @@ async function DashboardContent() {
       return { success: false, error: "Username confirmation does not match" };
     }
 
+    // Delete user from SurrealDB (cascades to all workspaces, nodes, etc.)
+    const result = await deleteAuth0User(user.auth0_sub);
+    if (result.error) {
+      return { success: false, error: result.error };
+    }
+
+    // Redirect to logout which:
+    // 1. Clears appSession cookie
+    // 2. Logs out from Auth0
     redirect("/api/auth/logout");
   }
 

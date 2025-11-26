@@ -1,8 +1,16 @@
 # Multi-stage Dockerfile for Draehi Next.js app
+# Build modes: dev (with debugging tools) or prod (lean)
+ARG BUILD_MODE=dev
 
 # Base stage with Node
 FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat curl
+
+# Install development/debugging tools if in dev mode
+RUN if [ "$BUILD_MODE" = "dev" ]; then \
+      apk add --no-cache bash vim netcat-openbsd wget htop; \
+    fi
+
 WORKDIR /app
 
 # Install Rust for export-logseq-notes

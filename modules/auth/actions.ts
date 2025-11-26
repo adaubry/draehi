@@ -25,7 +25,23 @@ export async function syncAuth0UserToDb(
     const existingArray = existingResult as unknown as any[];
     const existingUser = existingArray?.[0]?.[0];
     if (existingUser) {
-      // User exists - just return it
+      // User exists - check if they have a workspace
+      try {
+        const workspaceResult = await query<{ id: string }>(
+          "SELECT id FROM workspaces WHERE user = $userId LIMIT 1;",
+          { userId: existingUser.id }
+        );
+        const workspaceArray = workspaceResult as unknown as any[];
+        const hasWorkspace = workspaceArray?.[0]?.[0];
+
+        if (!hasWorkspace) {
+          // User exists but has no workspace - create one
+          const workspaceName = existingUser.username || existingUser.email?.split("@")[0] || "My Workspace";
+          await createWorkspace(existingUser.id, workspaceName);
+        }
+      } catch (error) {
+        console.warn("Failed to check/create workspace for existing user:", error);
+      }
       return { user: existingUser };
     }
 
@@ -47,6 +63,22 @@ export async function syncAuth0UserToDb(
       const updatedArray = updateResult as unknown as any[];
       const updatedUser = updatedArray?.[0]?.[0];
       if (updatedUser) {
+        // Check if they have a workspace
+        try {
+          const workspaceResult = await query<{ id: string }>(
+            "SELECT id FROM workspaces WHERE user = $userId LIMIT 1;",
+            { userId: updatedUser.id }
+          );
+          const workspaceArray = workspaceResult as unknown as any[];
+          const hasWorkspace = workspaceArray?.[0]?.[0];
+
+          if (!hasWorkspace) {
+            const workspaceName = updatedUser.username || updatedUser.email?.split("@")[0] || "My Workspace";
+            await createWorkspace(updatedUser.id, workspaceName);
+          }
+        } catch (error) {
+          console.warn("Failed to check/create workspace for user:", error);
+        }
         return { user: updatedUser };
       }
     }

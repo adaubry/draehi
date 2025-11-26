@@ -45,7 +45,14 @@ SurrealDB only has a root user at the **root level**, not in individual database
 4. Click **"Connect"** - should connect instantly
 
 **After connecting, switch to database:**
-- In Surrealist, use the namespace/database dropdown at the top to switch to `draehi/main`
+- In Surrealist, look for the namespace/database dropdown at the top
+- Click it and select or type `draehi/main`
+- You should now see all 5 tables: users, workspaces, nodes, git_repositories, deployment_history
+
+**Verify the schema:**
+- Run this query in Surrealist's query editor: `INFO FOR DB;`
+- Should return all table definitions
+- Or browse tables in the left sidebar under "Tables"
 
 **Why this works:**
 - Root user only exists at KV level, not at database level

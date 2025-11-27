@@ -69,7 +69,7 @@ export const getAllNodes = cache(
 );
 
 export const getJournalNodes = cache(
-  async (workspaceId: string): Promise<Node[]> => {
+  async (): Promise<Node[]> => {
     // Journal detection is removed - return empty array
     return [];
   }
@@ -183,7 +183,9 @@ export const getPageTree = cache(
 async function buildTreeWithGraphTraversal(
   node: Node
 ): Promise<TreeNode> {
-  const nodeId = nodeRecordId(node.uuid || node.id.replace("nodes:", ""));
+  // Get UUID safely - handle both string and RecordId objects
+  const nodeUuid = node.uuid || getNodeUuidFromRecord(node.id);
+  const nodeId = nodeRecordId(nodeUuid);
 
   // Fetch children using graph traversal: <-parent AS children
   const graphResults = await query<Record<string, unknown>>(

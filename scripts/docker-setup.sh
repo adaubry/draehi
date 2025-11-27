@@ -112,15 +112,18 @@ start_services() {
     local build_mode="${BUILD_MODE:-dev}"
 
     # Try to start with profile flag (Docker Compose v2.3+)
-    # Fall back to basic start if profiles not supported
-    BUILD_MODE="${build_mode}" docker compose up -d --profile dev 2>/dev/null || {
+    # Fall back to basic start + all required services if profiles not supported
+    if BUILD_MODE="${build_mode}" docker compose up -d --profile dev 2>/dev/null; then
+        echo "✅ Containers started (with --profile dev)"
+    else
         echo "   Note: Using compatible compose startup (--profile not supported)"
-        BUILD_MODE="${build_mode}" docker compose up -d
-    }
+        # Explicitly start all services including surrealist for compatibility
+        BUILD_MODE="${build_mode}" docker compose up -d surrealdb keydb minio minio-init surrealist
 
-    if [[ $? -ne 0 ]]; then
-        echo "❌ Failed to start containers"
-        return 1
+        if [[ $? -ne 0 ]]; then
+            echo "❌ Failed to start containers"
+            return 1
+        fi
     fi
 
     echo "✅ Containers started"

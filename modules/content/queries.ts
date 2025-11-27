@@ -230,7 +230,8 @@ export const getPageTreeWithHTML = cache(
     // Collect all node UUIDs in the tree
     const uuids: string[] = [];
     function collectUuids(node: TreeNode) {
-      uuids.push(node.node.uuid || node.node.id.replace("nodes:", ""));
+      const nodeUuid = node.node.uuid || getNodeUuidFromRecord(node.node.id);
+      uuids.push(nodeUuid);
       for (const child of node.children) {
         collectUuids(child);
       }
@@ -244,7 +245,7 @@ export const getPageTreeWithHTML = cache(
 
     // Attach HTML to nodes in tree
     function attachHTML(node: TreeNode): TreeNode {
-      const nodeUuid = node.node.uuid || node.node.id.replace("nodes:", "");
+      const nodeUuid = node.node.uuid || getNodeUuidFromRecord(node.node.id);
       return {
         node: {
           ...node.node,

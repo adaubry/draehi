@@ -237,23 +237,20 @@ async function buildTreeWithGraphTraversal(
   const nodeId = nodeRecordId(nodeUuid);
   console.log(`[Display] buildTreeWithGraphTraversal: Fetching children for nodeId=${nodeId}`);
 
-  // Fetch children using SurrealDB graph traversal via RELATE parent edges
-  // <- parent AS children reverses the parent relationship to find children
-  const graphResults = await query<Record<string, unknown>>(
-    `SELECT <- parent AS children FROM ${nodeId}`
+  // Fetch children by querying nodes where parent = this node
+  // This is simpler and more direct than trying to traverse the RELATE edge
+  const graphResults = await query<Node[]>(
+    `SELECT * FROM nodes WHERE parent = ${nodeId} ORDER BY \`order\``
   );
 
   let childrenData: Node[] = [];
-  if (graphResults.length > 0 && graphResults[0].children) {
-    const childrenArray = graphResults[0].children;
-    if (Array.isArray(childrenArray)) {
-      childrenData = childrenArray.map((child) =>
-        normalizeNode(child as unknown as Node)
-      );
-      console.log(`[Display] buildTreeWithGraphTraversal: Found ${childrenData.length} children via RELATE for ${nodeUuid}`);
-      if (childrenData.length > 0) {
-        console.log(`[Display] buildTreeWithGraphTraversal: First child - uuid=${childrenData[0].uuid}, id=${childrenData[0].id}, title=${childrenData[0].title}`);
-      }
+  if (graphResults.length > 0) {
+    childrenData = graphResults.map((child) =>
+      normalizeNode(child as unknown as Node)
+    );
+    console.log(`[Display] buildTreeWithGraphTraversal: Found ${childrenData.length} children for ${nodeUuid}`);
+    if (childrenData.length > 0) {
+      console.log(`[Display] buildTreeWithGraphTraversal: First child - uuid=${childrenData[0].uuid}, id=${childrenData[0].id}, title=${childrenData[0].title}`);
     }
   }
 

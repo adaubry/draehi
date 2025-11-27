@@ -50,6 +50,7 @@ Run the master setup script:
 ```
 
 This automated script will:
+
 - Install npm dependencies
 - Set up environment variables
 - Install Rust + export-logseq-notes
@@ -63,43 +64,44 @@ See [docs/SCRIPTS.md](docs/SCRIPTS.md) for detailed documentation.
 If you prefer manual setup or need to troubleshoot:
 
 1. **Clone repository**
+
    ```bash
    git clone <repo-url>
    cd draehi
    ```
 
 2. **Configure environment**
+
    ```bash
    cp .env.example .env.local
    # Edit .env.local - set DATABASE_URL and SESSION_SECRET
    ```
 
 3. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 4. **Install Rust tools**
+
    ```bash
    ./scripts/install-rust-tools.sh
    ```
 
 5. **Set up database**
+
    ```bash
-   ./scripts/setup-database.sh
+   ./scripts/setup-databases.sh
    ```
 
-6. **Optional: Set up MinIO S3**
-   ```bash
-   ./scripts/setup-minio.sh
-   ```
+6. **Start development server**
 
-7. **Start development server**
    ```bash
    npm run dev
    ```
 
-8. **Open browser**
+7. **Open browser**
    ```
    http://localhost:3000
    ```
@@ -125,9 +127,6 @@ npm run dev           # Run development server
 npm run build         # Build for production
 npm run type-check    # TypeScript type checking
 npm run lint          # ESLint
-npm run db:generate   # Generate migrations
-npm run db:push       # Push schema to database
-npm run db:studio     # Open Drizzle Studio
 ```
 
 ## GitHub Personal Access Token Setup
@@ -137,10 +136,12 @@ npm run db:studio     # Open Drizzle Studio
 ### Creating a Secure Fine-Grained PAT
 
 1. **Go to GitHub Settings**
+
    - Navigate to https://github.com/settings/tokens?type=beta
    - Click "Generate new token" → "Fine-grained token"
 
 2. **Token Configuration**
+
    - **Token name**: `draehi-logseq-graph` (or similar descriptive name)
    - **Expiration**: 90 days (recommended) or custom
    - **Resource owner**: Select your account
@@ -149,11 +150,13 @@ npm run db:studio     # Open Drizzle Studio
      - **DO NOT** select "All repositories"
 
 3. **Repository Permissions** (minimum required)
+
    - **Contents**: Read-only (required to clone/pull)
    - **Metadata**: Read-only (auto-selected)
    - **DO NOT** grant write access unless you need push capabilities
 
 4. **Generate and Copy**
+
    - Click "Generate token"
    - Copy the token immediately (starts with `github_pat_`)
    - Store it securely - you won't see it again
@@ -171,11 +174,13 @@ npm run db:studio     # Open Drizzle Studio
 ### Troubleshooting
 
 **"Authentication failed"**
+
 - Token expired → Generate new token
 - Wrong permissions → Verify "Contents: Read" permission
 - Wrong repository selected → Check repository access settings
 
 **"Repository not found"**
+
 - Token doesn't have access to repository
 - Repository URL incorrect
 - Repository is private and token lacks access

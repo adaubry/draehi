@@ -40,21 +40,24 @@ SurrealDB only has a root user at the **root level**, not in individual database
    - **Port:** `8000`
    - **Username:** `root`
    - **Password:** `root`
-   - **Namespace:** *(leave blank)* ← IMPORTANT!
-   - **Database:** *(leave blank)* ← IMPORTANT!
+   - **Namespace:** _(leave blank)_ ← IMPORTANT!
+   - **Database:** _(leave blank)_ ← IMPORTANT!
 4. Click **"Connect"** - should connect instantly
 
 **After connecting, switch to database:**
+
 - In Surrealist, look for the namespace/database dropdown at the top
 - Click it and select or type `draehi/main`
 - You should now see all 5 tables: users, workspaces, nodes, git_repositories, deployment_history
 
 **Verify the schema:**
+
 - Run this query in Surrealist's query editor: `INFO FOR DB;`
 - Should return all table definitions
 - Or browse tables in the left sidebar under "Tables"
 
 **Why this works:**
+
 - Root user only exists at KV level, not at database level
 - Must authenticate at root level first, then select database
 - Surrealist UI will handle the switch automatically
@@ -147,22 +150,6 @@ docker inspect draehi-surrealdb
 
 ## 🗄️ Database Management
 
-### Initialize & Maintain
-
-```bash
-# Initialize schema (creates tables, fields, indexes)
-npm run db:init
-
-# Complete flush: SurrealDB + KeyDB + MinIO + Auth0
-npm run db:flush
-
-# Remove all tables (for clean schema reinitialization)
-npm run db:purge
-
-# Then reinitialize
-npm run db:init
-```
-
 ### Workflow: Complete Clean Slate
 
 ```bash
@@ -172,12 +159,8 @@ npm run docker:clean
 # 2. Start services fresh
 npm run docker:setup
 
-# 3. Initialize schema
-npm run db:init
-
 # 4. Verify with test
 source .test.env
-npx tsx scripts/test-db-comprehensive.ts
 ```
 
 ---
@@ -212,22 +195,6 @@ source .test.env
 
 ### Module-Specific Tests
 
-Quick tests for specific features:
-
-```bash
-# Auth + workspace creation flow
-npx tsx scripts/test-auth-workspace-flow.ts
-
-# Deployment workflow
-npx tsx scripts/test-deployment-flow.ts
-
-# Dashboard page load flow
-npx tsx scripts/test-exact-dashboard-flow.ts
-
-# RecordId parameter handling (CRITICAL for understanding SurrealDB)
-npx tsx scripts/test-userid-comparison.ts
-```
-
 ### End-to-End Tests
 
 Full workflow tests that exercise the entire system:
@@ -241,31 +208,6 @@ Full workflow tests that exercise the entire system:
 ./scripts/test-frontend-e2e.sh
 # Duration: ~1 minute
 ```
-
-### Running Full Test Suite
-
-```bash
-# 1. Setup environment
-source .test.env
-npm run docker:setup
-
-# 2. Initialize schema
-npx tsx scripts/init-surreal-schema.ts
-
-# 3. Run tests in order
-npx tsx scripts/test-db-comprehensive.ts     # Database operations (15s)
-npx tsx scripts/test-auth-workspace-flow.ts  # Auth (5s)
-npx tsx scripts/test-deployment-flow.ts      # Deployments (5s)
-./scripts/test-e2e.sh                         # Full workflow (2m)
-
-# Total time: ~3 minutes
-# All tests should pass ✅
-
-# 4. Clean up after tests (optional)
-npm run flush:db  # Wipes all data + Auth0 users + local sessions
-```
-
----
 
 ## 🔧 Setup Scripts
 
@@ -427,28 +369,6 @@ mc ls myminio/
 exit
 ```
 
-**SurrealDB:**
-
-```bash
-npm run docker:shell:surreal
-
-# Inside container:
-curl http://localhost:8000/health
-surreal version
-exit
-```
-
-### "Workspace not found" Error
-
-This is usually a RecordId vs string parameter issue:
-
-```bash
-# See exact issue
-npx tsx scripts/test-userid-comparison.ts
-
-# Key: Keep user.id as RecordId object, don't convert to string
-```
-
 ### Surrealist Connection Troubleshooting
 
 **Problem: Surrealist shows "You must be connected to a SurrealDB instance before performing this operation"**
@@ -456,22 +376,26 @@ npx tsx scripts/test-userid-comparison.ts
 Solution steps:
 
 1. **Verify WebSocket connectivity:**
+
    ```bash
    curl -i http://localhost:8000/health
    # Should return HTTP 200
    ```
 
 2. **Check browser console for errors:**
+
    - Open http://localhost:8080
    - Press F12 → Console tab
    - Look for connection errors
 
 3. **Clear browser cache and retry:**
+
    - DevTools → Application tab
    - Click "Clear site data"
    - Reload page
 
 4. **Manually add connection if auto-load fails:**
+
    - Connection type: **WebSocket**
    - URL: `ws://localhost:8000/rpc` (use localhost, not surrealdb - browsers can't resolve Docker hostnames)
    - Username: `root`
@@ -487,11 +411,11 @@ Solution steps:
 
 **Common errors and fixes:**
 
-| Error | Cause | Fix |
-| ----- | ----- | --- |
-| "There was a problem with authentication" | WebSocket connection failing | Check namespace/database are set |
-| "Connection refused" | SurrealDB not responding | Verify `curl http://localhost:8000/health` works |
-| "timeout" | Network issue or slow startup | Wait 30s for SurrealDB health check to pass |
+| Error                                     | Cause                         | Fix                                              |
+| ----------------------------------------- | ----------------------------- | ------------------------------------------------ |
+| "There was a problem with authentication" | WebSocket connection failing  | Check namespace/database are set                 |
+| "Connection refused"                      | SurrealDB not responding      | Verify `curl http://localhost:8000/health` works |
+| "timeout"                                 | Network issue or slow startup | Wait 30s for SurrealDB health check to pass      |
 
 ### Database Query Debugging
 
@@ -507,15 +431,6 @@ curl -X POST http://localhost:8000/sql \
 ```
 
 ### Performance Profiling
-
-```bash
-npm run docker:shell:app
-
-# Inside container
-htop           # CPU and memory usage
-ps aux         # Process list
-df -h          # Disk usage
-```
 
 ---
 

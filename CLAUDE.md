@@ -9,12 +9,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A "Vercel for Logseq graphs" that transforms your personal knowledge base into a high-performance, SEO-optimized website. Connect your Git repo → push → publish.
 
 **Core Value Proposition:**
+
 - **No Manual Exports**: Git-based workflow, push to deploy
 - **High Performance**: Sub-100ms TTFB, pre-rendered HTML
 - **SEO-Optimized**: Static HTML generation, perfect for content sites
 - **Zero Config**: One workspace per user, automatic deployment
 
 **Architecture:**
+
 - One workspace per user (simplified UX)
 - Git repo as source of truth (expected: Logseq graph)
 - Rust-based content processing (export-logseq-notes)
@@ -29,12 +31,6 @@ A "Vercel for Logseq graphs" that transforms your personal knowledge base into a
 ```bash
 # Automated setup (recommended)
 ./scripts/setup.sh
-
-# OR manual setup
-npm install
-./scripts/install-rust-tools.sh
-./scripts/setup-database.sh
-./scripts/setup-minio.sh  # Optional: local S3 storage
 
 # See docs/SCRIPTS.md for details
 ```
@@ -80,6 +76,7 @@ git push origin main
 ```
 
 **CRITICAL**:
+
 - Never push without running `npm run build` first
 - Never push without updating CHANGELOG.md
 - **ALWAYS update all affected markdown documentation after making changes**
@@ -92,9 +89,6 @@ git push origin main
 
 # Frontend display validation
 ./scripts/test-frontend-e2e.sh
-
-# Structure comparison with Logseq docs
-npx tsx scripts/compare-with-logseq.ts
 
 # See docs/TESTING.md for full guide
 ```
@@ -227,19 +221,23 @@ The database uses Drizzle PostgreSQL with the following main tables:
 **Core Tables:**
 
 1. **users** - User accounts
+
    - `id`, `email`, `name`, `created_at`
    - One user → One workspace (simplified model)
 
 2. **workspaces** - Top-level container
+
    - `id`, `user_id`, `slug`, `name`, `domain`, `embed_depth`, `created_at`
    - One workspace per user
    - `embed_depth` (default 5) - Max depth for page/block embeds
 
 3. **git_repositories** - Git repo tracking
+
    - `id`, `workspace_id`, `repo_url`, `branch`, `deploy_key`, `last_sync`, `sync_status`
    - Source of truth for content
 
 4. **nodes** - Unified content (pages + blocks)
+
    - `id`, `workspace_id`, `page_name`, `slug`, `namespace`, `depth`
    - `parent_id` (self-referential for block hierarchy), `order`, `node_type` (page|block)
    - `block_uuid` (Logseq block UUID from id:: property)
@@ -251,6 +249,7 @@ The database uses Drizzle PostgreSQL with the following main tables:
    - `id`, `workspace_id`, `commit_sha`, `status`, `deployed_at`, `error_log`
 
 **Key Design: Internal CRUD Only**
+
 - No user-facing CRUD operations (except signup)
 - All content changes via Git push → webhook → auto-deploy
 - Users edit in Logseq, not in Draehi UI
@@ -282,7 +281,7 @@ The database uses Drizzle PostgreSQL with the following main tables:
 # CRUD / Data Layer
 
 1. Centralized Queries
-   All DB queries in modules/*/queries.ts
+   All DB queries in modules/\*/queries.ts
    Use Drizzle relational API
    No inline queries in components/routes
 

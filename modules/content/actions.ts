@@ -10,10 +10,7 @@ import { type Node, type NewNode, nodeRecordId } from "./schema";
 import { extractNamespaceAndSlug } from "@/lib/utils";
 import { exportLogseqNotes } from "../logseq/export";
 import { parseLogseqOutput, processAssets } from "../logseq/parse";
-import {
-  parseLogseqDirectory,
-  flattenBlocks,
-} from "../logseq/markdown-parser";
+import { parseLogseqDirectory, flattenBlocks } from "../logseq/markdown-parser";
 import {
   processLogseqReferences,
   processEmbeds,
@@ -62,10 +59,13 @@ export async function upsertNode(
     { ws: workspaceId, pageName }
   );
 
-  // Generate stable UUID
+  // Generate stable UUID (32-char hex, no hyphens)
   const pageUuidSeed = `${workspaceId}::${pageName}`;
-  const pageUuidHash = crypto.createHash("sha256").update(pageUuidSeed).digest("hex");
-  const pageUuid = `${pageUuidHash.slice(0, 8)}-${pageUuidHash.slice(8, 12)}-${pageUuidHash.slice(12, 16)}-${pageUuidHash.slice(16, 20)}-${pageUuidHash.slice(20, 32)}`;
+  const pageUuidHash = crypto
+    .createHash("sha256")
+    .update(pageUuidSeed)
+    .digest("hex");
+  const pageUuid = pageUuidHash.slice(0, 32);
 
   if (existing) {
     // Update via query
@@ -135,7 +135,9 @@ export async function ingestLogseqGraph(
     );
 
     if (!workspace) {
-      console.error(`[Ingestion] ERROR: Workspace not found for ID: ${workspaceId}`);
+      console.error(
+        `[Ingestion] ERROR: Workspace not found for ID: ${workspaceId}`
+      );
       return {
         success: false,
         error: "Workspace not found",
@@ -244,19 +246,13 @@ export async function ingestLogseqGraph(
 
       const { slug } = extractNamespaceAndSlug(mdPage.pageName);
 
-      // Generate stable page UUID
+      // Generate stable page UUID (32-char hex, no hyphens)
       const pageUuidSeed = `${workspaceId}::${mdPage.pageName}`;
       const pageUuidHash = crypto
         .createHash("sha256")
         .update(pageUuidSeed)
         .digest("hex");
-      const pageUuid = `${pageUuidHash.slice(0, 8)}-${pageUuidHash.slice(
-        8,
-        12
-      )}-${pageUuidHash.slice(12, 16)}-${pageUuidHash.slice(
-        16,
-        20
-      )}-${pageUuidHash.slice(20, 32)}`;
+      const pageUuid = pageUuidHash.slice(0, 32);
 
       // Page node data - set parent to null which becomes NONE in SurrealDB
       // Use HTML page data if available, otherwise use markdown page name
@@ -265,7 +261,9 @@ export async function ingestLogseqGraph(
         : mdPage.pageName;
 
       // Extract first heading from page HTML for TOC
-      const pageHeading = htmlPage ? extractFirstHeadingFromHTML(htmlPage.html) : null;
+      const pageHeading = htmlPage
+        ? extractFirstHeadingFromHTML(htmlPage.html)
+        : null;
 
       allNodeData.push({
         uuid: pageUuid,
@@ -287,7 +285,9 @@ export async function ingestLogseqGraph(
         },
       });
       pageCount++;
-      console.log(`[Ingestion] Created page node: ${mdPage.pageName} (uuid: ${pageUuid})`);
+      console.log(
+        `[Ingestion] Created page node: ${mdPage.pageName} (uuid: ${pageUuid})`
+      );
 
       if (mdPage.blocks.length === 0) {
         const noBlocksMsg = `Page ${mdPage.pageName} has no blocks (property-only page)`;
@@ -337,16 +337,18 @@ export async function ingestLogseqGraph(
         }
 
         // Make block UUID globally unique by including workspace and page
-        const globalBlockUuid = crypto.createHash('sha256')
+        const globalBlockUuid = crypto
+          .createHash("sha256")
           .update(`${workspaceId}::${mdPage.pageName}::${block.uuid}`)
-          .digest('hex')
+          .digest("hex")
           .slice(0, 32); // Use first 32 chars of hash for UUID
 
         // Make parent UUID globally unique if it exists
         const globalParentUuid = block.parentUuid
-          ? crypto.createHash('sha256')
+          ? crypto
+              .createHash("sha256")
               .update(`${workspaceId}::${mdPage.pageName}::${block.parentUuid}`)
-              .digest('hex')
+              .digest("hex")
               .slice(0, 32)
           : pageUuid;
 
@@ -354,7 +356,7 @@ export async function ingestLogseqGraph(
           uuid: globalBlockUuid,
           data: {
             workspace: workspaceId,
-            parent: `nodes:${globalParentUuid}`,
+            parent: globalParentUuid ? `nodes:${globalParentUuid}` : null,
             page_name: mdPage.pageName,
             slug,
             order: block.order,
@@ -367,6 +369,11 @@ export async function ingestLogseqGraph(
           uuid: globalBlockUuid,
           html: blockHTML.trim(),
         });
+        console.log(
+          `[Ingestion] Block HTML queued: ${globalBlockUuid} (${
+            blockHTML.trim().length
+          } bytes)`
+        );
 
         blockUuidsInOrder.push(globalBlockUuid);
       }
@@ -390,11 +397,15 @@ export async function ingestLogseqGraph(
     for (const block of allBlockHTML) {
       htmlByUuid.set(block.uuid, block.html);
     }
-    const uniqueBlockHTML = Array.from(htmlByUuid.entries()).map(([uuid, html]) => ({
-      uuid,
-      html,
-    }));
-    console.log(`[Ingestion] Deduplicating HTML: ${allBlockHTML.length} → ${uniqueBlockHTML.length} unique blocks`);
+    const uniqueBlockHTML = Array.from(htmlByUuid.entries()).map(
+      ([uuid, html]) => ({
+        uuid,
+        html,
+      })
+    );
+    console.log(
+      `[Ingestion] Deduplicating HTML: ${allBlockHTML.length} → ${uniqueBlockHTML.length} unique blocks`
+    );
 
     const insertMsg = `Inserting ${uniqueNodeData.length} nodes (${pageCount} pages and ${totalBlocks} blocks)...`;
     buildLog.push(insertMsg);
@@ -402,40 +413,118 @@ export async function ingestLogseqGraph(
 
     // Batch insert nodes into SurrealDB
     const BATCH_SIZE = 500;
+    const relateEdges: Array<{ from: string; to: string }> = [];
+
     for (let i = 0; i < uniqueNodeData.length; i += BATCH_SIZE) {
       const batch = uniqueNodeData.slice(i, i + BATCH_SIZE);
       for (const { uuid, data } of batch) {
         try {
           await createWithId(`nodes:${uuid}`, data);
+
+          // Collect RELATE edges for later creation
+          // Skip null parents (page nodes)
+          if (data.parent && typeof data.parent === "string") {
+            // parent format: "nodes:uuid"
+            const parentUuid = data.parent.replace("nodes:", "");
+            relateEdges.push({
+              from: uuid, // child node uuid
+              to: parentUuid, // parent node uuid
+            });
+          }
         } catch (err) {
-          console.error(`[Ingestion] ERROR creating node ${uuid}:`, err instanceof Error ? err.message : String(err));
+          console.error(
+            `[Ingestion] ERROR creating node ${uuid}:`,
+            err instanceof Error ? err.message : String(err)
+          );
           throw err;
         }
       }
-      const batchMsg = `  Inserted node batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(uniqueNodeData.length / BATCH_SIZE)}`;
+      const batchMsg = `  Inserted node batch ${
+        Math.floor(i / BATCH_SIZE) + 1
+      }/${Math.ceil(uniqueNodeData.length / BATCH_SIZE)}`;
       buildLog.push(batchMsg);
       console.log(`[Ingestion] ${batchMsg}`);
     }
-    console.log(`[Ingestion] All ${uniqueNodeData.length} nodes inserted into SurrealDB`);
+    console.log(
+      `[Ingestion] All ${uniqueNodeData.length} nodes inserted into SurrealDB`
+    );
+
+    // Create RELATE edges for graph traversal
+    if (relateEdges.length > 0) {
+      console.log(
+        `[Ingestion] Creating ${relateEdges.length} parent-child relationships via RELATE...`
+      );
+      const REL_BATCH_SIZE = 1000;
+      for (let i = 0; i < relateEdges.length; i += REL_BATCH_SIZE) {
+        const batch = relateEdges.slice(i, i + REL_BATCH_SIZE);
+        for (const edge of batch) {
+          // Create RELATE: child--[parent]-->parent
+          // Backticks only around UUID part, not the table name
+          try {
+            await query(
+              `RELATE nodes:\`${edge.from}\`->parent->nodes:\`${edge.to}\``
+            );
+          } catch (err) {
+            // Log but don't fail - some RELATEs might already exist
+            console.log(
+              `[Ingestion] RELATE creation note: ${
+                err instanceof Error ? err.message : String(err)
+              }`
+            );
+          }
+        }
+        const relMsg = `  Created relate batch ${
+          Math.floor(i / REL_BATCH_SIZE) + 1
+        }/${Math.ceil(relateEdges.length / REL_BATCH_SIZE)}`;
+        buildLog.push(relMsg);
+        console.log(`[Ingestion] ${relMsg}`);
+      }
+      console.log(
+        `[Ingestion] All ${relateEdges.length} relationships created via RELATE`
+      );
+    }
 
     // Batch insert HTML into KeyDB
+    console.log(
+      `[Ingestion] Total allBlockHTML collected: ${allBlockHTML.length} blocks`
+    );
     const cacheMsg = `Caching ${uniqueBlockHTML.length} block HTMLs in KeyDB...`;
     buildLog.push(cacheMsg);
     console.log(`[Ingestion] ${cacheMsg}`);
     if (uniqueBlockHTML.length > 0) {
-      const totalHTMLSize = uniqueBlockHTML.reduce((sum, b) => sum + b.html.length, 0);
-      console.log(`[Ingestion] HTML stats: ${uniqueBlockHTML.length} blocks, ~${totalHTMLSize} bytes total`);
-      await setBlockHTMLBatch(workspaceId, uniqueBlockHTML);
-      console.log(`[Ingestion] Block HTMLs cached in KeyDB`);
+      const totalHTMLSize = uniqueBlockHTML.reduce(
+        (sum, b) => sum + b.html.length,
+        0
+      );
+      console.log(
+        `[Ingestion] HTML stats: ${uniqueBlockHTML.length} blocks, ~${totalHTMLSize} bytes total`
+      );
+      try {
+        await setBlockHTMLBatch(workspaceId, uniqueBlockHTML);
+        console.log(`[Ingestion] ✓ Block HTMLs cached in KeyDB`);
+      } catch (err) {
+        console.error(
+          `[Ingestion] ✗ FAILED to cache HTML: ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        );
+        throw err;
+      }
     } else {
-      console.warn(`[Ingestion] ⚠️  No block HTMLs to cache!`);
+      console.warn(
+        `[Ingestion] ⚠️  No block HTMLs to cache! (allBlockHTML.length=${allBlockHTML.length})`
+      );
     }
 
     // Store page block orders
-    console.log(`[Ingestion] Storing page block orders for ${pageBlockOrders.size} pages...`);
+    console.log(
+      `[Ingestion] Storing page block orders for ${pageBlockOrders.size} pages...`
+    );
     for (const [pageName, uuids] of pageBlockOrders) {
       await setPageBlockOrder(workspaceId, pageName, uuids);
-      console.log(`[Ingestion]   Page block order stored: ${pageName} (${uuids.length} blocks)`);
+      console.log(
+        `[Ingestion]   Page block order stored: ${pageName} (${uuids.length} blocks)`
+      );
     }
 
     const completeMsg = "Ingestion complete!";

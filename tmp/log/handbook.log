@@ -1,0 +1,53 @@
+SES Removing unpermitted intrinsics lockdown-install.js:1:203117
+  Removing intrinsics.%MapPrototype%.getOrInsert lockdown-install.js:1:202962
+  Removing intrinsics.%MapPrototype%.getOrInsertComputed lockdown-install.js:1:202962
+  Removing intrinsics.%WeakMapPrototype%.getOrInsert lockdown-install.js:1:202962
+  Removing intrinsics.%WeakMapPrototype%.getOrInsertComputed lockdown-install.js:1:202962
+  Removing intrinsics.%DatePrototype%.toTemporalInstant lockdown-install.js:1:202962
+Download the React DevTools for a better development experience: https://react.dev/link/react-devtools node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Layout] Loading workspace: adamaubrypro node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Display] NodePage: Rendering page for path "handbook" in workspace "adamaubrypro" node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Layout] Workspace loaded: workspaces:xpr520f6738qc94n8udk node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Layout] Fetching all page nodes for navigation... node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Display] getAllNodes: Fetching page nodes for workspace workspaces:xpr520f6738qc94n8udk node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Display] NodePage: Workspace found workspaces:xpr520f6738qc94n8udk node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Display] getNodeByPath: Looking for path [handbook] node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Display] getNodeByPath: Looking up page_name: "handbook" node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Display] getNodeByPath: No match found for [handbook] node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Display] NodePage: Node not found for path "handbook" node_modules_next_dist_7a8122d0._.js:3118:32
+[HMR] connected node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Display] getAllNodes: Found 313 page nodes node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Layout] Loaded 313 page nodes for sidebar navigation node_modules_next_dist_7a8122d0._.js:2288:28
+[Display] Sidebar initialized with 313 page nodes node_modules_next_dist_7a8122d0._.js:2288:28
+[Display] buildTree: Processing 313 page nodes node_modules_next_dist_7a8122d0._.js:2288:28
+[Display] Sidebar initialized with 313 page nodes node_modules_next_dist_7a8122d0._.js:2288:28
+[Display] buildTree: Processing 313 page nodes node_modules_next_dist_7a8122d0._.js:2288:28
+[Display] TOC: Fetching for pagePath: handbook 2 node_modules_next_dist_7a8122d0._.js:2288:28
+XHRGET
+http://localhost:3000/api/toc?workspace=adamaubrypro&path=handbook
+[HTTP/1.1 404 Not Found 34ms]
+
+XHRGET
+http://localhost:3000/api/toc?workspace=adamaubrypro&path=handbook
+[HTTP/1.1 404 Not Found 32ms]
+
+[Display] TOC: API response status: 404 node_modules_next_dist_7a8122d0._.js:2288:28
+[Display] TOC: Fetch error: Error: HTTP 404
+    useEffect TableOfContents.tsx:111
+    promise callback*TableOfContents.useEffect TableOfContents.tsx:109
+    react_stack_bottom_frame react-dom-client.development.js:28101
+    runWithFiberInDEV react-dom-client.development.js:987
+    commitHookEffectListMount react-dom-client.development.js:13690
+    commitHookPassiveMountEffects react-dom-client.development.js:13777
+    reconnectPassiveEffects react-dom-client.development.js:17122
+node_modules_next_dist_7a8122d0._.js:3118:32
+[Display] TOC: API response status: 404 node_modules_next_dist_7a8122d0._.js:2288:28
+[Display] TOC: Fetch error: Error: HTTP 404
+    useEffect TableOfContents.tsx:111
+    promise callback*TableOfContents.useEffect TableOfContents.tsx:109
+    react_stack_bottom_frame react-dom-client.development.js:28101
+    runWithFiberInDEV react-dom-client.development.js:987
+    commitHookEffectListMount react-dom-client.development.js:13690
+    commitHookPassiveMountEffects react-dom-client.development.js:13777
+    reconnectPassiveEffects react-dom-client.development.js:17122
+node_modules_next_dist_7a8122d0._.js:3118:32

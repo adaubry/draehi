@@ -181,7 +181,7 @@ export const getPageTree = cache(
 
 /**
  * Build tree recursively using SurrealDB graph traversal
- * Fetches children via <-parent AS children for each level
+ * Fetches children via RELATE parent relationships: <-parent AS children
  */
 async function buildTreeWithGraphTraversal(
   node: Node
@@ -189,23 +189,33 @@ async function buildTreeWithGraphTraversal(
   // Get UUID safely - handle both string and RecordId objects
   const nodeUuid = node.uuid || getNodeUuidFromRecord(node.id);
   const nodeId = nodeRecordId(nodeUuid);
+  console.log(`[Display] buildTreeWithGraphTraversal: Fetching children for nodeId=${nodeId}`);
 
-  // Fetch children using graph traversal: <-parent AS children
+  // Fetch children using SurrealDB graph traversal via RELATE parent edges
+  // <-parent AS children reverses the parent relationship to find children
   const graphResults = await query<Record<string, unknown>>(
-    `SELECT <-parent AS children FROM $nodeId`,
-    { nodeId }
+    `SELECT <-parent AS children FROM \`${nodeId}\``
   );
 
-  let childrenData: Record<string, unknown>[] = [];
-  if (graphResults.length > 0) {
+  let childrenData: Node[] = [];
+  if (graphResults.length > 0 && graphResults[0].children) {
     const childrenArray = graphResults[0].children;
-    childrenData = Array.isArray(childrenArray) ? childrenArray : [];
+    if (Array.isArray(childrenArray)) {
+      childrenData = childrenArray.map((child) =>
+        normalizeNode(child as unknown as Node)
+      );
+      console.log(`[Display] buildTreeWithGraphTraversal: Found ${childrenData.length} children via RELATE for ${nodeUuid}`);
+    }
+  }
+
+  if (childrenData.length === 0) {
+    console.log(`[Display] buildTreeWithGraphTraversal: No children found for ${nodeUuid}`);
   }
 
   // Recursively build subtrees for all children in parallel
   const childTrees = await Promise.all(
     childrenData.map((child) =>
-      buildTreeWithGraphTraversal(normalizeNode(child as unknown as Node))
+      buildTreeWithGraphTraversal(child)
     )
   );
 

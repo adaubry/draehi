@@ -106,11 +106,11 @@ fi
 
 echo
 
-# Step 2: Wait for KeyDB
-echo "=== Step 2/3: Waiting for KeyDB ==="
+# Step 2: Check KeyDB (optional)
+echo "=== Step 2/3: Checking KeyDB (Optional) ==="
 echo
 
-max_attempts=30
+max_attempts=10
 attempt=0
 
 while [[ $attempt -lt $max_attempts ]]; do
@@ -121,13 +121,13 @@ while [[ $attempt -lt $max_attempts ]]; do
 
     attempt=$((attempt + 1))
     if [[ $attempt -lt $max_attempts ]]; then
-        echo "→ Waiting for KeyDB... ($attempt/$max_attempts)"
+        echo "→ Checking KeyDB... ($attempt/$max_attempts)"
         sleep 1
     fi
 done
 
 if [[ $attempt -eq $max_attempts ]]; then
-    echo "⚠️  KeyDB not responding. Continuing anyway..."
+    echo "⚠️  KeyDB not responding (optional - continuing anyway)"
 fi
 
 echo
@@ -140,7 +140,7 @@ if [[ "${SKIP_SCHEMA}" == "true" ]]; then
     echo "⊘ Skipping schema initialization (--skip-schema)"
 else
     # Check if init script exists
-    local init_script="${PROJECT_ROOT}/scripts/init-surreal-schema.ts"
+    init_script="${PROJECT_ROOT}/scripts/init-surreal-schema.ts"
 
     if [[ ! -f "${init_script}" ]]; then
         echo "❌ Schema initialization script not found: ${init_script}"

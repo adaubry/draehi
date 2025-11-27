@@ -158,7 +158,15 @@ export function DashboardClient({
                 </dt>
                 <dd className="mt-1 text-sm">
                   {repository.last_sync
-                    ? new Date(repository.last_sync).toLocaleString()
+                    ? new Date(repository.last_sync).toLocaleString("en-US", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                        hour12: true,
+                      })
                     : "Never"}
                 </dd>
               </div>
@@ -180,7 +188,15 @@ export function DashboardClient({
                     <p className={`text-xs ${
                       errorIsStale ? "text-gray-500" : "text-red-600"
                     }`}>
-                      {new Date(repository.updated_at).toLocaleString()}
+                      {new Date(repository.updated_at).toLocaleString("en-US", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                        hour12: true,
+                      })}
                     </p>
                   )}
                 </div>
@@ -220,7 +236,15 @@ export function DashboardClient({
                 <div className="flex-1">
                   <p className="text-sm font-mono">{deployment.commit_sha.slice(0, 7)}</p>
                   <p className="text-xs text-gray-500">
-                    {new Date(deployment.deployed_at).toLocaleString()}
+                    {new Date(deployment.deployed_at).toLocaleString("en-US", {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                      hour12: true,
+                    })}
                   </p>
                 </div>
                 <span

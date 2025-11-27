@@ -22,15 +22,14 @@ function buildTree(nodes: Node[]): TreeNode[] {
   const nodeMap = new Map<string, TreeNode>();
   const rootNodes: TreeNode[] = [];
 
-  // Filter only page nodes (parentUuid === null)
-  const pageNodes = nodes.filter((n) => n.parentUuid === null);
-  console.log("[Display] buildTree: Processing", pageNodes.length, "page nodes from", nodes.length, "total nodes");
+  // nodes array only contains page nodes (getAllNodes already filters parent IS NONE)
+  console.log("[Display] buildTree: Processing", nodes.length, "page nodes");
 
-  pageNodes.forEach((node) => {
+  nodes.forEach((node) => {
     nodeMap.set(ensurePageName(node), { node, children: [] });
   });
 
-  pageNodes.forEach((node) => {
+  nodes.forEach((node) => {
     const treeNode = nodeMap.get(ensurePageName(node));
     if (!treeNode) return;
 
@@ -105,11 +104,7 @@ export function Sidebar({ nodes, workspaceSlug }: SidebarProps) {
   const pathname = usePathname();
 
   // Log sidebar initialization
-  if (typeof window !== 'undefined') {
-    console.log("[Display] Sidebar initialized with nodes:", nodes.length);
-    const pageNodes = nodes.filter((n) => n.parentUuid === null);
-    console.log("[Display] Page nodes (parentUuid = null):", pageNodes.length);
-  }
+  console.log("[Display] Sidebar initialized with", nodes.length, "page nodes");
 
   const tree = buildTree(nodes);
 

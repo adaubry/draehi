@@ -2,20 +2,21 @@
 
 import { PageBlocksContext } from "@/lib/page-blocks-context";
 import type { Node } from "@/modules/content/schema";
+import type { TreeNode } from "@/modules/content/queries";
 
 type PageBlocksContextProviderProps = {
-  blocks: Node[];
+  tree: TreeNode | null;
   pageUuid: string;
   children: React.ReactNode;
 };
 
 export function PageBlocksContextProvider({
-  blocks,
+  tree,
   pageUuid,
   children,
 }: PageBlocksContextProviderProps) {
   return (
-    <PageBlocksContext.Provider value={{ blocks, pageUuid }}>
+    <PageBlocksContext.Provider value={{ tree, pageUuid }}>
       {children}
     </PageBlocksContext.Provider>
   );

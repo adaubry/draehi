@@ -17,6 +17,7 @@ export interface Node {
     tags?: string[];
     properties?: Record<string, unknown>;
     frontmatter?: Record<string, unknown>;
+    heading?: { level: number; text: string }; // First heading for TOC display
   };
   html?: string | null; // HTML content (stored in KeyDB, included when needed)
   created_at: string;

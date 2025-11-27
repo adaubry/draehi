@@ -5,9 +5,10 @@ import Link from "next/link";
 import { getWorkspaceBySlug } from "@/modules/workspace/queries";
 import {
   getNodeByPath,
-  getAllBlocksForPage,
+  getPageTreeWithHTML,
   getPageBacklinks,
   getBlockBacklinks,
+  type TreeNode,
 } from "@/modules/content/queries";
 import { BlockTree } from "@/components/viewer/BlockTree";
 import { Breadcrumbs } from "@/components/viewer/Breadcrumbs";
@@ -48,12 +49,12 @@ async function NodePageContent({
   }
   console.log(`[Display] NodePage: Node found "${node.title}" (${node.uuid}), isPage=${node.parentUuid === null}`);
 
-  // Get all blocks for this page (if it's a page node)
-  const blocks =
+  // Get tree for this page with HTML (if it's a page node)
+  const pageTree: TreeNode | null =
     node.parentUuid === null
-      ? await getAllBlocksForPage(workspace.id, ensurePageName(node))
-      : [];
-  console.log(`[Display] NodePage: Loaded ${blocks.length} blocks for page "${ensurePageName(node)}"`);
+      ? await getPageTreeWithHTML(node.uuid || node.id.replace("nodes:", ""), workspace.id)
+      : null;
+  console.log(`[Display] NodePage: Loaded tree for page "${ensurePageName(node)}"`);
 
   // Get backlinks (only for page nodes)
   const citedBy = node.parentUuid === null
@@ -67,7 +68,7 @@ async function NodePageContent({
   const pagePath = path.join("/");
 
   return (
-    <PageBlocksContextProvider blocks={blocks} pageUuid={node.uuid || node.id}>
+    <PageBlocksContextProvider tree={pageTree} pageUuid={node.uuid || node.id}>
       <div className="flex flex-col gap-6">
         {/* Breadcrumbs */}
         <Breadcrumbs currentTitle={node.title} workspaceSlug={workspaceSlug} />
@@ -90,9 +91,9 @@ async function NodePageContent({
         </div>
 
         {/* Logseq-style Block Tree */}
-        {blocks.length > 0 ? (
+        {pageTree && pageTree.children.length > 0 ? (
           <BlockTree
-            blocks={[node, ...blocks]}
+            tree={pageTree}
             workspaceSlug={workspaceSlug}
             pagePath={pagePath}
           />

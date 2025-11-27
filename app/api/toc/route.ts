@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getNodeByPath } from "@/modules/content/queries";
 import { getWorkspaceBySlug } from "@/modules/workspace/queries";
-import { getAllBlocksForPage } from "@/modules/content/queries";
 
+/**
+ * TOC API endpoint
+ * Returns page structure with heading metadata for table of contents rendering
+ * TOC uses the page tree structure + metadata.headings, NOT HTML content
+ */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -24,22 +29,29 @@ export async function GET(request: NextRequest) {
       console.warn(`[TOC] Workspace not found: ${workspaceSlug}`);
       return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
     }
-    console.log(`[TOC] Workspace found: ${workspace.id}`);
 
-    // The path is the page name (URL decoded)
+    // Get page node to extract headings from metadata
     const pageName = decodeURIComponent(pagePath);
-    console.log(`[TOC] Fetching blocks for page: ${pageName}`);
+    console.log(`[TOC] Looking up page: ${pageName}`);
 
-    // Get all blocks for this page from SurrealDB (structure only, no HTML)
-    const blocks = await getAllBlocksForPage(workspace.id, pageName);
-    console.log(`[TOC] Blocks fetched: ${blocks.length} blocks from SurrealDB`);
+    // Find page by URL path
+    const pathSegments = pagePath
+      .split("/")
+      .map((s) => s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, ""));
+
+    const pageNode = await getNodeByPath(workspace.id, pathSegments);
+    if (!pageNode) {
+      console.warn(`[TOC] Page not found for path: ${pagePath}`);
+      return NextResponse.json({ error: "Page not found" }, { status: 404 });
+    }
+
+    // Extract heading from metadata for TOC display
+    const heading = pageNode.metadata?.heading;
+    console.log(`[TOC] Page found: ${pageNode.title}, heading: ${heading?.text || "none"}`);
 
     return NextResponse.json({
-      blocks: blocks.map((block) => ({
-        uuid: block.id,
-        title: block.title,
-        order: block.order,
-      })),
+      pageTitle: pageNode.title,
+      heading: heading || null,
     });
   } catch (error) {
     console.error("[TOC] API error:", error);

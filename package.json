@@ -11,7 +11,7 @@
     "docker:setup": "BUILD_MODE=dev ./scripts/docker-setup.sh",
     "docker:setup:prod": "BUILD_MODE=prod ./scripts/docker-setup.sh",
     "docker:stop": "docker compose down",
-    "docker:clean": "npm run db:flush && npm run db:purge && ./scripts/docker-setup.sh --clean",
+    "docker:clean": "./scripts/docker-setup.sh --clean && npm run db:flush",
     "docker:stop:force": "docker compose kill",
     "docker:clean:force": "docker compose down -v && npm run db:purge",
     "docker:shell:surreal": "docker exec -it draehi-surrealdb bash",
@@ -20,7 +20,6 @@
     "docker:shell:app": "docker exec -it draehi-app bash",
     "db:init": "npx tsx scripts/init-surreal-schema.ts",
     "db:flush": "./scripts/flush-db.sh",
-    "db:purge": "npx tsx scripts/purge-rogue-tables.ts",
     "minio": "./scripts/minio.sh",
     "minio:setup": "./scripts/setup-minio.sh"
   },

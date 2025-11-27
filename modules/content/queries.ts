@@ -1,11 +1,15 @@
 "use server";
 
-import { query, queryOne, selectOne } from "@/lib/surreal";
+import { query, selectOne } from "@/lib/surreal";
 import { getBlockHTML, getBlockHTMLBatch } from "@/lib/keydb";
-import { type Node, type NodeWithHTML, nodeRecordId } from "./schema";
-import { workspaceRecordId } from "../workspace/schema";
+import { type Node, type NodeWithHTML, nodeRecordId, normalizeNode } from "./schema";
 import { cache } from "react";
-import type { Breadcrumb } from "@/lib/types";
+
+// Tree node for hierarchical rendering
+export interface TreeNode {
+  node: Node;
+  children: TreeNode[];
+}
 
 // Get node by UUID (without HTML)
 export const getNodeByUuid = cache(
@@ -27,41 +31,40 @@ export const getNodeByUuidWithHTML = cache(
 
 export const getNodeByPath = cache(
   async (workspaceId: string, pathSegments: string[]): Promise<Node | null> => {
-    // Get all page nodes for this workspace
-    const pages = await query<Node>(
-      "SELECT * FROM nodes WHERE workspace = $ws AND parent = NONE",
-      { ws: workspaceRecordId(workspaceId) }
+    console.log(`[Display] getNodeByPath: Looking for path [${pathSegments.join("/")}]`);
+
+    // Build page_name from path segments: "guides/setup/intro"
+    const pageName = pathSegments.join("/");
+    console.log(`[Display] getNodeByPath: Looking up page_name: "${pageName}"`);
+
+    // Direct lookup by page_name - single query instead of fetching all pages
+    const page = await query<Node>(
+      "SELECT * FROM nodes WHERE workspace = $ws AND page_name = $pageName LIMIT 1",
+      { ws: workspaceId, pageName }
     );
 
-    // Find the page whose slugified pageName matches the URL path
-    const matchingPage = pages.find((page) => {
-      if (!page?.page_name) return false;
-      const pageSegments = String(page.page_name)
-        .split("/")
-        .map((s) =>
-          s.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, "")
-        );
-      return (
-        pageSegments.length === pathSegments.length &&
-        pageSegments.every((seg, i) => seg === pathSegments[i])
-      );
-    });
+    if (page.length === 0) {
+      console.log(`[Display] getNodeByPath: No match found for [${pathSegments.join("/")}]`);
+      return null;
+    }
 
-    return matchingPage || null;
+    const matchingPage = page[0];
+    console.log(`[Display] getNodeByPath: Matched "${matchingPage.page_name}" to [${pathSegments.join("/")}]`);
+    return normalizeNode(JSON.parse(JSON.stringify(matchingPage)));
   }
 );
 
 export const getAllNodes = cache(
   async (workspaceId: string): Promise<Node[]> => {
-    // Only return page nodes for navigation (parent = NONE)
+    // Only return page nodes for navigation (parent IS NONE)
     console.log(`[Display] getAllNodes: Fetching page nodes for workspace ${workspaceId}`);
     const nodes = await query<Node>(
-      "SELECT * FROM nodes WHERE workspace = $ws AND parent = NONE ORDER BY page_name",
-      { ws: workspaceRecordId(workspaceId) }
+      "SELECT * FROM nodes WHERE workspace = $ws AND parent IS NONE ORDER BY page_name",
+      { ws: workspaceId }
     );
     console.log(`[Display] getAllNodes: Found ${nodes.length} page nodes`);
-    // Serialize to plain objects for Server->Client boundary
-    return nodes.map((n) => JSON.parse(JSON.stringify(n)));
+    // Serialize to plain objects for Server->Client boundary and normalize
+    return nodes.map((n) => normalizeNode(JSON.parse(JSON.stringify(n))));
   }
 );
 
@@ -86,8 +89,8 @@ export const getAllBlocksForPage = cache(
     // Get all blocks for this page (excludes the page node itself)
     console.log(`[Display] getAllBlocksForPage: Fetching blocks for page "${pageName}" in workspace ${workspaceId}`);
     const blocks = await query<Node>(
-      "SELECT * FROM nodes WHERE workspace = $ws AND page_name = $pageName AND parent != NONE ORDER BY order",
-      { ws: workspaceRecordId(workspaceId), pageName }
+      "SELECT * FROM nodes WHERE workspace = $ws AND page_name = $pageName AND parent IS NOT NONE ORDER BY order",
+      { ws: workspaceId, pageName }
     );
     console.log(`[Display] getAllBlocksForPage: Found ${blocks.length} blocks for page "${pageName}"`);
     return blocks;
@@ -112,10 +115,12 @@ export const getAllBlocksForPageWithHTML = cache(
     const htmlCount = Array.from(htmlMap.values()).filter(h => h !== null).length;
     console.log(`[Display] getAllBlocksForPageWithHTML: Retrieved HTML for ${htmlCount}/${uuids.length} blocks`);
 
-    return blocks.map((block) => ({
-      ...block,
-      html: htmlMap.get(getNodeUuidFromRecord(block.id)) || null,
-    }));
+    return blocks.map((block) =>
+      normalizeNode({
+        ...block,
+        html: htmlMap.get(getNodeUuidFromRecord(block.id)) || null,
+      })
+    );
   }
 );
 
@@ -138,5 +143,114 @@ export const getBlockBacklinks = cache(
     // Find all blocks that reference blocks on this page
     // Requires HTML scanning - return empty for now
     return [];
+  }
+);
+
+/**
+ * Get page tree using SurrealDB graph traversal
+ * Uses native graph capability: <-parent AS children to recursively fetch all descendants
+ * This leverages the parent field's RELATE edge structure for efficient tree building
+ */
+export const getPageTree = cache(
+  async (pageUuid: string, workspaceId: string): Promise<TreeNode | null> => {
+    console.log(`[Display] getPageTree: Building tree for page ${pageUuid}`);
+
+    // Fetch the page node first
+    const pageNodeId = nodeRecordId(pageUuid);
+    const pageNode = await selectOne<Node>(pageNodeId);
+    if (!pageNode) {
+      console.log(`[Display] getPageTree: Page node not found: ${pageNodeId}`);
+      return null;
+    }
+
+    // Build tree recursively using graph queries
+    const tree = await buildTreeWithGraphTraversal(normalizeNode(pageNode), workspaceId);
+    const nodeCount = countNodes(tree);
+    console.log(`[Display] getPageTree: Tree built with ${nodeCount} total nodes`);
+
+    return tree;
+  }
+);
+
+/**
+ * Build tree recursively using SurrealDB graph traversal
+ * Fetches children via <-parent AS children for each level
+ */
+async function buildTreeWithGraphTraversal(
+  node: Node,
+  workspaceId: string
+): Promise<TreeNode> {
+  const nodeId = nodeRecordId(node.uuid || node.id.replace("nodes:", ""));
+
+  // Fetch children using graph traversal: <-parent AS children
+  const graphResults = await query<Record<string, unknown>>(
+    `SELECT <-parent AS children FROM $nodeId`,
+    { nodeId }
+  );
+
+  let childrenData: Record<string, unknown>[] = [];
+  if (graphResults.length > 0) {
+    const childrenArray = graphResults[0].children;
+    childrenData = Array.isArray(childrenArray) ? childrenArray : [];
+  }
+
+  // Recursively build subtrees for all children in parallel
+  const childTrees = await Promise.all(
+    childrenData.map((child) =>
+      buildTreeWithGraphTraversal(normalizeNode(child as unknown as Node), workspaceId)
+    )
+  );
+
+  return {
+    node,
+    children: childTrees,
+  };
+}
+
+/**
+ * Count total nodes in tree (for logging)
+ */
+function countNodes(tree: TreeNode): number {
+  return 1 + tree.children.reduce((sum, child) => sum + countNodes(child), 0);
+}
+
+/**
+ * Get page tree with HTML content loaded from KeyDB
+ */
+export const getPageTreeWithHTML = cache(
+  async (pageUuid: string, workspaceId: string): Promise<TreeNode | null> => {
+    const tree = await getPageTree(pageUuid, workspaceId);
+    if (!tree) return null;
+
+    // Collect all node UUIDs in the tree
+    const uuids: string[] = [];
+    function collectUuids(node: TreeNode) {
+      uuids.push(node.node.uuid || node.node.id.replace("nodes:", ""));
+      for (const child of node.children) {
+        collectUuids(child);
+      }
+    }
+    collectUuids(tree);
+
+    console.log(`[Display] getPageTreeWithHTML: Fetching HTML for ${uuids.length} nodes from KeyDB`);
+
+    // Batch fetch all HTML from KeyDB
+    const htmlMap = await getBlockHTMLBatch(workspaceId, uuids);
+
+    // Attach HTML to nodes in tree
+    function attachHTML(node: TreeNode): TreeNode {
+      const nodeUuid = node.node.uuid || node.node.id.replace("nodes:", "");
+      return {
+        node: {
+          ...node.node,
+          html: htmlMap.get(nodeUuid) || null,
+        },
+        children: node.children.map(attachHTML),
+      };
+    }
+
+    const result = attachHTML(tree);
+    console.log(`[Display] getPageTreeWithHTML: HTML attachment complete`);
+    return result;
   }
 );

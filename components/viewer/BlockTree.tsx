@@ -4,6 +4,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Node } from "@/modules/content/schema";
+import type { TreeNode } from "@/modules/content/queries";
 import { NodeContent } from "./NodeContent";
 
 // Extract just the body content from full HTML documents
@@ -18,42 +19,36 @@ function extractBodyContent(html: string): string {
 }
 
 type BlockTreeProps = {
-  blocks: Node[];
+  tree: TreeNode;
   workspaceSlug: string;
   pagePath: string;
   depth?: number;
 };
 
-type BlockItemProps = {
-  block: Node;
-  allBlocks: Node[];
+type BlockNodeProps = {
+  treeNode: TreeNode;
   workspaceSlug: string;
   pagePath: string;
   depth: number;
 };
 
-function BlockItem({
-  block,
-  allBlocks,
+function BlockNode({
+  treeNode,
   workspaceSlug,
   pagePath,
   depth,
-}: BlockItemProps) {
+}: BlockNodeProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-
-  // Find children from ALL blocks (blocks have parentUuid !== null)
-  const children = allBlocks
-    .filter((b) => b.parentUuid !== null && b.parentUuid === block.uuid)
-    .sort((a, b) => a.order - b.order);
+  const { node, children } = treeNode;
 
   const hasChildren = children.length > 0;
-  const blockUrl = `/${workspaceSlug}/${pagePath}#${block.uuid}`;
+  const blockUrl = `/${workspaceSlug}/${pagePath}#${node.uuid}`;
 
   return (
     <li
       className="logseq-block"
       data-depth={depth}
-      id={block.uuid}
+      id={node.uuid}
       style={{ marginLeft: `${depth * 1.5}rem` }}
     >
       <div className="block-line group">
@@ -85,17 +80,16 @@ function BlockItem({
         </Link>
 
         {/* Block Content */}
-        <NodeContent html={extractBodyContent(block.html || "")} />
+        <NodeContent html={extractBodyContent(node.html || "")} />
       </div>
 
       {/* Nested Children */}
       {hasChildren && !isCollapsed && (
         <ul className="block-children">
-          {children.map((childBlock) => (
-            <BlockItem
-              key={childBlock.uuid}
-              block={childBlock}
-              allBlocks={allBlocks}
+          {children.map((childTree) => (
+            <BlockNode
+              key={childTree.node.uuid}
+              treeNode={childTree}
               workspaceSlug={workspaceSlug}
               pagePath={pagePath}
               depth={depth + 1}
@@ -108,34 +102,20 @@ function BlockItem({
 }
 
 export function BlockTree({
-  blocks,
+  tree,
   workspaceSlug,
   pagePath,
   depth = 0,
 }: BlockTreeProps) {
-  // Find the page node (parentUuid is null)
-  const pageNode = blocks.find((b) => b.parentUuid === null);
-  console.log("[Display] BlockTree: Rendering tree for page path", pagePath, "with", blocks.length, "total blocks");
-
-  // Find top-level blocks (children of the page)
-  const topLevelBlocks = blocks
-    .filter(
-      (b) =>
-        b.parentUuid !== null &&
-        pageNode &&
-        b.parentUuid === pageNode.uuid
-    )
-    .sort((a, b) => a.order - b.order);
-
-  console.log("[Display] BlockTree: Found", topLevelBlocks.length, "top-level blocks");
+  const { children: topLevelBlocks } = tree;
+  console.log("[Display] BlockTree: Rendering tree for page path", pagePath, "with", topLevelBlocks.length, "top-level blocks");
 
   return (
     <ul className="logseq-blocks">
-      {topLevelBlocks.map((block) => (
-        <BlockItem
-          key={block.uuid}
-          block={block}
-          allBlocks={blocks}
+      {topLevelBlocks.map((childTree) => (
+        <BlockNode
+          key={childTree.node.uuid}
+          treeNode={childTree}
           workspaceSlug={workspaceSlug}
           pagePath={pagePath}
           depth={depth}

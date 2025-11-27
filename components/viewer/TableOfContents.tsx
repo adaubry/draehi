@@ -2,16 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import type { Node } from "@/modules/content/schema";
 
 type TOCProps = {
   workspaceSlug: string;
-};
-
-type HeadingItem = {
-  uuid: string;
-  title: string;
-  level: number;
 };
 
 type TOCItem = {
@@ -20,62 +13,6 @@ type TOCItem = {
   level: number;
   children: TOCItem[];
 };
-
-function extractHeadingsFromHTML(html: string): HeadingItem[] {
-  const headings: HeadingItem[] = [];
-  const parser = new DOMParser();
-
-  try {
-    const doc = parser.parseFromString(html, "text/html");
-    const elements = doc.querySelectorAll("h2, h3, h4");
-
-    elements.forEach((el) => {
-      const uuid = el.getAttribute("uuid");
-      const text = el.textContent || "";
-      const level = parseInt(el.tagName[1]);
-
-      if (uuid && text) {
-        headings.push({ uuid, title: text, level });
-      }
-    });
-  } catch (e) {
-    console.error("Error parsing HTML for TOC:", e);
-  }
-
-  return headings;
-}
-
-function buildTOCTree(headings: HeadingItem[]): TOCItem[] {
-  if (headings.length === 0) return [];
-
-  const stack: TOCItem[] = [];
-  const root: TOCItem[] = [];
-
-  headings.forEach((heading) => {
-    const item: TOCItem = {
-      uuid: heading.uuid,
-      title: heading.title,
-      level: heading.level,
-      children: [],
-    };
-
-    const treeLevel = heading.level - 2;
-
-    while (stack.length > treeLevel) {
-      stack.pop();
-    }
-
-    if (stack.length === 0) {
-      root.push(item);
-    } else {
-      stack[stack.length - 1].children.push(item);
-    }
-
-    stack.push(item);
-  });
-
-  return root;
-}
 
 function TOCItemComponent({ item }: { item: TOCItem }) {
   const [isOpen, setIsOpen] = useState(item.level === 2);
@@ -167,7 +104,7 @@ export function TableOfContents({ workspaceSlug }: TOCProps) {
     const pagePath = segments.slice(1).join("/");
     console.log("[Display] TOC: Fetching for pagePath:", pagePath);
 
-    // Fetch blocks for current page
+    // Fetch page metadata with heading from API
     fetch(`/api/toc?workspace=${workspaceSlug}&path=${encodeURIComponent(pagePath)}`)
       .then((res) => {
         console.log("[Display] TOC: API response status:", res.status);
@@ -175,27 +112,25 @@ export function TableOfContents({ workspaceSlug }: TOCProps) {
         return res.json();
       })
       .then((data) => {
-        const { blocks } = data;
+        const { heading, pageTitle } = data;
 
-        console.log("[Display] TOC: Blocks fetched:", blocks.length);
+        console.log("[Display] TOC: Page title:", pageTitle);
+        console.log("[Display] TOC: Heading from metadata:", heading);
 
-        // Concatenate all HTML
-        const allHTML = blocks
-          .filter((b: Node) => b.html)
-          .map((b: Node) => b.html)
-          .join("");
-
-        console.log("[Display] TOC: Total HTML length:", allHTML.length);
-        console.log("[Display] TOC: Blocks with HTML:", blocks.filter((b: Node) => b.html).length);
-
-        // Extract headings
-        const headings = extractHeadingsFromHTML(allHTML);
-        console.log("[Display] TOC: Headings extracted:", headings.length);
-
-        // Build TOC tree
-        const tree = buildTOCTree(headings);
-        console.log("[Display] TOC: Built tree with", tree.length, "root items");
-        setTocItems(tree);
+        // If page has a heading in metadata, use it
+        if (heading) {
+          const tocItem: TOCItem = {
+            uuid: `heading-${heading.level}`,
+            title: heading.text,
+            level: heading.level,
+            children: [],
+          };
+          setTocItems([tocItem]);
+          console.log("[Display] TOC: Built tree from metadata heading");
+        } else {
+          console.log("[Display] TOC: No heading metadata found");
+          setTocItems([]);
+        }
         setLoading(false);
       })
       .catch((err) => {

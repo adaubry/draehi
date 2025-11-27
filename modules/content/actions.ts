@@ -22,6 +22,27 @@ import { marked } from "marked";
 import path from "path";
 import crypto from "crypto";
 
+/**
+ * Extract FIRST heading from rendered HTML for TOC metadata
+ * Only extracts the first h1/h2/h3 - that's all we need to display in TOC
+ */
+function extractFirstHeadingFromHTML(html: string): {
+  level: number;
+  text: string;
+} | null {
+  const headingRegex = /<h([1-3])(?:\s[^>]*)?>([^<]+)<\/h\1>/i;
+  const match = headingRegex.exec(html);
+
+  if (!match) return null;
+
+  const level = parseInt(match[1]);
+  const text = match[2]
+    .replace(/<[^>]+>/g, "") // Strip any nested HTML
+    .trim();
+
+  return text ? { level, text } : null;
+}
+
 // Internal only - called during git sync/deployment
 export async function upsertNode(
   workspaceId: string,
@@ -217,9 +238,8 @@ export async function ingestLogseqGraph(
 
       if (!htmlPage) {
         buildLog.push(
-          `Warning: No HTML found for ${mdPage.pageName}, skipping`
+          `Warning: No HTML found for ${mdPage.pageName}, creating page without rendered content`
         );
-        continue;
       }
 
       const { slug } = extractNamespaceAndSlug(mdPage.pageName);
@@ -238,22 +258,25 @@ export async function ingestLogseqGraph(
         20
       )}-${pageUuidHash.slice(20, 32)}`;
 
-      // Page node data - omit parent field (SurrealDB will default to NONE for optional fields)
-      const pageTitle = (htmlPage.title || "").trim() || mdPage.pageName;
+      // Page node data - set parent to null which becomes NONE in SurrealDB
+      // Use HTML page data if available, otherwise use markdown page name
+      const pageTitle = htmlPage
+        ? (htmlPage.title || "").trim() || mdPage.pageName
+        : mdPage.pageName;
       allNodeData.push({
         uuid: pageUuid,
         data: {
           workspace: workspaceId,
-          // parent field omitted - this distinguishes page nodes from blocks
+          parent: null, // null converts to NONE in SurrealDB for optional fields
           page_name: mdPage.pageName,
           slug,
           title: pageTitle,
           order: 0,
           metadata: {
-            tags: htmlPage.metadata?.tags || [],
+            tags: htmlPage?.metadata?.tags || [],
             properties: {
               ...mdPage.properties,
-              ...htmlPage.metadata?.properties,
+              ...(htmlPage?.metadata?.properties || {}),
             },
           },
         },
@@ -296,8 +319,18 @@ export async function ingestLogseqGraph(
           mdPage.pageName
         );
 
-        // Block node data
-        const blockTitle = (block.content || "").substring(0, 100) || "Block";
+        // Extract first heading from HTML for TOC metadata
+        const heading = extractFirstHeadingFromHTML(blockHTML);
+
+        // Block node data - no title for blocks, only pages have titles
+        // Only populate metadata.heading for nodes that will display in TOC (those with headings)
+        const metadata: Record<string, unknown> = {
+          properties: block.properties,
+        };
+        if (heading) {
+          metadata.heading = heading;
+        }
+
         allNodeData.push({
           uuid: block.uuid,
           data: {
@@ -305,11 +338,8 @@ export async function ingestLogseqGraph(
             parent: `nodes:${block.parentUuid || pageUuid}`,
             page_name: mdPage.pageName,
             slug,
-            title: blockTitle,
             order: block.order,
-            metadata: {
-              properties: block.properties,
-            },
+            metadata,
           },
         });
 

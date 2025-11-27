@@ -92,7 +92,10 @@ export async function createWithId<T = unknown>(
   const params: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(data)) {
-    if (
+    if (value === null) {
+      // Explicitly set to NONE for optional fields
+      contentEntries.push(`${key}: NONE`);
+    } else if (
       typeof value === "string" &&
       value.includes(":") &&
       (value.startsWith("users:") ||

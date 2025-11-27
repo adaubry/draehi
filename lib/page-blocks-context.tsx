@@ -1,10 +1,10 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { Node } from "@/modules/content/schema";
+import type { TreeNode } from "@/modules/content/queries";
 
 type PageBlocksContextType = {
-  blocks: Node[];
+  tree: TreeNode | null;
   pageUuid: string;
 };
 
@@ -15,7 +15,7 @@ export const PageBlocksContext = createContext<PageBlocksContextType | undefined
 export function usePageBlocks() {
   const context = useContext(PageBlocksContext);
   if (!context) {
-    return { blocks: [], pageUuid: "" };
+    return { tree: null, pageUuid: "" };
   }
   return context;
 }

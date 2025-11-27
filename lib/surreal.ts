@@ -208,6 +208,7 @@ export interface SurrealNode {
     tags?: string[];
     properties?: Record<string, unknown>;
     frontmatter?: Record<string, unknown>;
+    heading?: { level: number; text: string }; // For TOC display
   };
   created_at: string;
   updated_at: string;

@@ -79,13 +79,28 @@ echo
 # Ensure cargo is in PATH for this script
 export PATH="$HOME/.cargo/bin:$PATH"
 
-# Install export-logseq-notes
-echo "→ Installing export-logseq-notes..."
-echo "  This may take a few minutes (compiling Rust code)..."
+# Check for vendored export-tool source
+EXPORT_TOOL_DIR="${PROJECT_ROOT}/modules/logseq/export-tool"
+
+if [[ ! -d "${EXPORT_TOOL_DIR}" ]]; then
+    echo "❌ Export tool source not found: ${EXPORT_TOOL_DIR}"
+    echo "   The vendored Rust tool is missing from the repository"
+    exit 1
+fi
+
+if [[ ! -f "${EXPORT_TOOL_DIR}/Cargo.toml" ]]; then
+    echo "❌ Cargo.toml not found in: ${EXPORT_TOOL_DIR}"
+    exit 1
+fi
+
+# Build and install from vendored source
+echo "→ Building export-logseq-notes from vendored source..."
+echo "   Source: ${EXPORT_TOOL_DIR}"
+echo "   This may take a few minutes (compiling Rust code)..."
 echo
 
-if cargo install export-logseq-notes; then
-    echo "✅ export-logseq-notes installed"
+if cargo install --path "${EXPORT_TOOL_DIR}"; then
+    echo "✅ export-logseq-notes built and installed"
 
     # Verify installation
     if command -v export-logseq-notes &> /dev/null; then
@@ -93,7 +108,7 @@ if cargo install export-logseq-notes; then
         echo "   Path: $(command -v export-logseq-notes)"
     fi
 else
-    echo "❌ Failed to install export-logseq-notes"
+    echo "❌ Failed to build export-logseq-notes"
     exit 1
 fi
 

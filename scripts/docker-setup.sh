@@ -110,7 +110,13 @@ start_services() {
     cd "${PROJECT_ROOT}"
 
     local build_mode="${BUILD_MODE:-dev}"
-    BUILD_MODE="${build_mode}" docker compose up -d --profile dev
+
+    # Try to start with profile flag (Docker Compose v2.3+)
+    # Fall back to basic start if profiles not supported
+    BUILD_MODE="${build_mode}" docker compose up -d --profile dev 2>/dev/null || {
+        echo "   Note: Using compatible compose startup (--profile not supported)"
+        BUILD_MODE="${build_mode}" docker compose up -d
+    }
 
     if [[ $? -ne 0 ]]; then
         echo "❌ Failed to start containers"

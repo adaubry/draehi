@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Draehi Database Setup Script
 # Initializes all databases: SurrealDB, KeyDB, MinIO
-# Usage: ./scripts/setup-databases.sh [--skip-schema]
+# Usage: ./scripts/setup-databases.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -47,16 +47,6 @@ cleanup() {
 }
 
 trap cleanup EXIT ERR INT TERM
-
-# Parse arguments
-SKIP_SCHEMA=false
-
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --skip-schema) SKIP_SCHEMA=true; shift ;;
-        *) echo "Unknown option: $1"; exit 1 ;;
-    esac
-done
 
 echo "=================================="
 echo "🗄️  Database Setup - All Services"
@@ -131,31 +121,6 @@ if [[ $attempt -eq $max_attempts ]]; then
 fi
 
 echo
-
-# Step 3: Initialize SurrealDB schema
-echo "=== Step 3/3: Initializing SurrealDB Schema ==="
-echo
-
-if [[ "${SKIP_SCHEMA}" == "true" ]]; then
-    echo "⊘ Skipping schema initialization (--skip-schema)"
-else
-    # Check if init script exists
-    init_script="${PROJECT_ROOT}/scripts/init-surreal-schema.ts"
-
-    if [[ ! -f "${init_script}" ]]; then
-        echo "❌ Schema initialization script not found: ${init_script}"
-        exit 1
-    fi
-
-    echo "→ Running schema initialization..."
-
-    if npx tsx "${init_script}"; then
-        echo "✅ SurrealDB schema initialized"
-    else
-        echo "❌ Schema initialization failed"
-        exit 1
-    fi
-fi
 
 echo
 echo "=================================="

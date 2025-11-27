@@ -136,10 +136,15 @@ start_services() {
             echo "✅ Services are healthy"
             echo
             echo "Service URLs:"
+            echo "  • Surrealist: http://localhost:8080 (SurrealDB GUI - pre-configured)"
             echo "  • SurrealDB:  http://localhost:8000/health"
-            echo "  • Surrealist: http://localhost:8080 (SurrealDB GUI)"
             echo "  • KeyDB:      redis://localhost:6379"
             echo "  • MinIO:      http://localhost:9000 (minioadmin/minioadmin)"
+            echo
+            echo "Surrealist Connection:"
+            echo "  ✓ Pre-configured: 'Local Development'"
+            echo "  ✓ URL: ws://localhost:8000/rpc"
+            echo "  ✓ Database: draehi/main"
             return 0
         fi
 
@@ -150,10 +155,15 @@ start_services() {
     echo "⚠️  Services may still be starting. Check with: docker compose ps"
     echo
     echo "Service URLs:"
+    echo "  • Surrealist: http://localhost:8080 (SurrealDB GUI - pre-configured)"
     echo "  • SurrealDB:  http://localhost:8000/health"
-    echo "  • Surrealist: http://localhost:8080 (SurrealDB GUI)"
     echo "  • KeyDB:      redis://localhost:6379"
     echo "  • MinIO:      http://localhost:9000 (minioadmin/minioadmin)"
+    echo
+    echo "Surrealist Connection:"
+    echo "  ✓ Pre-configured: 'Local Development'"
+    echo "  ✓ URL: ws://localhost:8000/rpc"
+    echo "  ✓ Database: draehi/main"
     return 0
 }
 
@@ -223,10 +233,13 @@ show_status() {
 
     echo
     echo "Service URLs:"
+    echo "  • Surrealist: http://localhost:8080 (SurrealDB GUI - pre-configured)"
     echo "  • SurrealDB:  http://localhost:8000/health"
     echo "  • KeyDB:      redis://localhost:6379"
-    echo "  • MinIO:      http://localhost:9000 (admin/admin)"
-    echo "  • Surrealist: http://localhost:8080"
+    echo "  • MinIO:      http://localhost:9000 (minioadmin/minioadmin)"
+    echo
+    echo "Surrealist is pre-configured with connection: 'Local Development'"
+    echo "  auto-connects to ws://localhost:8000/rpc (draehi/main database)"
     echo
 }
 

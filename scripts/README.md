@@ -108,6 +108,36 @@ Checks:
 ./scripts/health-check.sh --watch  # Real-time dashboard
 ```
 
+### 📊 Surrealist GUI (Pre-Configured)
+
+Surrealist is a visual SurrealDB interface included with docker-setup.sh.
+
+**Access:**
+- URL: http://localhost:8080
+- Pre-configured connection: "Local Development"
+- Auto-connects to `ws://localhost:8000/rpc`
+- Database: `draehi/main`
+
+**Configuration:**
+- Source: `surrealist-instance.json` in project root
+- Includes pre-defined connection, namespaces, and database
+- Automatically mounted in Docker container
+
+**Features:**
+- Visual database browser
+- Query editor with syntax highlighting
+- Data visualization
+- Connection management
+
+**Usage:**
+```bash
+# After docker-setup.sh start, navigate to:
+http://localhost:8080
+
+# Connection 'Local Development' should be selected
+# If not, manually select it from the connection dropdown
+```
+
 ### 🗄️ Database Utilities
 
 #### `db-flush.sh`
@@ -198,8 +228,12 @@ Configures:
 ## Service URLs
 
 ### Local Development
+- **Surrealist GUI**: http://localhost:8080
+  - ✓ Pre-configured connection: "Local Development"
+  - ✓ Auto-connects to SurrealDB at ws://localhost:8000/rpc
+  - ✓ Database: draehi/main
+  - ✓ Configuration: `surrealist-instance.json`
 - **SurrealDB**: http://localhost:8000
-- **Surrealist GUI**: http://localhost:8080 (includes dev-mode profile in docker-compose.yml)
 - **KeyDB/Redis**: redis://localhost:6379
 - **MinIO Console**: http://localhost:9001 (minioadmin/minioadmin)
 - **App**: http://localhost:3000

@@ -77,10 +77,15 @@ export const getJournalNodes = cache(
 
 export const getPageBlocks = cache(
   async (pageUuid: string): Promise<Node[]> => {
-    return await query<Node>(
-      "SELECT * FROM nodes WHERE parent = $parent ORDER BY order",
-      { parent: nodeRecordId(pageUuid) }
+    const pageNodeId = nodeRecordId(pageUuid);
+    console.log(`[Display] getPageBlocks: Fetching direct children for page ${pageUuid}`);
+
+    const blocks = await query<Node>(
+      `SELECT * FROM ${pageNodeId} <- parent ORDER BY order`
     );
+
+    console.log(`[Display] getPageBlocks: Found ${blocks.length} direct children`);
+    return blocks;
   }
 );
 
@@ -88,12 +93,48 @@ export const getAllBlocksForPage = cache(
   async (workspaceId: string, pageName: string): Promise<Node[]> => {
     // Get all blocks for this page (excludes the page node itself)
     console.log(`[Display] getAllBlocksForPage: Fetching blocks for page "${pageName}" in workspace ${workspaceId}`);
-    const blocks = await query<Node>(
-      "SELECT * FROM nodes WHERE workspace = $ws AND page_name = $pageName AND parent IS NOT NONE ORDER BY order",
+
+    // Step 1: Get page node
+    const pageResult = await query<Node>(
+      "SELECT * FROM nodes WHERE workspace = $ws AND page_name = $pageName AND parent IS NONE LIMIT 1",
       { ws: workspaceId, pageName }
     );
-    console.log(`[Display] getAllBlocksForPage: Found ${blocks.length} blocks for page "${pageName}"`);
-    return blocks;
+
+    if (pageResult.length === 0) {
+      console.log(`[Display] getAllBlocksForPage: Page not found for "${pageName}"`);
+      return [];
+    }
+
+    const pageNode = pageResult[0];
+    const pageNodeId = nodeRecordId(pageNode.uuid || getNodeUuidFromRecord(pageNode.id));
+
+    // Step 2: Get all descendants via recursive application logic
+    // SurrealDB doesn't support RECURSIVE modifier, so we traverse with BFS in app layer
+    const allBlocks: Node[] = [];
+    const queue = [pageNodeId];
+    const visited = new Set<string>();
+
+    while (queue.length > 0) {
+      const currentNodeId = queue.shift()!;
+      if (visited.has(currentNodeId)) continue;
+      visited.add(currentNodeId);
+
+      // Get direct children of current node
+      const children = await query<Node>(
+        `SELECT * FROM ${currentNodeId} <- parent ORDER BY order`
+      );
+
+      allBlocks.push(...children);
+
+      // Add children to queue for further traversal
+      for (const child of children) {
+        const childId = nodeRecordId(child.uuid || getNodeUuidFromRecord(child.id));
+        queue.push(childId);
+      }
+    }
+
+    console.log(`[Display] getAllBlocksForPage: Found ${allBlocks.length} blocks for page "${pageName}"`);
+    return allBlocks;
   }
 );
 
@@ -130,18 +171,23 @@ function getNodeUuidFromRecord(recordId: string | unknown): string {
 }
 
 export const getPageBacklinks = cache(
-  async (): Promise<Node[]> => {
-    // Find all blocks that reference this page via [[pageName]]
-    // This requires scanning HTML in KeyDB - expensive operation
+  async (pageUuid: string): Promise<Node[]> => {
+    // TODO: Find all blocks that reference this page via [[pageName]]
+    // Requires scanning HTML content in KeyDB for page references
+    // Could be optimized with a separate references table indexed during ingestion
     // For now, return empty - implement with proper indexing later
+    console.log(`[Display] getPageBacklinks: TODO - Backlink resolution for page ${pageUuid}`);
     return [];
   }
 );
 
 export const getBlockBacklinks = cache(
-  async (): Promise<Node[]> => {
-    // Find all blocks that reference blocks on this page
-    // Requires HTML scanning - return empty for now
+  async (blockUuid: string): Promise<Node[]> => {
+    // TODO: Find all blocks that reference this block via ((blockUuid))
+    // Requires scanning HTML content in KeyDB for block references
+    // Could be optimized with a separate references table indexed during ingestion
+    // For now, return empty - implement with proper indexing later
+    console.log(`[Display] getBlockBacklinks: TODO - Backlink resolution for block ${blockUuid}`);
     return [];
   }
 );
@@ -166,9 +212,9 @@ export const getPageTree = cache(
     }
 
     const rawNode = pageNodeResult[0];
-    console.log(`[Display] getPageTree: Raw node id=${rawNode.id}, page_name=${rawNode.page_name}`);
+    console.log(`[Display] getPageTree: Raw node id=${rawNode.id}, uuid=${rawNode.uuid}, page_name=${rawNode.page_name}`);
     const pageNode = normalizeNode(rawNode);
-    console.log(`[Display] getPageTree: Normalized - uuid=${pageNode.uuid}, page_name=${pageNode.page_name}`);
+    console.log(`[Display] getPageTree: Normalized - uuid=${pageNode.uuid}, id=${pageNode.id}, page_name=${pageNode.page_name}`);
 
     // Build tree recursively using graph queries
     const tree = await buildTreeWithGraphTraversal(pageNode);
@@ -192,9 +238,9 @@ async function buildTreeWithGraphTraversal(
   console.log(`[Display] buildTreeWithGraphTraversal: Fetching children for nodeId=${nodeId}`);
 
   // Fetch children using SurrealDB graph traversal via RELATE parent edges
-  // <-parent AS children reverses the parent relationship to find children
+  // <- parent AS children reverses the parent relationship to find children
   const graphResults = await query<Record<string, unknown>>(
-    `SELECT <-parent AS children FROM \`${nodeId}\``
+    `SELECT <- parent AS children FROM ${nodeId}`
   );
 
   let childrenData: Node[] = [];
@@ -205,6 +251,9 @@ async function buildTreeWithGraphTraversal(
         normalizeNode(child as unknown as Node)
       );
       console.log(`[Display] buildTreeWithGraphTraversal: Found ${childrenData.length} children via RELATE for ${nodeUuid}`);
+      if (childrenData.length > 0) {
+        console.log(`[Display] buildTreeWithGraphTraversal: First child - uuid=${childrenData[0].uuid}, id=${childrenData[0].id}, title=${childrenData[0].title}`);
+      }
     }
   }
 

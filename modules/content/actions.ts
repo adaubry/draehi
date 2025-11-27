@@ -376,6 +376,9 @@ export async function ingestLogseqGraph(
         );
 
         blockUuidsInOrder.push(globalBlockUuid);
+        console.log(
+          `[Ingestion] Created block node: ${globalBlockUuid} (parent: ${globalParentUuid})`
+        );
       }
 
       pageBlockOrders.set(mdPage.pageName, blockUuidsInOrder);

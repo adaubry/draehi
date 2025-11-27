@@ -33,23 +33,24 @@ export const getNodeByPath = cache(
   async (workspaceId: string, pathSegments: string[]): Promise<Node | null> => {
     console.log(`[Display] getNodeByPath: Looking for path [${pathSegments.join("/")}]`);
 
-    // Build page_name from path segments: "guides/setup/intro"
-    const pageName = pathSegments.join("/");
-    console.log(`[Display] getNodeByPath: Looking up page_name: "${pageName}"`);
+    // Build slug from path segments: "advanced-commands"
+    const slug = pathSegments[pathSegments.length - 1];
+    console.log(`[Display] getNodeByPath: Looking up slug: "${slug}"`);
 
     // Query for PAGE node specifically (parent IS NONE) - not blocks
+    // First try to match by slug (URL-safe name)
     const page = await query<Node>(
-      "SELECT * FROM nodes WHERE workspace = $ws AND page_name = $pageName AND parent IS NONE LIMIT 1",
-      { ws: workspaceId, pageName }
+      "SELECT * FROM nodes WHERE workspace = $ws AND slug = $slug AND parent IS NONE LIMIT 1",
+      { ws: workspaceId, slug }
     );
 
     if (page.length === 0) {
-      console.log(`[Display] getNodeByPath: No match found for [${pathSegments.join("/")}]`);
+      console.log(`[Display] getNodeByPath: No match found for slug "${slug}"`);
       return null;
     }
 
     const matchingPage = page[0];
-    console.log(`[Display] getNodeByPath: Matched PAGE "${matchingPage.page_name}" to [${pathSegments.join("/")}]`);
+    console.log(`[Display] getNodeByPath: Matched PAGE "${matchingPage.page_name}" (slug: ${slug}) to [${pathSegments.join("/")}]`);
     return normalizeNode(JSON.parse(JSON.stringify(matchingPage)));
   }
 );

@@ -143,8 +143,8 @@ function generateStableUUID(pageName: string, content: string, order: number): s
     .update(`${pageName}::${content}::${order}`)
     .digest("hex");
 
-  // Convert SHA256 hash to UUID v4 format (8-4-4-4-12)
-  return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`;
+  // Return first 32 hex characters (no hyphens)
+  return hash.slice(0, 32);
 }
 
 function addBlockToHierarchy(

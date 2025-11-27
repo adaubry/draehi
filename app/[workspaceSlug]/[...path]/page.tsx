@@ -57,12 +57,13 @@ async function NodePageContent({
   console.log(`[Display] NodePage: Loaded tree for page "${ensurePageName(node)}"`);
 
   // Get backlinks (only for page nodes)
+  const nodeUuid = node.uuid || node.id.replace("nodes:", "");
   const citedBy = node.parentUuid === null
-    ? await getPageBacklinks()
+    ? await getPageBacklinks(nodeUuid)
     : [];
 
   const related = node.parentUuid === null
-    ? await getBlockBacklinks()
+    ? await getBlockBacklinks(nodeUuid)
     : [];
 
   const pagePath = path.join("/");

@@ -132,7 +132,7 @@ export function pageWithBlocksToNodes(
   // Generate stable UUID based on workspaceId + pageName
   const pageUuidSeed = `${workspaceId}::${page.pageName}`;
   const pageUuidHash = createHash('sha256').update(pageUuidSeed).digest('hex');
-  const pageUuid = `${pageUuidHash.slice(0, 8)}-${pageUuidHash.slice(8, 12)}-${pageUuidHash.slice(12, 16)}-${pageUuidHash.slice(16, 20)}-${pageUuidHash.slice(20, 32)}`;
+  const pageUuid = pageUuidHash.slice(0, 32);
 
   const pageNode: NewNode = {
     uuid: pageUuid,

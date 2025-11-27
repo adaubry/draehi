@@ -1,0 +1,73 @@
+Download the React DevTools for a better development experience: https://react.dev/link/react-devtools forward-logs-shared.ts:95:22
+ Server  [Layout] Loading workspace: adamaubrypro forward-logs-shared.ts:95:22
+ Server  [Display] NodePage: Rendering page for path "contents" in workspace "adamaubrypro" forward-logs-shared.ts:95:22
+[HMR] connected forward-logs-shared.ts:95:22
+ Server  [Layout] Workspace loaded: workspaces:cqmhz15zs9mfzho472cn forward-logs-shared.ts:95:22
+ Server  [Layout] Fetching all page nodes for navigation... forward-logs-shared.ts:95:22
+ Server  [Display] getAllNodes: Fetching page nodes for workspace workspaces:cqmhz15zs9mfzho472cn forward-logs-shared.ts:95:22
+ Server  [Display] NodePage: Workspace found workspaces:cqmhz15zs9mfzho472cn forward-logs-shared.ts:95:22
+ Server  [Display] getNodeByPath: Looking for path [contents] forward-logs-shared.ts:95:22
+ Server  [Display] getNodeByPath: Looking up page_name: "contents" forward-logs-shared.ts:95:22
+ Server  [Display] getNodeByPath: Matched PAGE "contents" to [contents] forward-logs-shared.ts:95:22
+ Server  [Display] NodePage: Node found "contents" (1cae05e8925d26479f1f197374be2404), isPage=true forward-logs-shared.ts:95:22
+ Server  [Display] getPageTree: Building tree for page 1cae05e8925d26479f1f197374be2404 forward-logs-shared.ts:95:22
+ Server  [Display] getPageTree: Fetching node with id: nodes:1cae05e8925d26479f1f197374be2404 forward-logs-shared.ts:95:22
+ Server  [Display] getAllNodes: Found 313 page nodes forward-logs-shared.ts:95:22
+ Server  [Layout] Loaded 313 page nodes for sidebar navigation forward-logs-shared.ts:95:22
+ Server  [Display] getPageTree: Raw node id=nodes:1cae05e8925d26479f1f197374be2404, page_name=contents forward-logs-shared.ts:95:22
+ Server  [Display] getPageTree: Normalized - uuid=1cae05e8925d26479f1f197374be2404, page_name=contents forward-logs-shared.ts:95:22
+ Server  [Display] buildTreeWithGraphTraversal: Fetching children for nodeId=nodes:1cae05e8925d26479f1f197374be2404 forward-logs-shared.ts:95:22
+ Server  [Display] buildTreeWithGraphTraversal: Found 6 children via RELATE for 1cae05e8925d26479f1f197374be2404 forward-logs-shared.ts:95:22
+ Server  [Display] buildTreeWithGraphTraversal: Fetching children for nodeId=nodes:cbcxrxmsy431x0hu5fnz forward-logs-shared.ts:95:22
+ Server  [Display] buildTreeWithGraphTraversal: Fetching children for nodeId=nodes:h5sll2ohloat7f3zfch0 forward-logs-shared.ts:95:22
+ Server  [Display] buildTreeWithGraphTraversal: Fetching children for nodeId=nodes:h5wau3zcoym535y0ecmu forward-logs-shared.ts:95:22
+ Server  [Display] buildTreeWithGraphTraversal: Fetching children for nodeId=nodes:joghxuoi4ekivaywhecq forward-logs-shared.ts:95:22
+ Server  [Display] buildTreeWithGraphTraversal: Fetching children for nodeId=nodes:p2vor8ee3uzhybqfrq0w forward-logs-shared.ts:95:22
+ Server  [Display] buildTreeWithGraphTraversal: Fetching children for nodeId=nodes:u4v6y7sj8x9l459nun9k forward-logs-shared.ts:95:22
+ Server  [Display] buildTreeWithGraphTraversal: No children found for cbcxrxmsy431x0hu5fnz forward-logs-shared.ts:95:22
+ Server  [Display] buildTreeWithGraphTraversal: No children found for h5wau3zcoym535y0ecmu forward-logs-shared.ts:95:22
+ Server  [Display] buildTreeWithGraphTraversal: No children found for joghxuoi4ekivaywhecq forward-logs-shared.ts:95:22
+ Server  [Display] buildTreeWithGraphTraversal: No children found for p2vor8ee3uzhybqfrq0w forward-logs-shared.ts:95:22
+ Server  [Display] buildTreeWithGraphTraversal: No children found for u4v6y7sj8x9l459nun9k forward-logs-shared.ts:95:22
+ Server  [Display] buildTreeWithGraphTraversal: No children found for h5sll2ohloat7f3zfch0 forward-logs-shared.ts:95:22
+ Server  [Display] getPageTree: Tree built with 7 total nodes forward-logs-shared.ts:95:22
+ Server  [Display] getPageTreeWithHTML: Fetching HTML for 7 nodes from KeyDB forward-logs-shared.ts:95:22
+ Server  [Display] getBlockHTMLBatch: Fetching HTML for 7 blocks from KeyDB forward-logs-shared.ts:95:22
+ Server  [Display] getBlockHTMLBatch: Sample UUIDs requested: "1cae05e8925d26479f1f197374be2404", "cbcxrxmsy431x0hu5fnz", "h5sll2ohloat7f3zfch0" forward-logs-shared.ts:95:22
+ Server  [Display] getBlockHTMLBatch: Sample keys: "workspace:workspaces:cqmhz15zs9mfzho472cn:block:1cae05e8925d26479f1f197374be2404", "workspace:workspaces:cqmhz15zs9mfzho472cn:block:cbcxrxmsy431x0hu5fnz", "workspace:workspaces:cqmhz15zs9mfzho472cn:block:h5sll2ohloat7f3zfch0" forward-logs-shared.ts:95:22
+ Server  [Display] getBlockHTMLBatch: Found 0/7 blocks, total size 0 bytes forward-logs-shared.ts:95:22
+ Server  [Display] getPageTreeWithHTML: HTML attachment complete forward-logs-shared.ts:95:22
+ Server  [Display] NodePage: Loaded tree for page "contents" forward-logs-shared.ts:95:22
+ Server  [Display] getPageBacklinks: TODO - Backlink resolution for page 1cae05e8925d26479f1f197374be2404 forward-logs-shared.ts:95:22
+ Server  [Display] getBlockBacklinks: TODO - Backlink resolution for block 1cae05e8925d26479f1f197374be2404 forward-logs-shared.ts:95:22
+ Server  Only plain objects can be passed to Client Components from Server Components. Objects with toJSON methods are not supported. Convert it manually to a simple value before passing it to props.
+  {created_at: Date, id: {tb: "nodes", id: ...}, metadata: ..., order: ..., page_name: ..., slug: ..., title: ..., updated_at: ..., workspace: ..., uuid: ..., pageName: ..., parentUuid: ..., html: ...}
+                         ^^^^^^^^^^^^^^^^^^^^^^ intercept-console-error.ts:42:26
+ Server  Only plain objects can be passed to Client Components from Server Components. Objects with toJSON methods are not supported. Convert it manually to a simple value before passing it to props.
+  {created_at: Date, id: ..., metadata: ..., order: ..., page_name: ..., slug: ..., title: ..., updated_at: ..., workspace: {tb: ..., id: ...}, uuid: ..., pageName: ..., parentUuid: ..., html: ...}
+                                                                                                                            ^^^^^^^^^^^^^^^^^^ intercept-console-error.ts:42:26
+[Display] Sidebar initialized with 313 page nodes forward-logs-shared.ts:95:22
+[Display] buildTree: Processing 313 page nodes forward-logs-shared.ts:95:22
+[Display] Sidebar initialized with 313 page nodes forward-logs-shared.ts:95:22
+[Display] buildTree: Processing 313 page nodes forward-logs-shared.ts:95:22
+[Display] TOC: Fetching for pagePath: contents 2 forward-logs-shared.ts:95:22
+[Display] BlockTree: Rendering tree for page path contents with 6 top-level blocks 2 forward-logs-shared.ts:95:22
+[Display] NodeContent mounted with HTML length: 0 forward-logs-shared.ts:95:22
+[Display] HTML preview (first 200 chars): <empty string> forward-logs-shared.ts:95:22
+[Display] NodeContent mounted with HTML length: 0 forward-logs-shared.ts:95:22
+[Display] HTML preview (first 200 chars): <empty string> forward-logs-shared.ts:95:22
+[Display] NodeContent mounted with HTML length: 0 forward-logs-shared.ts:95:22
+[Display] HTML preview (first 200 chars): <empty string> forward-logs-shared.ts:95:22
+[Display] NodeContent mounted with HTML length: 0 forward-logs-shared.ts:95:22
+[Display] HTML preview (first 200 chars): <empty string> forward-logs-shared.ts:95:22
+[Display] NodeContent mounted with HTML length: 0 forward-logs-shared.ts:95:22
+[Display] HTML preview (first 200 chars): <empty string> forward-logs-shared.ts:95:22
+[Display] NodeContent mounted with HTML length: 0 forward-logs-shared.ts:95:22
+[Display] HTML preview (first 200 chars): <empty string> forward-logs-shared.ts:95:22
+[Display] TOC: API response status: 200 forward-logs-shared.ts:95:22
+[Display] TOC: Page title: contents forward-logs-shared.ts:95:22
+[Display] TOC: Heading from metadata: null forward-logs-shared.ts:95:22
+[Display] TOC: No heading metadata found forward-logs-shared.ts:95:22
+[Display] TOC: API response status: 200 forward-logs-shared.ts:95:22
+[Display] TOC: Page title: contents forward-logs-shared.ts:95:22
+[Display] TOC: Heading from metadata: null forward-logs-shared.ts:95:22

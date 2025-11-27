@@ -32,8 +32,14 @@ export async function getKeyDB(): Promise<RedisClientType> {
 // - workspace:{workspaceId}:block:{uuid} → HTML string
 // - workspace:{workspaceId}:page:{pageName}:blocks → JSON array of block UUIDs in order
 
+// Normalize UUID to 32-char hex format (remove hyphens)
+function normalizeUuid(uuid: string): string {
+  return uuid.replace(/-/g, "");
+}
+
 function blockKey(workspaceId: string, uuid: string): string {
-  return `workspace:${workspaceId}:block:${uuid}`;
+  const normalizedUuid = normalizeUuid(uuid);
+  return `workspace:${workspaceId}:block:${normalizedUuid}`;
 }
 
 function pageBlocksKey(workspaceId: string, pageName: string): string {

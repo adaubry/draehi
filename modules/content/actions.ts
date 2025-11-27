@@ -397,8 +397,14 @@ export async function ingestLogseqGraph(
     const cacheMsg = `Caching ${allBlockHTML.length} block HTMLs in KeyDB...`;
     buildLog.push(cacheMsg);
     console.log(`[Ingestion] ${cacheMsg}`);
-    await setBlockHTMLBatch(workspaceId, allBlockHTML);
-    console.log(`[Ingestion] Block HTMLs cached in KeyDB`);
+    if (allBlockHTML.length > 0) {
+      const totalHTMLSize = allBlockHTML.reduce((sum, b) => sum + b.html.length, 0);
+      console.log(`[Ingestion] HTML stats: ${allBlockHTML.length} blocks, ~${totalHTMLSize} bytes total`);
+      await setBlockHTMLBatch(workspaceId, allBlockHTML);
+      console.log(`[Ingestion] Block HTMLs cached in KeyDB`);
+    } else {
+      console.warn(`[Ingestion] ⚠️  No block HTMLs to cache!`);
+    }
 
     // Store page block orders
     console.log(`[Ingestion] Storing page block orders for ${pageBlockOrders.size} pages...`);

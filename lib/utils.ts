@@ -6,7 +6,16 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function slugify(text: string): string {
-  return text
+  let decoded = text;
+  // Decode URL-encoded characters first (e.g., %3F -> ?, %20 -> space)
+  try {
+    decoded = decodeURIComponent(text);
+  } catch {
+    // If decoding fails, use original text
+    decoded = text;
+  }
+
+  return decoded
     .toString()
     .toLowerCase()
     .trim()

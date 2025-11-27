@@ -152,19 +152,23 @@ export const getBlockBacklinks = cache(
  * This leverages the parent field's RELATE edge structure for efficient tree building
  */
 export const getPageTree = cache(
-  async (pageUuid: string, workspaceId: string): Promise<TreeNode | null> => {
+  async (pageUuid: string): Promise<TreeNode | null> => {
     console.log(`[Display] getPageTree: Building tree for page ${pageUuid}`);
 
-    // Fetch the page node first
+    // Fetch the page node first using query (more reliable than selectOne)
     const pageNodeId = nodeRecordId(pageUuid);
-    const pageNode = await selectOne<Node>(pageNodeId);
-    if (!pageNode) {
+    const pageNodeResult = await query<Node>(`SELECT * FROM $id`, { id: pageNodeId });
+
+    if (pageNodeResult.length === 0) {
       console.log(`[Display] getPageTree: Page node not found: ${pageNodeId}`);
       return null;
     }
 
+    const pageNode = normalizeNode(pageNodeResult[0]);
+    console.log(`[Display] getPageTree: Found page node: ${pageNode.page_name}`);
+
     // Build tree recursively using graph queries
-    const tree = await buildTreeWithGraphTraversal(normalizeNode(pageNode), workspaceId);
+    const tree = await buildTreeWithGraphTraversal(pageNode);
     const nodeCount = countNodes(tree);
     console.log(`[Display] getPageTree: Tree built with ${nodeCount} total nodes`);
 
@@ -177,8 +181,7 @@ export const getPageTree = cache(
  * Fetches children via <-parent AS children for each level
  */
 async function buildTreeWithGraphTraversal(
-  node: Node,
-  workspaceId: string
+  node: Node
 ): Promise<TreeNode> {
   const nodeId = nodeRecordId(node.uuid || node.id.replace("nodes:", ""));
 
@@ -197,7 +200,7 @@ async function buildTreeWithGraphTraversal(
   // Recursively build subtrees for all children in parallel
   const childTrees = await Promise.all(
     childrenData.map((child) =>
-      buildTreeWithGraphTraversal(normalizeNode(child as unknown as Node), workspaceId)
+      buildTreeWithGraphTraversal(normalizeNode(child as unknown as Node))
     )
   );
 
@@ -219,7 +222,7 @@ function countNodes(tree: TreeNode): number {
  */
 export const getPageTreeWithHTML = cache(
   async (pageUuid: string, workspaceId: string): Promise<TreeNode | null> => {
-    const tree = await getPageTree(pageUuid, workspaceId);
+    const tree = await getPageTree(pageUuid);
     if (!tree) return null;
 
     // Collect all node UUIDs in the tree

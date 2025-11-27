@@ -263,6 +263,10 @@ export async function ingestLogseqGraph(
       const pageTitle = htmlPage
         ? (htmlPage.title || "").trim() || mdPage.pageName
         : mdPage.pageName;
+
+      // Extract first heading from page HTML for TOC
+      const pageHeading = htmlPage ? extractFirstHeadingFromHTML(htmlPage.html) : null;
+
       allNodeData.push({
         uuid: pageUuid,
         data: {
@@ -274,6 +278,7 @@ export async function ingestLogseqGraph(
           order: 0,
           metadata: {
             tags: htmlPage?.metadata?.tags || [],
+            heading: pageHeading || undefined,
             properties: {
               ...mdPage.properties,
               ...(htmlPage?.metadata?.properties || {}),

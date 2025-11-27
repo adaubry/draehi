@@ -336,11 +336,25 @@ export async function ingestLogseqGraph(
           metadata.heading = heading;
         }
 
+        // Make block UUID globally unique by including workspace and page
+        const globalBlockUuid = crypto.createHash('sha256')
+          .update(`${workspaceId}::${mdPage.pageName}::${block.uuid}`)
+          .digest('hex')
+          .slice(0, 32); // Use first 32 chars of hash for UUID
+
+        // Make parent UUID globally unique if it exists
+        const globalParentUuid = block.parentUuid
+          ? crypto.createHash('sha256')
+              .update(`${workspaceId}::${mdPage.pageName}::${block.parentUuid}`)
+              .digest('hex')
+              .slice(0, 32)
+          : pageUuid;
+
         allNodeData.push({
-          uuid: block.uuid,
+          uuid: globalBlockUuid,
           data: {
             workspace: workspaceId,
-            parent: `nodes:${block.parentUuid || pageUuid}`,
+            parent: `nodes:${globalParentUuid}`,
             page_name: mdPage.pageName,
             slug,
             order: block.order,
@@ -350,11 +364,11 @@ export async function ingestLogseqGraph(
 
         // Store HTML for KeyDB
         allBlockHTML.push({
-          uuid: block.uuid,
+          uuid: globalBlockUuid,
           html: blockHTML.trim(),
         });
 
-        blockUuidsInOrder.push(block.uuid);
+        blockUuidsInOrder.push(globalBlockUuid);
       }
 
       pageBlockOrders.set(mdPage.pageName, blockUuidsInOrder);
@@ -370,6 +384,17 @@ export async function ingestLogseqGraph(
       seenUuids.add(uuid);
       return true;
     });
+
+    // Deduplicate HTML by UUID (keep last occurrence, same as nodes)
+    const htmlByUuid = new Map<string, string>();
+    for (const block of allBlockHTML) {
+      htmlByUuid.set(block.uuid, block.html);
+    }
+    const uniqueBlockHTML = Array.from(htmlByUuid.entries()).map(([uuid, html]) => ({
+      uuid,
+      html,
+    }));
+    console.log(`[Ingestion] Deduplicating HTML: ${allBlockHTML.length} → ${uniqueBlockHTML.length} unique blocks`);
 
     const insertMsg = `Inserting ${uniqueNodeData.length} nodes (${pageCount} pages and ${totalBlocks} blocks)...`;
     buildLog.push(insertMsg);
@@ -394,13 +419,13 @@ export async function ingestLogseqGraph(
     console.log(`[Ingestion] All ${uniqueNodeData.length} nodes inserted into SurrealDB`);
 
     // Batch insert HTML into KeyDB
-    const cacheMsg = `Caching ${allBlockHTML.length} block HTMLs in KeyDB...`;
+    const cacheMsg = `Caching ${uniqueBlockHTML.length} block HTMLs in KeyDB...`;
     buildLog.push(cacheMsg);
     console.log(`[Ingestion] ${cacheMsg}`);
-    if (allBlockHTML.length > 0) {
-      const totalHTMLSize = allBlockHTML.reduce((sum, b) => sum + b.html.length, 0);
-      console.log(`[Ingestion] HTML stats: ${allBlockHTML.length} blocks, ~${totalHTMLSize} bytes total`);
-      await setBlockHTMLBatch(workspaceId, allBlockHTML);
+    if (uniqueBlockHTML.length > 0) {
+      const totalHTMLSize = uniqueBlockHTML.reduce((sum, b) => sum + b.html.length, 0);
+      console.log(`[Ingestion] HTML stats: ${uniqueBlockHTML.length} blocks, ~${totalHTMLSize} bytes total`);
+      await setBlockHTMLBatch(workspaceId, uniqueBlockHTML);
       console.log(`[Ingestion] Block HTMLs cached in KeyDB`);
     } else {
       console.warn(`[Ingestion] ⚠️  No block HTMLs to cache!`);

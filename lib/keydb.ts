@@ -75,6 +75,11 @@ export async function setBlockHTMLBatch(
   const totalSize = blocks.reduce((sum, b) => sum + b.html.length, 0);
   console.log(`[Display] setBlockHTMLBatch: Storing ${blocks.length} blocks (~${totalSize} bytes total) to KeyDB`);
 
+  // Log first 3 UUIDs being stored
+  if (blocks.length > 0) {
+    console.log(`[Display] setBlockHTMLBatch: Sample UUIDs stored: ${blocks.slice(0, 3).map(b => `"${b.uuid}"`).join(", ")}`);
+  }
+
   const client = await getKeyDB();
   const multi = client.multi();
 
@@ -104,8 +109,18 @@ export async function getBlockHTMLBatch(
   if (uuids.length === 0) return new Map();
 
   console.log(`[Display] getBlockHTMLBatch: Fetching HTML for ${uuids.length} blocks from KeyDB`);
+
+  // Log first 3 UUIDs being requested
+  if (uuids.length > 0) {
+    console.log(`[Display] getBlockHTMLBatch: Sample UUIDs requested: ${uuids.slice(0, 3).map(u => `"${u}"`).join(", ")}`);
+  }
+
   const client = await getKeyDB();
   const keys = uuids.map((uuid) => blockKey(workspaceId, uuid));
+
+  // Log first 3 keys being looked up
+  console.log(`[Display] getBlockHTMLBatch: Sample keys: ${keys.slice(0, 3).map(k => `"${k}"`).join(", ")}`);
+
   const values = await client.mGet(keys);
 
   const result = new Map<string, string | null>();

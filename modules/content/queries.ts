@@ -155,17 +155,20 @@ export const getPageTree = cache(
   async (pageUuid: string): Promise<TreeNode | null> => {
     console.log(`[Display] getPageTree: Building tree for page ${pageUuid}`);
 
-    // Fetch the page node first using query (more reliable than selectOne)
+    // Fetch the page node using proper SurrealDB syntax
     const pageNodeId = nodeRecordId(pageUuid);
-    const pageNodeResult = await query<Node>(`SELECT * FROM $id`, { id: pageNodeId });
+    console.log(`[Display] getPageTree: Fetching node with id: ${pageNodeId}`);
+    const pageNodeResult = await query<Node>(`SELECT * FROM type::thing('nodes', $uuid)`, { uuid: pageUuid });
 
     if (pageNodeResult.length === 0) {
       console.log(`[Display] getPageTree: Page node not found: ${pageNodeId}`);
       return null;
     }
 
-    const pageNode = normalizeNode(pageNodeResult[0]);
-    console.log(`[Display] getPageTree: Found page node: ${pageNode.page_name}`);
+    const rawNode = pageNodeResult[0];
+    console.log(`[Display] getPageTree: Raw node id=${rawNode.id}, page_name=${rawNode.page_name}`);
+    const pageNode = normalizeNode(rawNode);
+    console.log(`[Display] getPageTree: Normalized - uuid=${pageNode.uuid}, page_name=${pageNode.page_name}`);
 
     // Build tree recursively using graph queries
     const tree = await buildTreeWithGraphTraversal(pageNode);

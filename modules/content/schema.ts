@@ -42,9 +42,14 @@ export type NewNode = {
 };
 
 // Extract UUID from SurrealDB record ID
+// Handles both formats: "nodes:uuid" and "nodes:⟨uuid⟩"
 export function getNodeUuidFromRecord(recordId: string | unknown): string {
   const idStr = String(recordId);
-  return idStr.replace("nodes:", "");
+  // Remove "nodes:" prefix
+  let uuid = idStr.replace("nodes:", "");
+  // Remove angle brackets if present (SurrealDB wraps some IDs with ⟨⟩)
+  uuid = uuid.replace(/^⟨/, "").replace(/⟩$/, "");
+  return uuid;
 }
 
 // Build SurrealDB record ID from UUID
@@ -56,7 +61,7 @@ export function nodeRecordId(uuid: string): string {
 export function normalizeNode(node: Node): Node {
   return {
     ...node,
-    uuid: node.uuid || node.id,
+    uuid: node.uuid || getNodeUuidFromRecord(node.id),
     pageName: node.pageName || node.page_name,
     parentUuid: node.parentUuid !== undefined ? node.parentUuid : (node.parent || null),
   };

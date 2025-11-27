@@ -58,11 +58,11 @@ async function NodePageContent({
 
   // Get backlinks (only for page nodes)
   const citedBy = node.parentUuid === null
-    ? await getPageBacklinks(workspace.id, ensurePageName(node))
+    ? await getPageBacklinks()
     : [];
 
   const related = node.parentUuid === null
-    ? await getBlockBacklinks(workspace.id, ensurePageName(node))
+    ? await getBlockBacklinks()
     : [];
 
   const pagePath = path.join("/");

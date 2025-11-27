@@ -37,9 +37,9 @@ export const getNodeByPath = cache(
     const pageName = pathSegments.join("/");
     console.log(`[Display] getNodeByPath: Looking up page_name: "${pageName}"`);
 
-    // Direct lookup by page_name - single query instead of fetching all pages
+    // Query for PAGE node specifically (parent IS NONE) - not blocks
     const page = await query<Node>(
-      "SELECT * FROM nodes WHERE workspace = $ws AND page_name = $pageName LIMIT 1",
+      "SELECT * FROM nodes WHERE workspace = $ws AND page_name = $pageName AND parent IS NONE LIMIT 1",
       { ws: workspaceId, pageName }
     );
 
@@ -49,7 +49,7 @@ export const getNodeByPath = cache(
     }
 
     const matchingPage = page[0];
-    console.log(`[Display] getNodeByPath: Matched "${matchingPage.page_name}" to [${pathSegments.join("/")}]`);
+    console.log(`[Display] getNodeByPath: Matched PAGE "${matchingPage.page_name}" to [${pathSegments.join("/")}]`);
     return normalizeNode(JSON.parse(JSON.stringify(matchingPage)));
   }
 );
@@ -130,7 +130,7 @@ function getNodeUuidFromRecord(recordId: string | unknown): string {
 }
 
 export const getPageBacklinks = cache(
-  async (workspaceId: string, pageName: string): Promise<Node[]> => {
+  async (): Promise<Node[]> => {
     // Find all blocks that reference this page via [[pageName]]
     // This requires scanning HTML in KeyDB - expensive operation
     // For now, return empty - implement with proper indexing later
@@ -139,7 +139,7 @@ export const getPageBacklinks = cache(
 );
 
 export const getBlockBacklinks = cache(
-  async (workspaceId: string, pageName: string): Promise<Node[]> => {
+  async (): Promise<Node[]> => {
     // Find all blocks that reference blocks on this page
     // Requires HTML scanning - return empty for now
     return [];

@@ -1,3 +1,4 @@
+[HMR] connected node_modules_next_dist_7a8122d0._.js:2288:28
 SES Removing unpermitted intrinsics lockdown-install.js:1:203117
   Removing intrinsics.%MapPrototype%.getOrInsert lockdown-install.js:1:202962
   Removing intrinsics.%MapPrototype%.getOrInsertComputed lockdown-install.js:1:202962
@@ -7,215 +8,30 @@ SES Removing unpermitted intrinsics lockdown-install.js:1:203117
 Download the React DevTools for a better development experience: https://react.dev/link/react-devtools node_modules_next_dist_7a8122d0._.js:2288:28
  Server  [Layout] Loading workspace: adamaubrypro node_modules_next_dist_7a8122d0._.js:2288:28
  Server  [Display] NodePage: Rendering page for path "contents" in workspace "adamaubrypro" node_modules_next_dist_7a8122d0._.js:2288:28
-[HMR] connected node_modules_next_dist_7a8122d0._.js:2288:28
- Server  [Layout] Workspace loaded: workspaces:junxmjrd3v7r6tulgehx node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Layout] Workspace loaded: workspaces:h58eddih3cw4hx8e3oxl node_modules_next_dist_7a8122d0._.js:2288:28
  Server  [Layout] Fetching all page nodes for navigation... node_modules_next_dist_7a8122d0._.js:2288:28
- Server  [Display] getAllNodes: Fetching page nodes for workspace workspaces:junxmjrd3v7r6tulgehx node_modules_next_dist_7a8122d0._.js:2288:28
- Server  [Display] NodePage: Workspace found workspaces:junxmjrd3v7r6tulgehx node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Display] getAllNodes: Fetching page nodes for workspace workspaces:h58eddih3cw4hx8e3oxl node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Display] NodePage: Workspace found workspaces:h58eddih3cw4hx8e3oxl node_modules_next_dist_7a8122d0._.js:2288:28
  Server  [Display] getNodeByPath: Looking for path [contents] node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Display] getNodeByPath: Looking up page_name: "contents" node_modules_next_dist_7a8122d0._.js:2288:28
  Server  [Display] getAllNodes: Found 313 page nodes node_modules_next_dist_7a8122d0._.js:2288:28
  Server  [Layout] Loaded 313 page nodes for sidebar navigation node_modules_next_dist_7a8122d0._.js:2288:28
- Server  [Display] getNodeByPath: Found 313 pages node_modules_next_dist_7a8122d0._.js:2288:28
  Server  [Display] getNodeByPath: Matched "contents" to [contents] node_modules_next_dist_7a8122d0._.js:2288:28
- Server  [Display] NodePage: Node found "contents" (nodes:⟨15f9b124-6ded-c090-bc70-d331341eb6e4⟩), isPage=true node_modules_next_dist_7a8122d0._.js:2288:28
- Server  [Display] getPageTree: Building tree for page nodes:⟨15f9b124-6ded-c090-bc70-d331341eb6e4⟩ node_modules_next_dist_7a8122d0._.js:2288:28
- Server  [Display] getPageTree: No tree found for page nodes:⟨15f9b124-6ded-c090-bc70-d331341eb6e4⟩ node_modules_next_dist_7a8122d0._.js:2288:28
+ Server  [Display] NodePage: Node found "undefined" (nodes:⟨017274b9-fb9e-2cea-79aa-6ccb7f0053d7⟩), isPage=false node_modules_next_dist_7a8122d0._.js:2288:28
  Server  [Display] NodePage: Loaded tree for page "contents" node_modules_next_dist_7a8122d0._.js:2288:28
 [Display] Sidebar initialized with 313 page nodes node_modules_next_dist_7a8122d0._.js:2288:28
 [Display] buildTree: Processing 313 page nodes node_modules_next_dist_7a8122d0._.js:2288:28
 [Display] Sidebar initialized with 313 page nodes node_modules_next_dist_7a8122d0._.js:2288:28
 [Display] buildTree: Processing 313 page nodes node_modules_next_dist_7a8122d0._.js:2288:28
 [Display] TOC: Fetching for pagePath: contents 2 node_modules_next_dist_7a8122d0._.js:2288:28
+[HMR] connected node_modules_next_dist_7a8122d0._.js:2288:28
+[Fast Refresh] rebuilding node_modules_next_dist_7a8122d0._.js:2288:28
+[Fast Refresh] done in 759ms node_modules_next_dist_7a8122d0._.js:2288:28
 [Display] TOC: API response status: 200 node_modules_next_dist_7a8122d0._.js:2288:28
-[Display] TOC: Fetch error: TypeError: can't access property "length", blocks is undefined
-    useEffect TableOfContents.tsx:180
-    promise callback*TableOfContents.useEffect TableOfContents.tsx:177
-    react_stack_bottom_frame react-dom-client.development.js:28101
-    runWithFiberInDEV react-dom-client.development.js:987
-    commitHookEffectListMount react-dom-client.development.js:13690
-    commitHookPassiveMountEffects react-dom-client.development.js:13777
-    reconnectPassiveEffects react-dom-client.development.js:17122
-node_modules_next_dist_7a8122d0._.js:3118:32
+[Display] TOC: Page title: undefined node_modules_next_dist_7a8122d0._.js:2288:28
+[Display] TOC: Heading from metadata: null node_modules_next_dist_7a8122d0._.js:2288:28
+[Display] TOC: No heading metadata found node_modules_next_dist_7a8122d0._.js:2288:28
 [Display] TOC: API response status: 200 node_modules_next_dist_7a8122d0._.js:2288:28
-[Display] TOC: Fetch error: TypeError: can't access property "length", blocks is undefined
-    useEffect TableOfContents.tsx:180
-    promise callback*TableOfContents.useEffect TableOfContents.tsx:177
-    react_stack_bottom_frame react-dom-client.development.js:28101
-    runWithFiberInDEV react-dom-client.development.js:987
-    commitHookEffectListMount react-dom-client.development.js:13690
-    commitHookPassiveMountEffects react-dom-client.development.js:13777
-    reconnectPassiveEffects react-dom-client.development.js:17122
-node_modules_next_dist_7a8122d0._.js:3118:32
-    error intercept-console-error.ts:42
-    useEffect TableOfContents.tsx:202
-    (Asynchrone : promise callback)
-    useEffect TableOfContents.tsx:201
-    react_stack_bottom_frame react-dom-client.development.js:28101
-    runWithFiberInDEV react-dom-client.development.js:987
-    commitHookEffectListMount react-dom-client.development.js:13690
-    commitHookPassiveMountEffects react-dom-client.development.js:13777
-    reconnectPassiveEffects react-dom-client.development.js:17122
-    recursivelyTraverseReconnectPassiveEffects react-dom-client.development.js:17074
-    reconnectPassiveEffects react-dom-client.development.js:17175
-    recursivelyTraverseReconnectPassiveEffects react-dom-client.development.js:17074
-    reconnectPassiveEffects react-dom-client.development.js:17175
-    recursivelyTraverseReconnectPassiveEffects react-dom-client.development.js:17074
-    reconnectPassiveEffects react-dom-client.development.js:17175
-    recursivelyTraverseReconnectPassiveEffects react-dom-client.development.js:17074
-    reconnectPassiveEffects react-dom-client.development.js:17175
-    recursivelyTraverseReconnectPassiveEffects react-dom-client.development.js:17074
-    reconnectPassiveEffects react-dom-client.development.js:17114
-    recursivelyTraverseReconnectPassiveEffects react-dom-client.development.js:17074
-    reconnectPassiveEffects react-dom-client.development.js:17175
-    recursivelyTraverseReconnectPassiveEffects react-dom-client.development.js:17074
-    reconnectPassiveEffects react-dom-client.development.js:17175
-    recursivelyTraverseReconnectPassiveEffects react-dom-client.development.js:17074
-    reconnectPassiveEffects react-dom-client.development.js:17114
-    recursivelyTraverseReconnectPassiveEffects react-dom-client.development.js:17074
-    commitPassiveMountOnFiber react-dom-client.development.js:16946
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16896
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16751
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16751
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16751
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16751
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16751
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16751
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16751
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16723
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:17008
-    recursivelyTraversePassiveMountEffects react-dom-client.development.js:16676
-    commitPassiveMountOnFiber react-dom-client.development.js:16766
-    flushPassiveEffects react-dom-client.development.js:19857
-    commitRoot react-dom-client.development.js:19282
-    performWorkUntilDeadline scheduler.development.js:45
-    (Asynchrone : EventHandlerNonNull)
-    <anonyme> scheduler.development.js:223
-    <anonyme> scheduler.development.js:364
-    instantiateModule dev-base.ts:244
-    runModuleExecutionHooks dev-base.ts:278
-    instantiateModule dev-base.ts:238
-    getOrInstantiateModuleFromParent dev-base.ts:162
-    commonJsRequire runtime-utils.ts:389
-    <anonyme> index.js:6
-    instantiateModule dev-base.ts:244
-    runModuleExecutionHooks dev-base.ts:278
-    instantiateModule dev-base.ts:238
-    getOrInstantiateModuleFromParent dev-base.ts:162
-    commonJsRequire runtime-utils.ts:389
-    <anonyme> react-dom-client.development.js:26276
-    <anonyme> react-dom-client.development.js:30584
-    instantiateModule dev-base.ts:244
-    runModuleExecutionHooks dev-base.ts:278
-    instantiateModule dev-base.ts:238
-    getOrInstantiateModuleFromParent dev-base.ts:162
-    commonJsRequire runtime-utils.ts:389
-    <anonyme> client.js:37
-    instantiateModule dev-base.ts:244
-    runModuleExecutionHooks dev-base.ts:278
-    instantiateModule dev-base.ts:238
-    getOrInstantiateModuleFromParent dev-base.ts:162
-    commonJsRequire runtime-utils.ts:389
-    <anonyme> app-index.tsx:2
-    instantiateModule dev-base.ts:244
-    runModuleExecutionHooks dev-base.ts:278
-    instantiateModule dev-base.ts:238
-    getOrInstantiateModuleFromParent dev-base.ts:162
-    commonJsRequire runtime-utils.ts:389
-    <anonyme> app-next-turbopack.ts:11
-    appBootstrap app-bootstrap.ts:79
-    loadScriptsInSequence app-bootstrap.ts:23
-    appBootstrap app-bootstrap.ts:61
-    <anonyme> app-next-turbopack.ts:10
-    instantiateModule dev-base.ts:244
-    runModuleExecutionHooks dev-base.ts:278
-    instantiateModule dev-base.ts:238
-    getOrInstantiateRuntimeModule dev-base.ts:128
-    registerChunk runtime-backend-dom.ts:57
-    registerChunk dev-base.ts:1149
-    NextJS
+[Display] TOC: Page title: undefined node_modules_next_dist_7a8122d0._.js:2288:28
+[Display] TOC: Heading from metadata: null node_modules_next_dist_7a8122d0._.js:2288:28
+[Display] TOC: No heading metadata found node_modules_next_dist_7a8122d0._.js:2288:28

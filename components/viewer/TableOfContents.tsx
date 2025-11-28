@@ -21,8 +21,8 @@ function TOCItemComponent({ item }: { item: TOCItem }) {
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    // Scroll to block with matching uuid attribute
-    const element = document.querySelector(`[uuid="${item.uuid}"]`);
+    // Scroll to block with matching data-uuid attribute
+    const element = document.querySelector(`[data-uuid="${item.uuid}"]`);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
       // Also update URL hash for direct linking

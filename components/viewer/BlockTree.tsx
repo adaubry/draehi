@@ -49,6 +49,7 @@ function BlockNode({
       className="logseq-block"
       data-depth={depth}
       id={node.uuid}
+      data-uuid={node.uuid}
       style={{ marginLeft: `${depth * 1.5}rem` }}
     >
       <div className="block-line group">

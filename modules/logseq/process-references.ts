@@ -80,7 +80,8 @@ export function processLogseqReferences(
       }
     });
 
-  return $.html();
+  // Return only the body content without the html/head wrapper that cheerio adds
+  return $.html() === null ? html : $("body").html() || $.html() || html;
 }
 
 /**
@@ -155,7 +156,8 @@ export function processEmbeds(html: string): string {
       }
     });
 
-  return $.html();
+  // Return only the body content without the html/head wrapper that cheerio adds
+  return $.html() === null ? html : $("body").html() || $.html() || html;
 }
 
 /**

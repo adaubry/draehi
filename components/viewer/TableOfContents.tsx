@@ -21,9 +21,12 @@ function TOCItemComponent({ item }: { item: TOCItem }) {
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
+    // Scroll to block with matching uuid attribute
     const element = document.querySelector(`[uuid="${item.uuid}"]`);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Also update URL hash for direct linking
+      window.location.hash = item.uuid;
     }
   };
 
@@ -61,16 +64,14 @@ function TOCItemComponent({ item }: { item: TOCItem }) {
         <button
           onClick={handleClick}
           className="text-left text-sm text-gray-700 hover:text-blue-600 transition-colors truncate flex-1"
+          style={{ marginLeft: `${indent}px` }}
         >
           {item.title}
         </button>
       </div>
 
       {hasChildren && isOpen && (
-        <div
-          className="space-y-1 mt-1"
-          style={{ marginLeft: `${indent + 8}px` }}
-        >
+        <div className="space-y-1 mt-1">
           {item.children.map((child) => (
             <TOCItemComponent key={child.uuid} item={child} />
           ))}
@@ -117,16 +118,10 @@ export function TableOfContents({ workspaceSlug }: TOCProps) {
         console.log("[Display] TOC: Page title:", pageTitle);
         console.log("[Display] TOC: Received items:", items?.length || 0);
 
-        // Convert API items to TOC items with hierarchy
+        // Use hierarchical items from API
         if (items && items.length > 0) {
-          const tocItems: TOCItem[] = items.map((item: any) => ({
-            uuid: item.uuid,
-            title: item.title,
-            level: item.level,
-            children: [],
-          }));
-          setTocItems(tocItems);
-          console.log("[Display] TOC: Built tree from block headings");
+          setTocItems(items);
+          console.log("[Display] TOC: Built hierarchy from block headings");
         } else {
           console.log("[Display] TOC: No blocks with headings found");
           setTocItems([]);

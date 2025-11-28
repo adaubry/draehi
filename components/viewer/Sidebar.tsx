@@ -1,6 +1,6 @@
 "use client";
 
-import { ensurePageName } from '@/modules/content/schema';
+import { ensurePageName } from "@/modules/content/schema";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Node } from "@/modules/content/schema";
@@ -62,12 +62,14 @@ function TreeItem({
   const pathname = usePathname();
   const { node, children } = treeNode;
 
-  const segments = ensurePageName(node).split("/").map((s) =>
-    s
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^\w\-]/g, "")
-  );
+  const segments = ensurePageName(node)
+    .split("/")
+    .map((s) =>
+      s
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^\w\-]/g, "")
+    );
   const href = `/${workspaceSlug}/${segments.join("/")}`;
   const isActive = pathname === href;
 

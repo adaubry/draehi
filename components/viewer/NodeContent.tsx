@@ -8,11 +8,11 @@ type NodeContentProps = {
 };
 
 export function NodeContent({ html }: NodeContentProps) {
-  useEffect(() => {
+  /* useEffect(() => {
     console.log("[Display] NodeContent mounted with HTML length:", html.length);
     console.log("[Display] HTML preview (first 200 chars):", html.substring(0, 200));
   }, [html]);
-
+  */
   return (
     <div
       className="

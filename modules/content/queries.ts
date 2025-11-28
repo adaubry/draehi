@@ -86,11 +86,6 @@ export const getAllNodes = cache(
   }
 );
 
-export const getJournalNodes = cache(async (): Promise<Node[]> => {
-  // Journal detection is removed - return empty array
-  return [];
-});
-
 export const getPageBlocks = cache(
   async (pageUuid: string): Promise<Node[]> => {
     const pageNodeId = nodeRecordId(pageUuid);
@@ -377,38 +372,140 @@ function buildTreeFromFlatList(
 
 /**
  * Fetch all nodes for a page using SurrealDB graph query
- * Returns flat list of nodes with parent references
- * Much faster than sequential queries (1 query vs 547)
+ * omfg never touch this ever again
+ * this is BFS traversal
+ * never ever modify BFS
  */
 export async function buildTreeWithGraphQuery(
   pageUuid: string,
   workspaceId: string
 ): Promise<any[]> {
   const pageNodeId = nodeRecordId(pageUuid);
-  console.log(
-    `[Display] buildTreeWithGraphQuery: Fetching full tree for page ${pageUuid} using RELATE graph`
-  );
-
-  // Use SurrealDB graph traversal via RELATE edges
-  // Query the page node and ALL descendants using <-parent* syntax
-  // This traverses the graph in reverse (from parent to children)
-  const allNodes = await query(
-    `
-    SELECT *
-    FROM ${pageNodeId}
-    UNION
-    SELECT * FROM <-parent* FROM ${pageNodeId}
-    WHERE workspace = $ws
-    ORDER BY parent, \`order\`
-    `,
-    { ws: workspaceId }
-  );
 
   console.log(
-    `[Display] buildTreeWithGraphQuery: Fetched ${allNodes.length} nodes for tree building using graph traversal`
+    `[Display] buildTreeWithGraphQuery: Starting BFS traversal for page ${pageUuid} (${pageNodeId})`
   );
 
-  // Normalize nodes before returning
+  const visited = new Set<string>();
+  const allNodes: any[] = [];
+  let currentLevel = [pageNodeId];
+  let depth = 0;
+
+  while (currentLevel.length > 0) {
+    // Log current traversal state
+    console.log(
+      `[Display] BFS Depth ${depth}: Processing ${currentLevel.length} nodes at this level`
+    );
+
+    // Filter out already visited nodes
+    const beforeFilter = currentLevel.length;
+    currentLevel = currentLevel.filter((id) => !visited.has(id));
+
+    if (beforeFilter !== currentLevel.length) {
+      console.log(
+        `[Display] BFS Depth ${depth}: Filtered out ${
+          beforeFilter - currentLevel.length
+        } already visited nodes`
+      );
+    }
+
+    if (currentLevel.length === 0) {
+      console.log(`[Display] BFS: No more unvisited nodes, stopping traversal`);
+      break;
+    }
+
+    // Mark as visited
+    currentLevel.forEach((id) => visited.add(id));
+
+    // Log the query being executed
+    console.log(
+      `[Display] BFS Depth ${depth}: Querying ${currentLevel.length} nodes: ${
+        currentLevel.length <= 5
+          ? currentLevel.join(", ")
+          : `${currentLevel.slice(0, 3).join(", ")}... (and ${
+              currentLevel.length - 3
+            } more)`
+      }`
+    );
+
+    // Batch query for all nodes at current level
+    const queryStartTime = Date.now();
+    const levelResults = await query<Node>(
+      `
+      SELECT *, <-parent<-nodes AS children 
+      FROM [${currentLevel.join(", ")}]
+      WHERE workspace = ${workspaceId}
+      ORDER BY order ASC
+      `
+    );
+    const queryTime = Date.now() - queryStartTime;
+
+    console.log(
+      `[Display] BFS Depth ${depth}: Query returned ${levelResults.length} nodes in ${queryTime}ms`
+    );
+
+    // Log if we got fewer results than expected
+    if (levelResults.length < currentLevel.length) {
+      console.log(
+        `[Display] BFS Depth ${depth}: Warning - Expected ${currentLevel.length} nodes but got ${levelResults.length}`
+      );
+    }
+
+    allNodes.push(...levelResults);
+
+    // Collect all children for next level
+    const nextLevel = new Set<string>();
+    let totalChildrenFound = 0;
+
+    for (const node of levelResults) {
+      if (node.children && Array.isArray(node.children)) {
+        totalChildrenFound += node.children.length;
+        node.children.forEach((childId) => nextLevel.add(childId));
+
+        // Log nodes with many children (potential hotspots)
+        if (node.children.length > 10) {
+          console.log(
+            `[Display] BFS Depth ${depth}: Node ${node.id} has ${node.children.length} children`
+          );
+        }
+      }
+    }
+
+    console.log(
+      `[Display] BFS Depth ${depth}: Found ${totalChildrenFound} total children, ${nextLevel.size} unique children for next level`
+    );
+
+    currentLevel = Array.from(nextLevel);
+    depth++;
+
+    // Safety check for infinite loops
+    if (depth > 50) {
+      console.error(
+        `[Display] BFS: WARNING - Depth exceeded 50 levels, possible infinite loop. Stopping traversal.`
+      );
+      break;
+    }
+  }
+
+  console.log(
+    `[Display] buildTreeWithGraphQuery: Traversal complete. Visited ${visited.size} unique nodes, collected ${allNodes.length} total nodes, max depth: ${depth}`
+  );
+
+  // Log duplicate check
+  const uniqueIds = new Set(allNodes.map((n) => n.id));
+  if (uniqueIds.size !== allNodes.length) {
+    console.warn(
+      `[Display] buildTreeWithGraphQuery: Found ${
+        allNodes.length - uniqueIds.size
+      } duplicate nodes in results`
+    );
+  }
+
+  // Log performance summary
+  console.log(
+    `[Display] buildTreeWithGraphQuery: Performance summary - ${depth} levels traversed, ${visited.size} nodes visited`
+  );
+
   return allNodes.map((n) => normalizeNode(JSON.parse(JSON.stringify(n))));
 }
 

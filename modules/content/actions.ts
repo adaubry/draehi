@@ -6,7 +6,12 @@ import {
   clearWorkspaceCache,
   setPageBlockOrder,
 } from "@/lib/keydb";
-import { type Node, type NewNode, nodeRecordId, createMetadataIfNeeded } from "./schema";
+import {
+  type Node,
+  type NewNode,
+  nodeRecordId,
+  createMetadataIfNeeded,
+} from "./schema";
 import { extractNamespaceAndSlug } from "@/lib/utils";
 import { exportLogseqNotes } from "../logseq/export";
 import { parseLogseqOutput, processAssets } from "../logseq/parse";
@@ -49,7 +54,6 @@ function extractFirstHeadingFromHTML(html: string): {
 
   return text ? { level, text } : null;
 }
-
 
 // Internal only - called during git sync/deployment
 export async function upsertNode(
@@ -289,7 +293,9 @@ export async function ingestLogseqGraph(
         },
       });
       pageCount++;
-      console.log(`[Ingestion] Created page node: ${mdPage.pageName} (uuid: ${pageUuid})`);
+      console.log(
+        `[Ingestion] Created page node: ${mdPage.pageName} (uuid: ${pageUuid})`
+      );
 
       if (mdPage.blocks.length === 0) {
         const noBlocksMsg = `Page ${mdPage.pageName} has no blocks (property-only page)`;
@@ -468,30 +474,28 @@ export async function ingestLogseqGraph(
         `[Ingestion] Creating ${relateEdges.length} parent-child relationships via RELATE...`
       );
       const REL_BATCH_SIZE = 1000;
+
       for (let i = 0; i < relateEdges.length; i += REL_BATCH_SIZE) {
         const batch = relateEdges.slice(i, i + REL_BATCH_SIZE);
-        for (const edge of batch) {
-          // Create RELATE: child--[parent]-->parent
-          // Backticks only around UUID part, not the table name
-          try {
-            await query(
-              `RELATE nodes:\`${edge.from}\`->parent->nodes:\`${edge.to}\``
-            );
-          } catch (err) {
-            // Log but don't fail - some RELATEs might already exist
-            console.log(
-              `[Ingestion] RELATE creation note: ${
-                err instanceof Error ? err.message : String(err)
-              }`
-            );
-          }
+        const relQueries = batch
+          .map((edge) => `RELATE nodes:${edge.from}->parent->nodes:${edge.to}`)
+          .join("; ");
+        try {
+          await query(relQueries);
+        } catch (err) {
+          console.log(
+            `[Ingestion] RELATE creation note: ${
+              err instanceof Error ? err.message : String(err)
+            }`
+          );
         }
-        const relMsg = `  Created relate batch ${
-          Math.floor(i / REL_BATCH_SIZE) + 1
-        }/${Math.ceil(relateEdges.length / REL_BATCH_SIZE)}`;
-        buildLog.push(relMsg);
-        console.log(`[Ingestion] ${relMsg}`);
+        console.log(
+          `[Ingestion] Created relate batch ${
+            Math.floor(i / REL_BATCH_SIZE) + 1
+          }/${Math.ceil(relateEdges.length / REL_BATCH_SIZE)}`
+        );
       }
+
       console.log(
         `[Ingestion] All ${relateEdges.length} relationships created via RELATE`
       );

@@ -3,6 +3,7 @@
 // HTML content is stored in KeyDB (see lib/keydb.ts)
 
 export interface Node {
+  children: boolean;
   id: string; // SurrealDB record ID: nodes:BLOCK_UUID (unique string identifier)
   uuid?: string; // Alias for id (camelCase for backwards compatibility)
   workspace: string; // Record link to workspaces:WORKSPACE_ID

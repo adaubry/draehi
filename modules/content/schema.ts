@@ -43,16 +43,12 @@ export type NewNode = {
 
 // Extract UUID from SurrealDB record ID
 // Handles both formats: "nodes:uuid" and "nodes:⟨uuid⟩"
-// Also handles malformed IDs that might have other table prefixes
 export function getNodeUuidFromRecord(recordId: string | unknown): string {
   const idStr = String(recordId);
-
-  // Remove any table prefix (nodes:, deployment_history:, etc.)
-  let uuid = idStr.split(":").pop() || idStr;
-
+  // Remove "nodes:" prefix if present
+  let uuid = idStr.replace("nodes:", "");
   // Remove angle brackets if present (SurrealDB wraps some IDs with ⟨⟩)
   uuid = uuid.replace(/^⟨/, "").replace(/⟩$/, "");
-
   return uuid;
 }
 
@@ -63,16 +59,27 @@ export function nodeRecordId(uuid: string): string {
 
 // Normalize Node data - populate camelCase aliases from snake_case
 export function normalizeNode(node: Node): Node {
-  // Convert parent RecordId to string if it's an object
+  // Convert RecordId objects to strings for Client Component serialization
+  let idValue = node.id;
+  if (idValue && typeof idValue === 'object') {
+    idValue = String(idValue);
+  }
+
+  let workspaceValue = node.workspace;
+  if (workspaceValue && typeof workspaceValue === 'object') {
+    workspaceValue = String(workspaceValue);
+  }
+
   let parentValue = node.parent;
   if (parentValue && typeof parentValue === 'object') {
-    // SurrealDB returns RecordId objects, convert to string representation
     parentValue = String(parentValue);
   }
 
   return {
     ...node,
-    uuid: node.uuid || getNodeUuidFromRecord(node.id),
+    id: idValue,
+    workspace: workspaceValue,
+    uuid: node.uuid || getNodeUuidFromRecord(idValue),
     pageName: node.pageName || node.page_name,
     parentUuid: node.parentUuid !== undefined ? node.parentUuid : (parentValue || null),
   };

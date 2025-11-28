@@ -277,6 +277,11 @@ export async function ingestLogseqGraph(
         }
       }
 
+      // Limit heading text to 10 characters
+      if (pageHeading && pageHeading.text.length > 10) {
+        pageHeading.text = pageHeading.text.substring(0, 10);
+      }
+
       allNodeData.push({
         uuid: pageUuid,
         data: {
@@ -289,10 +294,6 @@ export async function ingestLogseqGraph(
           metadata: {
             tags: htmlPage?.metadata?.tags || [],
             heading: pageHeading || undefined,
-            properties: {
-              ...mdPage.properties,
-              ...(htmlPage?.metadata?.properties || {}),
-            },
           },
         },
       });
@@ -347,11 +348,14 @@ export async function ingestLogseqGraph(
           }
         }
 
+        // Limit heading text to 10 characters
+        if (heading && heading.text.length > 10) {
+          heading.text = heading.text.substring(0, 10);
+        }
+
         // Block node data - no title for blocks, only pages have titles
         // Only populate metadata.heading for nodes that will display in TOC (those with headings)
-        const metadata: Record<string, unknown> = {
-          properties: block.properties,
-        };
+        const metadata: Record<string, unknown> = {};
         if (heading) {
           metadata.heading = heading;
         }

@@ -24,7 +24,17 @@ function TOCItemComponent({ item }: { item: TOCItem }) {
     // Scroll to block with matching data-uuid attribute
     const element = document.querySelector(`[data-uuid="${item.uuid}"]`);
     if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Header height is 56px (h-14 = 14 * 4px)
+      const headerHeight = 56;
+      const elementRect = element.getBoundingClientRect();
+      const elementTop = elementRect.top + window.scrollY;
+
+      // Scroll with offset to account for sticky header
+      window.scrollTo({
+        top: elementTop - headerHeight - 16, // 16px padding for visual spacing
+        behavior: "smooth",
+      });
+
       // Also update URL hash for direct linking
       window.location.hash = item.uuid;
     }

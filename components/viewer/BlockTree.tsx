@@ -1,7 +1,7 @@
 // TODO: Consider migrating to shadcn/ui components (Collapsible, etc.)
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { Node } from "@/modules/content/schema";
 import type { TreeNode } from "@/modules/content/queries";
@@ -110,6 +110,35 @@ export function BlockTree({
 }: BlockTreeProps) {
   const { children: topLevelBlocks } = tree;
   console.log("[Display] BlockTree: Rendering tree for page path", pagePath, "with", topLevelBlocks.length, "top-level blocks");
+
+  // Handle hash-based anchor navigation with offset for sticky header
+  useEffect(() => {
+    const handleHashNavigation = () => {
+      const hash = window.location.hash.slice(1); // Remove '#'
+      if (!hash) return;
+
+      const element = document.querySelector(`[data-uuid="${hash}"]`);
+      if (element) {
+        // Header height is 56px (h-14 = 14 * 4px)
+        const headerHeight = 56;
+        const elementRect = element.getBoundingClientRect();
+        const elementTop = elementRect.top + window.scrollY;
+
+        // Scroll with offset to account for sticky header
+        window.scrollTo({
+          top: elementTop - headerHeight - 16, // 16px padding for visual spacing
+          behavior: "smooth",
+        });
+      }
+    };
+
+    // Handle initial hash on page load
+    handleHashNavigation();
+
+    // Listen for hash changes
+    window.addEventListener("hashchange", handleHashNavigation);
+    return () => window.removeEventListener("hashchange", handleHashNavigation);
+  }, []);
 
   return (
     <ul className="logseq-blocks">

@@ -56,18 +56,16 @@ async function WorkspaceContent({
           </div>
         </header>
 
-        <div className="container flex-1">
-          <div className="flex gap-6">
-            {/* Sidebar Navigation (Desktop) */}
-            <aside className="hidden lg:block w-64 shrink-0">
-              <div className="sticky h-[calc(100vh-5rem)] overflow-y-auto">
-                <Sidebar nodes={nodes} workspaceSlug={workspaceSlug} />
-              </div>
-            </aside>
+        <div className="flex gap-6 px-4">
+          {/* Sidebar Navigation (Desktop) */}
+          <aside className="hidden lg:block w-64 shrink-0">
+            <div className="sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto">
+              <Sidebar nodes={nodes} workspaceSlug={workspaceSlug} />
+            </div>
+          </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 max-w-4xl pt-2 ">{children}</main>
-          </div>
+          {/* Main Content */}
+          <main className="flex-1 max-w-4xl pt-2">{children}</main>
         </div>
 
         {/* Mobile Drawer */}

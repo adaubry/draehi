@@ -330,6 +330,15 @@ export async function ingestLogseqGraph(
         const heading = extractFirstHeadingFromHTML(blockHTML);
         if (heading) {
           metadata.heading = heading;
+          console.log(
+            `[Ingestion] Block heading extracted: "${heading.text}" (h${heading.level})`
+          );
+        } else {
+          // Debug: log first 200 chars of HTML to see what we're getting
+          const htmlPreview = blockHTML.substring(0, 200).replace(/\n/g, " ");
+          console.log(
+            `[Ingestion] Block has no h1/h2/h3 heading. HTML preview: ${htmlPreview}`
+          );
         }
 
         // Make block UUID globally unique by including workspace and page

@@ -104,7 +104,7 @@ export function TableOfContents({ workspaceSlug }: TOCProps) {
     const pagePath = segments.slice(1).join("/");
     console.log("[Display] TOC: Fetching for pagePath:", pagePath);
 
-    // Fetch page metadata with heading from API
+    // Fetch block headings from API
     fetch(`/api/toc?workspace=${workspaceSlug}&path=${encodeURIComponent(pagePath)}`)
       .then((res) => {
         console.log("[Display] TOC: API response status:", res.status);
@@ -112,23 +112,23 @@ export function TableOfContents({ workspaceSlug }: TOCProps) {
         return res.json();
       })
       .then((data) => {
-        const { heading, pageTitle } = data;
+        const { items, pageTitle } = data;
 
         console.log("[Display] TOC: Page title:", pageTitle);
-        console.log("[Display] TOC: Heading from metadata:", heading);
+        console.log("[Display] TOC: Received items:", items?.length || 0);
 
-        // If page has a heading in metadata, use it
-        if (heading) {
-          const tocItem: TOCItem = {
-            uuid: `heading-${heading.level}`,
-            title: heading.text,
-            level: heading.level,
+        // Convert API items to TOC items with hierarchy
+        if (items && items.length > 0) {
+          const tocItems: TOCItem[] = items.map((item: any) => ({
+            uuid: item.uuid,
+            title: item.title,
+            level: item.level,
             children: [],
-          };
-          setTocItems([tocItem]);
-          console.log("[Display] TOC: Built tree from metadata heading");
+          }));
+          setTocItems(tocItems);
+          console.log("[Display] TOC: Built tree from block headings");
         } else {
-          console.log("[Display] TOC: No heading metadata found");
+          console.log("[Display] TOC: No blocks with headings found");
           setTocItems([]);
         }
         setLoading(false);

@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getNodeByPath } from "@/modules/content/queries";
+import { getNodeByPath, getBlocksWithHeadings } from "@/modules/content/queries";
 import { getWorkspaceBySlug } from "@/modules/workspace/queries";
+
+interface TOCItem {
+  uuid: string;
+  title: string;
+  level: number;
+}
 
 /**
  * TOC API endpoint
- * Returns page structure with heading metadata for table of contents rendering
- * TOC uses the page tree structure + metadata.headings, NOT HTML content
+ * Returns block headings for table of contents rendering
+ * Fetches all blocks with metadata.heading for the page
  */
 export async function GET(request: NextRequest) {
   try {
@@ -30,10 +36,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
     }
 
-    // Get page node to extract headings from metadata
-    const pageName = decodeURIComponent(pagePath);
-    console.log(`[TOC] Looking up page: ${pageName}`);
-
     // Find page by URL path
     const pathSegments = pagePath
       .split("/")
@@ -45,13 +47,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Page not found" }, { status: 404 });
     }
 
-    // Extract heading from metadata for TOC display
-    const heading = pageNode.metadata?.heading;
-    console.log(`[TOC] Page found: ${pageNode.title}, heading: ${heading?.text || "none"}`);
+    console.log(`[TOC] Page found: ${pageNode.title} (uuid=${pageNode.uuid})`);
+
+    // Get all blocks with headings for this page
+    const pageUuid = pageNode.uuid;
+    if (!pageUuid) {
+      console.warn(`[TOC] Page node missing UUID: ${pageNode.id}`);
+      return NextResponse.json({
+        pageTitle: pageNode.title,
+        items: [],
+      });
+    }
+
+    const blocksWithHeadings = await getBlocksWithHeadings(pageUuid);
+    console.log(`[TOC] Found ${blocksWithHeadings.length} blocks with headings`);
+
+    // Convert to TOC items
+    const tocItems: TOCItem[] = blocksWithHeadings
+      .filter((block) => block.metadata?.heading?.text)
+      .map((block) => {
+        const heading = block.metadata!.heading!;
+        return {
+          uuid: block.uuid || block.id,
+          title: heading.text,
+          level: heading.level,
+        };
+      });
+
+    console.log(`[TOC] Returning ${tocItems.length} TOC items`);
 
     return NextResponse.json({
       pageTitle: pageNode.title,
-      heading: heading || null,
+      items: tocItems,
     });
   } catch (error) {
     console.error("[TOC] API error:", error);

@@ -33,7 +33,9 @@ async function WorkspaceContent({
   // Get all nodes for navigation
   console.log(`[Layout] Fetching all page nodes for navigation...`);
   const nodes = await getAllNodes(workspace.id);
-  console.log(`[Layout] Loaded ${nodes.length} page nodes for sidebar navigation`);
+  console.log(
+    `[Layout] Loaded ${nodes.length} page nodes for sidebar navigation`
+  );
 
   return (
     <NavigationProvider workspaceSlug={workspaceSlug}>
@@ -55,16 +57,16 @@ async function WorkspaceContent({
         </header>
 
         <div className="container flex-1">
-          <div className="flex gap-6 py-6">
+          <div className="flex gap-6">
             {/* Sidebar Navigation (Desktop) */}
             <aside className="hidden lg:block w-64 shrink-0">
-              <div className="sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto">
+              <div className="sticky h-[calc(100vh-5rem)] overflow-y-auto">
                 <Sidebar nodes={nodes} workspaceSlug={workspaceSlug} />
               </div>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 max-w-4xl">{children}</main>
+            <main className="flex-1 max-w-4xl pt-2 ">{children}</main>
           </div>
         </div>
 

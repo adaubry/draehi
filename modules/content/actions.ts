@@ -49,6 +49,36 @@ function extractFirstHeadingFromHTML(html: string): {
   return text ? { level, text } : null;
 }
 
+/**
+ * Update node metadata with heading extracted from final HTML
+ * Called after HTML is pushed to KeyDB so we have the cleanest HTML to extract from
+ */
+async function updateNodeHeadingFromHTML(
+  nodeUuid: string,
+  html: string
+): Promise<void> {
+  const heading = extractFirstHeadingFromHTML(html);
+  if (!heading) return;
+
+  // Update node's metadata.heading in SurrealDB
+  const nodeId = nodeRecordId(nodeUuid);
+  try {
+    await query(
+      `UPDATE ${nodeId} SET metadata.heading = $heading RETURN *;`,
+      { heading }
+    );
+    console.log(
+      `[Ingestion] Updated heading for ${nodeUuid}: "${heading.text}"`
+    );
+  } catch (err) {
+    console.warn(
+      `[Ingestion] Failed to update heading for ${nodeUuid}:`,
+      err instanceof Error ? err.message : String(err)
+    );
+    // Don't throw - heading update is not critical
+  }
+}
+
 // Internal only - called during git sync/deployment
 export async function upsertNode(
   workspaceId: string,
@@ -341,33 +371,9 @@ export async function ingestLogseqGraph(
           mdPage.pageName
         );
 
-        // Extract first heading from HTML for TOC metadata
-        let heading = extractFirstHeadingFromHTML(blockHTML);
-
-        // Fallback: use first 50 chars of content as heading if no h1/h2/h3 found
-        if (!heading && block.content) {
-          let contentPreview = block.content.substring(0, 50).trim();
-
-          // Clean up markdown syntax from fallback text
-          contentPreview = contentPreview
-            .replace(/^#+\s*/, "") // Remove leading # markdown
-            .replace(/\[\[([^\]]+)\]\]/g, "$1") // Convert [[Link]] to Link
-            .replace(/\{\{([^}]+)\}\}/g, "$1") // Convert {{macro}} to macro
-            .replace(/\*\*([^*]+)\*\*/g, "$1") // Convert **bold** to bold
-            .replace(/\*([^*]+)\*/g, "$1") // Convert *italic* to italic
-            .trim();
-
-          if (contentPreview) {
-            heading = { level: 3, text: contentPreview };
-          }
-        }
-
         // Block node data - no title for blocks, only pages have titles
-        // Only populate metadata.heading for nodes that will display in TOC (those with headings)
+        // Heading will be extracted from final HTML in KeyDB and updated later
         const metadata: Record<string, unknown> = {};
-        if (heading) {
-          metadata.heading = heading;
-        }
 
         // Make block UUID globally unique by including workspace and page
         const globalBlockUuid = crypto
@@ -551,6 +557,13 @@ export async function ingestLogseqGraph(
         `[Ingestion] ⚠️  No block HTMLs to cache! (allBlockHTML.length=${allBlockHTML.length})`
       );
     }
+
+    // Extract headings from final HTML and update node metadata
+    console.log(`[Ingestion] Extracting headings from final HTML...`);
+    for (const blockHtml of uniqueBlockHTML) {
+      await updateNodeHeadingFromHTML(blockHtml.uuid, blockHtml.html);
+    }
+    console.log(`[Ingestion] ✓ Headings updated from final HTML`);
 
     // Store page block orders
     console.log(

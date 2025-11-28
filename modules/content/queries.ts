@@ -340,26 +340,35 @@ export const getPageTreeWithHTML = cache(
 
 /**
  * Get all blocks with heading metadata for a page
- * Optimized: only blocks with metadata.heading are returned
- * Useful for building table of contents from block headings instead of just page heading
+ * Builds tree then filters to blocks with headings
+ * Avoids fetching all blocks - only processes blocks that exist in tree
  */
 export const getBlocksWithHeadings = cache(
   async (pageUuid: string): Promise<Node[]> => {
     console.log(`[Display] getBlocksWithHeadings: Fetching blocks with headings for page ${pageUuid}`);
 
-    const pageNodeId = nodeRecordId(pageUuid);
+    // Get the full tree
+    const tree = await getPageTree(pageUuid);
+    if (!tree) {
+      console.log(`[Display] getBlocksWithHeadings: No tree found for page ${pageUuid}`);
+      return [];
+    }
 
-    // Query for all descendants using RELATE edge traversal
-    // Filter to only blocks with heading metadata
-    const results = await query<Node[]>(
-      `SELECT * FROM ${pageNodeId} <-parent WHERE type::is::object(metadata) AND metadata.heading IS NOT NONE ORDER BY \`order\` LIMIT 1000`
-    );
+    // Flatten tree and collect all blocks with headings
+    const blocksWithHeadings: Node[] = [];
+    function collectHeadingBlocks(node: TreeNode) {
+      // Check if this node has a heading
+      if (node.node.metadata?.heading?.text) {
+        blocksWithHeadings.push(node.node);
+      }
+      // Recurse into children
+      for (const child of node.children) {
+        collectHeadingBlocks(child);
+      }
+    }
 
-    const blocks = results
-      .map((block) => normalizeNode(block as unknown as Node))
-      .filter((block) => block.metadata?.heading?.text); // Double-check heading exists
-
-    console.log(`[Display] getBlocksWithHeadings: Found ${blocks.length} blocks with heading metadata`);
-    return blocks;
+    collectHeadingBlocks(tree);
+    console.log(`[Display] getBlocksWithHeadings: Found ${blocksWithHeadings.length} blocks with heading metadata`);
+    return blocksWithHeadings;
   }
 );

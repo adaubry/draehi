@@ -33,8 +33,17 @@ function extractFirstHeadingFromHTML(html: string): {
   if (!match) return null;
 
   const level = parseInt(match[1]);
-  const text = match[2]
+  let text = match[2]
     .replace(/<[^>]+>/g, "") // Strip any nested HTML
+    .trim();
+
+  // Clean up markdown and common syntax from text
+  text = text
+    .replace(/^#+\s*/, "") // Remove leading # markdown
+    .replace(/\[\[([^\]]+)\]\]/g, "$1") // Convert [[Link]] to Link
+    .replace(/\{\{([^}]+)\}\}/g, "$1") // Convert {{macro}} to macro
+    .replace(/\*\*([^*]+)\*\*/g, "$1") // Convert **bold** to bold
+    .replace(/\*([^*]+)\*/g, "$1") // Convert *italic* to italic
     .trim();
 
   return text ? { level, text } : null;
@@ -277,11 +286,6 @@ export async function ingestLogseqGraph(
         }
       }
 
-      // Limit heading text to 10 characters
-      if (pageHeading && pageHeading.text.length > 10) {
-        pageHeading.text = pageHeading.text.substring(0, 10);
-      }
-
       allNodeData.push({
         uuid: pageUuid,
         data: {
@@ -342,15 +346,20 @@ export async function ingestLogseqGraph(
 
         // Fallback: use first 50 chars of content as heading if no h1/h2/h3 found
         if (!heading && block.content) {
-          const contentPreview = block.content.substring(0, 50).trim();
+          let contentPreview = block.content.substring(0, 50).trim();
+
+          // Clean up markdown syntax from fallback text
+          contentPreview = contentPreview
+            .replace(/^#+\s*/, "") // Remove leading # markdown
+            .replace(/\[\[([^\]]+)\]\]/g, "$1") // Convert [[Link]] to Link
+            .replace(/\{\{([^}]+)\}\}/g, "$1") // Convert {{macro}} to macro
+            .replace(/\*\*([^*]+)\*\*/g, "$1") // Convert **bold** to bold
+            .replace(/\*([^*]+)\*/g, "$1") // Convert *italic* to italic
+            .trim();
+
           if (contentPreview) {
             heading = { level: 3, text: contentPreview };
           }
-        }
-
-        // Limit heading text to 10 characters
-        if (heading && heading.text.length > 10) {
-          heading.text = heading.text.substring(0, 10);
         }
 
         // Block node data - no title for blocks, only pages have titles

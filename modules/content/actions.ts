@@ -261,9 +261,21 @@ export async function ingestLogseqGraph(
         : mdPage.pageName;
 
       // Extract first heading from page HTML for TOC
-      const pageHeading = htmlPage
-        ? extractFirstHeadingFromHTML(htmlPage.html)
-        : null;
+      let pageHeading = null;
+      if (htmlPage && htmlPage.html) {
+        pageHeading = extractFirstHeadingFromHTML(htmlPage.html);
+        console.log(
+          `[Ingestion] Extracted heading for ${mdPage.pageName}: ${pageHeading ? `${pageHeading.text} (h${pageHeading.level})` : "none"}`
+        );
+      } else {
+        // Fallback: create synthetic heading from title if no HTML heading found
+        if (pageTitle && pageTitle !== mdPage.pageName) {
+          pageHeading = { level: 1, text: pageTitle };
+          console.log(
+            `[Ingestion] Using title as heading for ${mdPage.pageName}: ${pageTitle}`
+          );
+        }
+      }
 
       allNodeData.push({
         uuid: pageUuid,
@@ -286,7 +298,7 @@ export async function ingestLogseqGraph(
       });
       pageCount++;
       console.log(
-        `[Ingestion] Created page node: ${mdPage.pageName} (uuid: ${pageUuid})`
+        `[Ingestion] Created page node: ${mdPage.pageName} (uuid: ${pageUuid}, heading: ${pageHeading ? pageHeading.text : "none"})`
       );
 
       if (mdPage.blocks.length === 0) {
@@ -325,7 +337,15 @@ export async function ingestLogseqGraph(
         );
 
         // Extract first heading from HTML for TOC metadata
-        const heading = extractFirstHeadingFromHTML(blockHTML);
+        let heading = extractFirstHeadingFromHTML(blockHTML);
+
+        // Fallback: use first 50 chars of content as heading if no h1/h2/h3 found
+        if (!heading && block.content) {
+          const contentPreview = block.content.substring(0, 50).trim();
+          if (contentPreview) {
+            heading = { level: 3, text: contentPreview };
+          }
+        }
 
         // Block node data - no title for blocks, only pages have titles
         // Only populate metadata.heading for nodes that will display in TOC (those with headings)

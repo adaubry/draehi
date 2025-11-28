@@ -59,11 +59,18 @@ export function nodeRecordId(uuid: string): string {
 
 // Normalize Node data - populate camelCase aliases from snake_case
 export function normalizeNode(node: Node): Node {
+  // Convert parent RecordId to string if it's an object
+  let parentValue = node.parent;
+  if (parentValue && typeof parentValue === 'object') {
+    // SurrealDB returns RecordId objects, convert to string representation
+    parentValue = String(parentValue);
+  }
+
   return {
     ...node,
     uuid: node.uuid || getNodeUuidFromRecord(node.id),
     pageName: node.pageName || node.page_name,
-    parentUuid: node.parentUuid !== undefined ? node.parentUuid : (node.parent || null),
+    parentUuid: node.parentUuid !== undefined ? node.parentUuid : (parentValue || null),
   };
 }
 

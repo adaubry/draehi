@@ -109,42 +109,35 @@ fi
 
 echo "→ Loading schema from: ${SCHEMA_FILE}"
 
-# Load schema into SurrealDB
-# Use surrealdb cli tool if available, otherwise use surreal binary
-if command -v surreal &> /dev/null; then
-    # Using surreal binary from PATH
-    surreal import \
-        --conn "${SURREAL_URL}" \
-        --user "${SURREAL_USER}" \
-        --pass "${SURREAL_PASS}" \
-        --ns "${SURREAL_NS}" \
-        --db "${SURREAL_DB}" \
-        "${SCHEMA_FILE}"
+# Load schema using SurrealDB HTTP API (no external CLI dependencies)
+# Create temporary file for curl response
+TEMP_RESPONSE=$(mktemp)
+TEMP_FILES+=("${TEMP_RESPONSE}")
+
+# Execute schema via HTTP API with curl
+# --write-out outputs HTTP status code at the end of response
+HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${SURREAL_URL}/sql" \
+    -H "Accept: application/json" \
+    -H "Content-Type: text/plain" \
+    -u "${SURREAL_USER}:${SURREAL_PASS}" \
+    -H "Surreal-NS: ${SURREAL_NS}" \
+    -H "Surreal-DB: ${SURREAL_DB}" \
+    --data-binary @"${SCHEMA_FILE}")
+
+# Extract HTTP status code (last line)
+HTTP_CODE=$(echo "${HTTP_RESPONSE}" | tail -n 1)
+RESPONSE_BODY=$(echo "${HTTP_RESPONSE}" | sed '$d')
+
+if [[ "${HTTP_CODE}" == "200" ]]; then
+    echo "✅ Schema initialized successfully"
+    echo
 else
-    echo "⚠️  surreal CLI not found in PATH"
-    echo "   Attempting alternative method via Docker..."
-
-    # Try via docker exec if SurrealDB container is running
-    if docker ps | grep -q "surrealdb"; then
-        cat "${SCHEMA_FILE}" | docker exec -i "$(docker ps | grep surrealdb | awk '{print $1}')" surreal query \
-            --conn "ws://localhost:8000" \
-            --user "${SURREAL_USER}" \
-            --pass "${SURREAL_PASS}" \
-            --ns "${SURREAL_NS}" \
-            --db "${SURREAL_DB}" > /dev/null 2>&1
-
-        if [[ $? -ne 0 ]]; then
-            echo "❌ Failed to load schema via Docker"
-            exit 1
-        fi
-    else
-        echo "❌ Could not load schema - surreal CLI not found and Docker container not accessible"
-        exit 1
+    echo "❌ Failed to load schema (HTTP ${HTTP_CODE})"
+    if [[ -n "${RESPONSE_BODY}" ]]; then
+        echo "Response: ${RESPONSE_BODY}"
     fi
+    exit 1
 fi
-
-echo "✅ Schema initialized successfully"
-echo
 
 # Step 2: Check KeyDB (optional)
 echo "=== Step 2/4: Checking KeyDB (Optional) ==="

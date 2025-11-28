@@ -49,35 +49,6 @@ function extractFirstHeadingFromHTML(html: string): {
   return text ? { level, text } : null;
 }
 
-/**
- * Update node metadata with heading extracted from final HTML
- * Called after HTML is pushed to KeyDB so we have the cleanest HTML to extract from
- */
-async function updateNodeHeadingFromHTML(
-  nodeUuid: string,
-  html: string
-): Promise<void> {
-  const heading = extractFirstHeadingFromHTML(html);
-  if (!heading) return;
-
-  // Update node's metadata.heading in SurrealDB
-  const nodeId = nodeRecordId(nodeUuid);
-  try {
-    await query(
-      `UPDATE ${nodeId} SET metadata.heading = $heading RETURN *;`,
-      { heading }
-    );
-    console.log(
-      `[Ingestion] Updated heading for ${nodeUuid}: "${heading.text}"`
-    );
-  } catch (err) {
-    console.warn(
-      `[Ingestion] Failed to update heading for ${nodeUuid}:`,
-      err instanceof Error ? err.message : String(err)
-    );
-    // Don't throw - heading update is not critical
-  }
-}
 
 // Internal only - called during git sync/deployment
 export async function upsertNode(
@@ -300,7 +271,7 @@ export async function ingestLogseqGraph(
         : mdPage.pageName;
 
       // Pages don't have HTML stored in KeyDB, so no heading metadata needed
-      // Headings are only extracted for blocks (in updateNodeHeadingFromHTML)
+      // Headings are only extracted for blocks during HTML processing
       allNodeData.push({
         uuid: pageUuid,
         data: {
@@ -353,9 +324,13 @@ export async function ingestLogseqGraph(
           mdPage.pageName
         );
 
-        // Block node data - no title for blocks, only pages have titles
-        // Heading will be extracted from final HTML in KeyDB and updated later
+        // Block node data - Extract heading from final HTML for TOC
+        // This is the cleanest HTML after all processing
         const metadata: Record<string, unknown> = {};
+        const heading = extractFirstHeadingFromHTML(blockHTML);
+        if (heading) {
+          metadata.heading = heading;
+        }
 
         // Make block UUID globally unique by including workspace and page
         const globalBlockUuid = crypto
@@ -539,13 +514,6 @@ export async function ingestLogseqGraph(
         `[Ingestion] ⚠️  No block HTMLs to cache! (allBlockHTML.length=${allBlockHTML.length})`
       );
     }
-
-    // Extract headings from final HTML and update node metadata
-    console.log(`[Ingestion] Extracting headings from final HTML...`);
-    for (const blockHtml of uniqueBlockHTML) {
-      await updateNodeHeadingFromHTML(blockHtml.uuid, blockHtml.html);
-    }
-    console.log(`[Ingestion] ✓ Headings updated from final HTML`);
 
     // Store page block orders
     console.log(

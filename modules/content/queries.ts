@@ -337,3 +337,26 @@ export const getPageTreeWithHTML = cache(
     return result;
   }
 );
+
+/**
+ * Get all blocks with TOC entries (has_toc_entry=true) for a page
+ * Optimized query that only fetches blocks with headings
+ * Useful for building table of contents from block headings instead of just page heading
+ */
+export const getBlocksWithTocEntries = cache(
+  async (pageUuid: string): Promise<Node[]> => {
+    console.log(`[Display] getBlocksWithTocEntries: Fetching blocks with TOC entries for page ${pageUuid}`);
+
+    const pageNodeId = nodeRecordId(pageUuid);
+
+    // Query for all descendants with has_toc_entry=true using RELATE edge traversal
+    // This is much more efficient than fetching all blocks and filtering in memory
+    const results = await query<Node[]>(
+      `SELECT * FROM (SELECT <-parent FROM ${pageNodeId}) WHERE has_toc_entry = true ORDER BY \`order\` LIMIT 1000`
+    );
+
+    const blocks = results.map((block) => normalizeNode(block as unknown as Node));
+    console.log(`[Display] getBlocksWithTocEntries: Found ${blocks.length} blocks with TOC entries`);
+    return blocks;
+  }
+);

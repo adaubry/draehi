@@ -329,8 +329,10 @@ export async function ingestLogseqGraph(
         // This is the cleanest HTML after all processing
         const metadata: Record<string, unknown> = {};
         const heading = extractFirstHeadingFromHTML(blockHTML);
+        let hasTocEntry = false;
         if (heading) {
           metadata.heading = heading;
+          hasTocEntry = true;
           console.log(
             `[Ingestion] Block heading extracted: "${heading.text}" (h${heading.level})`
           );
@@ -367,6 +369,7 @@ export async function ingestLogseqGraph(
             slug,
             order: block.order,
             metadata,
+            has_toc_entry: hasTocEntry,
           },
         });
 

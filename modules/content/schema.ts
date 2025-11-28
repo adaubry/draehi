@@ -20,6 +20,7 @@ export interface Node {
     heading?: { level: number; text: string }; // First heading for TOC display
   };
   html?: string | null; // HTML content (stored in KeyDB, included when needed)
+  has_toc_entry?: boolean; // Optimization flag: true if block has a heading for TOC
   created_at: string;
   updated_at: string;
 }

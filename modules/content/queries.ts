@@ -217,8 +217,9 @@ export const getPageTree = cache(
     const pageNode = normalizeNode(rawNode);
     console.log(`[Display] getPageTree: Normalized - uuid=${pageNode.uuid}, id=${pageNode.id}, page_name=${pageNode.page_name}`);
 
-    // Build tree recursively using graph queries
-    const tree = await buildTreeWithGraphTraversal(pageNode);
+    // Build tree recursively using graph queries with cycle detection
+    const visitedUuids = new Set<string>();
+    const tree = await buildTreeWithGraphTraversal(pageNode, visitedUuids);
     const nodeCount = countNodes(tree);
     console.log(`[Display] getPageTree: Tree built with ${nodeCount} total nodes`);
 
@@ -229,13 +230,29 @@ export const getPageTree = cache(
 /**
  * Build tree recursively using SurrealDB graph traversal
  * Fetches children via RELATE parent relationships: <-parent AS children
+ * Includes cycle detection to prevent infinite loops
  */
 async function buildTreeWithGraphTraversal(
-  node: Node
+  node: Node,
+  visitedUuids: Set<string>
 ): Promise<TreeNode> {
   // Get UUID safely - handle both string and RecordId objects
   const nodeUuid = node.uuid || getNodeUuidFromRecord(node.id);
   const nodeId = nodeRecordId(nodeUuid);
+
+  // Cycle detection: if we've already visited this node, return empty tree
+  if (visitedUuids.has(nodeUuid)) {
+    console.warn(
+      `[Display] buildTreeWithGraphTraversal: Cycle detected! Node ${nodeUuid} is already in the tree. Skipping to prevent infinite loop.`
+    );
+    return {
+      node,
+      children: [],
+    };
+  }
+
+  // Mark this node as visited
+  visitedUuids.add(nodeUuid);
   console.log(`[Display] buildTreeWithGraphTraversal: Fetching children for nodeId=${nodeId}`);
 
   // Fetch children by querying nodes where parent = this node
@@ -262,7 +279,7 @@ async function buildTreeWithGraphTraversal(
   // Recursively build subtrees for all children in parallel
   const childTrees = await Promise.all(
     childrenData.map((child) =>
-      buildTreeWithGraphTraversal(child)
+      buildTreeWithGraphTraversal(child, visitedUuids)
     )
   );
 

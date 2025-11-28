@@ -8,6 +8,35 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed - 2025-11-28 (Table of Contents & Navigation)
+
+- **TOC Hierarchy Rendering**: Implemented `buildTOCHierarchy()` algorithm for proper parent-child heading relationships
+  - Stack-based algorithm converts flat heading list to tree structure respecting levels (h1 < h2 < h3)
+  - TOC items now render with correct indentation based on heading level
+  - Collapse/expand buttons for heading groups (children indented under parent headings)
+
+- **TOC Block Navigation**: Fixed anchor linking from TOC items to blocks
+  - Added `data-uuid={node.uuid}` attribute to block `<li>` elements
+  - TOC selector now uses `[data-uuid="..."]` instead of invalid `uuid` attribute
+  - Clicking TOC items scrolls to block and updates URL hash
+
+- **Sidebar Sticky Positioning**: Fixed sidebar to remain visible during scrolling
+  - Changed from relative container positioning to viewport-relative sticky
+  - Removed `container` wrapper that constrained sidebar
+  - Set `sticky top-14 h-[calc(100vh-3.5rem)]` for proper viewport positioning
+
+### Refactored - 2025-11-27 (Metadata Management)
+
+- **Smart Metadata Creation**: Removed `has_toc_entry` boolean flag from Node schema
+  - Implemented `createMetadataIfNeeded()` helper that only creates metadata objects when they have content
+  - Prevents empty `metadata: {}` objects cluttering database
+  - Filters empty values, tags arrays, and whitespace-only strings
+
+- **Heading Detection**: Added `hasHeading()` utility for checking if node has TOC entry
+  - Replaces `getBlocksWithTocEntries` with `getBlocksWithHeadings`
+  - Filters full page tree to extract blocks with `metadata.heading.text`
+  - Pragmatic in-memory filtering avoids separate database queries
+
 ### Added - 2025-11-26 (Surrealist Configuration & WebSocket Connection)
 
 - **Surrealist Auto-Configuration**: Pre-configured database connections via `surrealist-instance.json`

@@ -8,6 +8,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed - 2025-11-28 (Block Anchor Navigation Header Offset)
+
+- **Header Offset on Hash Navigation**: Blocks scrolled to via URL hash or TOC clicks no longer hidden by sticky header
+  - BlockTree: Added useEffect to handle hash-based navigation with 56px header offset
+  - TableOfContents: Updated click handler to use same scroll offset calculation
+  - Both add 16px additional padding for visual spacing
+  - Handles both initial page load with hash and dynamic hashchange events
+
 ### Fixed - 2025-11-28 (Table of Contents & Navigation)
 
 - **TOC Hierarchy Rendering**: Implemented `buildTOCHierarchy()` algorithm for proper parent-child heading relationships

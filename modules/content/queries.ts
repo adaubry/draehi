@@ -349,13 +349,16 @@ export const getBlocksWithHeadings = cache(
 
     const pageNodeId = nodeRecordId(pageUuid);
 
-    // Query for all descendants with metadata headings using RELATE edge traversal
-    // Only blocks with actual heading metadata will match
+    // Query for all descendants using RELATE edge traversal
+    // Filter to only blocks with heading metadata
     const results = await query<Node[]>(
-      `SELECT * FROM (SELECT <-parent FROM ${pageNodeId}) WHERE metadata.heading.text EXISTS ORDER BY \`order\` LIMIT 1000`
+      `SELECT * FROM ${pageNodeId} <-parent WHERE type::is::object(metadata) AND metadata.heading IS NOT NONE ORDER BY \`order\` LIMIT 1000`
     );
 
-    const blocks = results.map((block) => normalizeNode(block as unknown as Node));
+    const blocks = results
+      .map((block) => normalizeNode(block as unknown as Node))
+      .filter((block) => block.metadata?.heading?.text); // Double-check heading exists
+
     console.log(`[Display] getBlocksWithHeadings: Found ${blocks.length} blocks with heading metadata`);
     return blocks;
   }

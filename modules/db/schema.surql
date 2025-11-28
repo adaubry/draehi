@@ -45,7 +45,7 @@ DEFINE FIELD repo_url ON git_repositories TYPE string ASSERT string::len($value)
 DEFINE FIELD branch ON git_repositories TYPE string DEFAULT "main";
 DEFINE FIELD deploy_key ON git_repositories TYPE string;
 DEFINE FIELD last_sync ON git_repositories TYPE datetime;
-DEFINE FIELD sync_status ON git_repositories TYPE string ENUM "pending" "syncing" "success" "failed" DEFAULT "pending";
+DEFINE FIELD sync_status ON git_repositories TYPE string DEFAULT "pending";
 DEFINE FIELD created_at ON git_repositories TYPE datetime DEFAULT time::now();
 DEFINE FIELD updated_at ON git_repositories TYPE datetime DEFAULT time::now();
 DEFINE INDEX workspace_id_idx ON git_repositories COLUMNS workspace_id;
@@ -96,7 +96,7 @@ DEFINE TABLE deployment_history SCHEMALESS;
 DEFINE FIELD id ON deployment_history TYPE string;
 DEFINE FIELD workspace_id ON deployment_history TYPE record<workspaces>;
 DEFINE FIELD commit_sha ON deployment_history TYPE string;
-DEFINE FIELD status ON deployment_history TYPE string ENUM "pending" "success" "failed" DEFAULT "pending";
+DEFINE FIELD status ON deployment_history TYPE string DEFAULT "pending";
 DEFINE FIELD error_log ON deployment_history TYPE option<string>;
 DEFINE FIELD deployed_at ON deployment_history TYPE datetime DEFAULT time::now();
 DEFINE INDEX workspace_id_idx ON deployment_history COLUMNS workspace_id;

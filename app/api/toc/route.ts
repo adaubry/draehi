@@ -1,50 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getNodeByPath, getBlocksWithHeadings } from "@/modules/content/queries";
+import { getNodeByPath, getTOCForPage } from "@/modules/content/queries";
 import { getWorkspaceBySlug } from "@/modules/workspace/queries";
-
-interface TOCItem {
-  uuid: string;
-  title: string;
-  level: number;
-  children: TOCItem[];
-}
-
-/**
- * Build hierarchical TOC tree from flat list of headings
- * Headings are ordered by level (h1, h2, h3)
- */
-function buildTOCHierarchy(flatHeadings: Array<{ uuid: string; title: string; level: number }>): TOCItem[] {
-  if (flatHeadings.length === 0) return [];
-
-  const items: TOCItem[] = [];
-  const stack: TOCItem[] = [];
-
-  for (const heading of flatHeadings) {
-    const item: TOCItem = {
-      uuid: heading.uuid,
-      title: heading.title,
-      level: heading.level,
-      children: [],
-    };
-
-    // Find parent by level
-    while (stack.length > 0 && stack[stack.length - 1].level >= item.level) {
-      stack.pop();
-    }
-
-    if (stack.length === 0) {
-      // Top-level item
-      items.push(item);
-    } else {
-      // Add as child to current parent
-      stack[stack.length - 1].children.push(item);
-    }
-
-    stack.push(item);
-  }
-
-  return items;
-}
 
 /**
  * TOC API endpoint
@@ -97,24 +53,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const blocksWithHeadings = await getBlocksWithHeadings(pageUuid);
-    console.log(`[TOC] Found ${blocksWithHeadings.length} blocks with headings`);
-
-    // Extract headings in order
-    const flatHeadings = blocksWithHeadings
-      .filter((block) => block.metadata?.heading?.text)
-      .map((block) => {
-        const heading = block.metadata!.heading!;
-        return {
-          uuid: block.uuid || block.id,
-          title: heading.text,
-          level: heading.level,
-        };
-      });
-
-    // Build hierarchical structure
-    const tocItems = buildTOCHierarchy(flatHeadings);
-    console.log(`[TOC] Built hierarchy with ${tocItems.length} root items`);
+    // Get TOC items for the page
+    const tocItems = await getTOCForPage(pageUuid, workspace.id);
+    console.log(`[TOC] Built TOC with ${tocItems.length} root items`);
 
     return NextResponse.json({
       pageTitle: pageNode.title,

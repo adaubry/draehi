@@ -138,17 +138,39 @@ start_services() {
         if docker compose ps | grep -q "healthy\|Up"; then
             echo "✅ Services are healthy"
             echo
-            echo "Service URLs:"
-            echo "  • Surrealist: http://localhost:8080 (SurrealDB GUI - pre-configured)"
-            echo "  • SurrealDB:  http://localhost:8000/health"
-            echo "  • KeyDB:      redis://localhost:6379"
-            echo "  • MinIO:      http://localhost:9000 (minioadmin/minioadmin)"
-            echo
-            echo "Surrealist Connection:"
-            echo "  ✓ Pre-configured: 'Local Development'"
-            echo "  ✓ URL: ws://localhost:8000/rpc"
-            echo "  ✓ Database: draehi/main"
-            return 0
+
+            # Initialize database schema
+            echo "→ Initializing database schema..."
+            if bash "${SCRIPT_DIR}/setup-databases.sh"; then
+                echo "✅ Database schema initialized"
+                echo
+                echo "Service URLs:"
+                echo "  • Surrealist: http://localhost:8080 (SurrealDB GUI - pre-configured)"
+                echo "  • SurrealDB:  http://localhost:8000/health"
+                echo "  • KeyDB:      redis://localhost:6379"
+                echo "  • MinIO:      http://localhost:9000 (minioadmin/minioadmin)"
+                echo
+                echo "Surrealist Connection:"
+                echo "  ✓ Pre-configured: 'Local Development'"
+                echo "  ✓ URL: ws://localhost:8000/rpc"
+                echo "  ✓ Database: draehi/main"
+                return 0
+            else
+                echo "⚠️  Schema initialization failed - continuing anyway"
+                echo "    Run manually: ./scripts/setup-databases.sh"
+                echo
+                echo "Service URLs:"
+                echo "  • Surrealist: http://localhost:8080 (SurrealDB GUI - pre-configured)"
+                echo "  • SurrealDB:  http://localhost:8000/health"
+                echo "  • KeyDB:      redis://localhost:6379"
+                echo "  • MinIO:      http://localhost:9000 (minioadmin/minioadmin)"
+                echo
+                echo "Surrealist Connection:"
+                echo "  ✓ Pre-configured: 'Local Development'"
+                echo "  ✓ URL: ws://localhost:8000/rpc"
+                echo "  ✓ Database: draehi/main"
+                return 1
+            fi
         fi
 
         attempt=$((attempt + 1))

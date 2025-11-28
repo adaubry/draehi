@@ -31,8 +31,12 @@ type DashboardClientProps = {
     username: string;
   };
   errorIsStale: boolean;
-  handleConnect: (formData: FormData) => Promise<{success: boolean; error?: string}>;
-  handleDeleteAccount: (formData: FormData) => Promise<{success: boolean; error?: string}>;
+  handleConnect: (
+    formData: FormData
+  ) => Promise<{ success: boolean; error?: string }>;
+  handleDeleteAccount: (
+    formData: FormData
+  ) => Promise<{ success: boolean; error?: string }>;
   triggerDeployment: () => Promise<void>;
 };
 
@@ -112,9 +116,7 @@ export function DashboardClient({
 
         {!repository ? (
           <div className="text-center py-8">
-            <p className="text-gray-600 mb-4">
-              No repository connected yet
-            </p>
+            <p className="text-gray-600 mb-4">No repository connected yet</p>
             <p className="text-sm text-gray-500 mb-6">
               Connect your Logseq graph repository to get started
             </p>
@@ -142,10 +144,10 @@ export function DashboardClient({
                       repository.sync_status === "success"
                         ? "bg-green-100 text-green-800"
                         : repository.sync_status === "error"
-                          ? "bg-red-100 text-red-800"
-                          : repository.sync_status === "syncing"
-                            ? "bg-blue-100 text-blue-800 animate-pulse"
-                            : "bg-gray-100 text-gray-800"
+                        ? "bg-red-100 text-red-800"
+                        : repository.sync_status === "syncing"
+                        ? "bg-blue-100 text-blue-800 animate-pulse"
+                        : "bg-gray-100 text-gray-800"
                     }`}
                   >
                     {repository.sync_status}
@@ -153,9 +155,7 @@ export function DashboardClient({
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500">
-                  Last Sync
-                </dt>
+                <dt className="text-sm font-medium text-gray-500">Last Sync</dt>
                 <dd className="mt-1 text-sm">
                   {repository.last_sync
                     ? new Date(repository.last_sync).toLocaleString("en-US", {
@@ -173,21 +173,29 @@ export function DashboardClient({
             </dl>
 
             {repository.error_log && (
-              <div className={`p-4 border rounded-md ${
-                errorIsStale
-                  ? "bg-gray-50 border-gray-200"
-                  : "bg-red-50 border-red-200"
-              }`}>
+              <div
+                className={`p-4 border rounded-md ${
+                  errorIsStale
+                    ? "bg-gray-50 border-gray-200"
+                    : "bg-red-50 border-red-200"
+                }`}
+              >
                 <div className="flex items-start justify-between mb-2">
-                  <p className={`text-sm font-medium ${
-                    errorIsStale ? "text-gray-600" : "text-red-800"
-                  }`}>
-                    {errorIsStale ? "Previous Error (Resolved):" : "Last Error:"}
+                  <p
+                    className={`text-sm font-medium ${
+                      errorIsStale ? "text-gray-600" : "text-red-800"
+                    }`}
+                  >
+                    {errorIsStale
+                      ? "Previous Error (Resolved):"
+                      : "Last Error:"}
                   </p>
                   {repository.updated_at && (
-                    <p className={`text-xs ${
-                      errorIsStale ? "text-gray-500" : "text-red-600"
-                    }`}>
+                    <p
+                      className={`text-xs ${
+                        errorIsStale ? "text-gray-500" : "text-red-600"
+                      }`}
+                    >
                       {new Date(repository.updated_at).toLocaleString("en-US", {
                         year: "numeric",
                         month: "2-digit",
@@ -200,9 +208,11 @@ export function DashboardClient({
                     </p>
                   )}
                 </div>
-                <pre className={`text-xs whitespace-pre-wrap ${
-                  errorIsStale ? "text-gray-600" : "text-red-700"
-                }`}>
+                <pre
+                  className={`text-xs whitespace-pre-wrap ${
+                    errorIsStale ? "text-gray-600" : "text-red-700"
+                  }`}
+                >
                   {repository.error_log}
                 </pre>
               </div>
@@ -215,7 +225,9 @@ export function DashboardClient({
                   disabled={repository.sync_status === "syncing"}
                   className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {repository.sync_status === "syncing" ? "Deploying..." : "Trigger Deployment"}
+                  {repository.sync_status === "syncing"
+                    ? "Deploying..."
+                    : "Trigger Deployment"}
                 </button>
               </form>
             </div>
@@ -234,7 +246,9 @@ export function DashboardClient({
                 className="flex items-center justify-between py-3 border-b last:border-b-0"
               >
                 <div className="flex-1">
-                  <p className="text-sm font-mono">{deployment.commit_sha.slice(0, 7)}</p>
+                  <p className="text-sm font-mono">
+                    {deployment.commit_sha.slice(0, 7)}
+                  </p>
                   <p className="text-xs text-gray-500">
                     {new Date(deployment.deployed_at).toLocaleString("en-US", {
                       year: "numeric",
@@ -252,10 +266,10 @@ export function DashboardClient({
                     deployment.status === "success"
                       ? "bg-green-100 text-green-800"
                       : deployment.status === "failed"
-                        ? "bg-red-100 text-red-800"
-                        : deployment.status === "building"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-gray-100 text-gray-800"
+                      ? "bg-red-100 text-red-800"
+                      : deployment.status === "building"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-gray-100 text-gray-800"
                   }`}
                 >
                   {deployment.status}
@@ -273,9 +287,7 @@ export function DashboardClient({
           className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
         >
           <h2 className="text-xl font-semibold">Advanced Settings</h2>
-          <span className="text-gray-400">
-            {settingsOpen ? "−" : "+"}
-          </span>
+          <span className="text-gray-400">{settingsOpen ? "−" : "+"}</span>
         </button>
 
         {settingsOpen && (
@@ -285,15 +297,22 @@ export function DashboardClient({
               <div>
                 <h3 className="text-lg font-medium mb-4">Connect Repository</h3>
 
-                {connectState && !connectState.success && connectState.error && (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-md mb-4">
-                    <p className="text-sm text-red-800">{connectState.error}</p>
-                  </div>
-                )}
+                {connectState &&
+                  !connectState.success &&
+                  connectState.error && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-md mb-4">
+                      <p className="text-sm text-red-800">
+                        {connectState.error}
+                      </p>
+                    </div>
+                  )}
 
                 <form action={connectAction} className="space-y-4">
                   <div>
-                    <label htmlFor="repoUrl" className="block text-sm font-medium mb-1">
+                    <label
+                      htmlFor="repoUrl"
+                      className="block text-sm font-medium mb-1"
+                    >
                       GitHub Repository URL
                     </label>
                     <input
@@ -311,7 +330,10 @@ export function DashboardClient({
                   </div>
 
                   <div>
-                    <label htmlFor="branch" className="block text-sm font-medium mb-1">
+                    <label
+                      htmlFor="branch"
+                      className="block text-sm font-medium mb-1"
+                    >
                       Branch
                     </label>
                     <input
@@ -329,7 +351,10 @@ export function DashboardClient({
                   </div>
 
                   <div>
-                    <label htmlFor="accessToken" className="block text-sm font-medium mb-1">
+                    <label
+                      htmlFor="accessToken"
+                      className="block text-sm font-medium mb-1"
+                    >
                       GitHub Personal Access Token
                     </label>
                     <input
@@ -367,8 +392,10 @@ export function DashboardClient({
             )}
 
             {/* Danger Zone */}
-            <div className="border-t border-red-200 pt-6">
-              <h3 className="text-lg font-medium mb-4 text-red-600">Danger Zone</h3>
+            <div className="pt-6">
+              <h3 className="text-lg font-medium mb-4 text-red-600">
+                Danger Zone
+              </h3>
               <p className="text-sm text-gray-600 mb-4">
                 Once you delete your account, there is no going back. This will
                 permanently delete your workspace, all content, repository
@@ -383,8 +410,12 @@ export function DashboardClient({
 
               <form action={deleteAction} className="space-y-4">
                 <div>
-                  <label htmlFor="confirmation" className="block text-sm font-medium mb-1">
-                    Type your username to confirm: <strong>{user.username}</strong>
+                  <label
+                    htmlFor="confirmation"
+                    className="block text-sm font-medium mb-1"
+                  >
+                    Type your username to confirm:{" "}
+                    <strong>{user.username}</strong>
                   </label>
                   <input
                     id="confirmation"

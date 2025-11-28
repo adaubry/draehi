@@ -2,8 +2,17 @@
 
 import { query, selectOne } from "@/lib/surreal";
 import { getBlockHTML, getBlockHTMLBatch } from "@/lib/keydb";
-import { type Node, type NodeWithHTML, nodeRecordId, normalizeNode } from "./schema";
+import {
+  type Node,
+  type NodeWithHTML,
+  nodeRecordId,
+  normalizeNode,
+  getNodeUuidFromRecord,
+} from "./schema";
 import { cache } from "react";
+
+// Feature flag for SurrealDB graph traversal optimization
+const USE_GRAPH_QUERY = true;
 
 // Tree node for hierarchical rendering
 export interface TreeNode {
@@ -31,7 +40,9 @@ export const getNodeByUuidWithHTML = cache(
 
 export const getNodeByPath = cache(
   async (workspaceId: string, pathSegments: string[]): Promise<Node | null> => {
-    console.log(`[Display] getNodeByPath: Looking for path [${pathSegments.join("/")}]`);
+    console.log(
+      `[Display] getNodeByPath: Looking for path [${pathSegments.join("/")}]`
+    );
 
     // Build slug from path segments: "advanced-commands"
     const slug = pathSegments[pathSegments.length - 1];
@@ -50,7 +61,11 @@ export const getNodeByPath = cache(
     }
 
     const matchingPage = page[0];
-    console.log(`[Display] getNodeByPath: Matched PAGE "${matchingPage.page_name}" (slug: ${slug}) to [${pathSegments.join("/")}]`);
+    console.log(
+      `[Display] getNodeByPath: Matched PAGE "${
+        matchingPage.page_name
+      }" (slug: ${slug}) to [${pathSegments.join("/")}]`
+    );
     return normalizeNode(JSON.parse(JSON.stringify(matchingPage)));
   }
 );
@@ -58,7 +73,9 @@ export const getNodeByPath = cache(
 export const getAllNodes = cache(
   async (workspaceId: string): Promise<Node[]> => {
     // Only return page nodes for navigation (parent IS NONE)
-    console.log(`[Display] getAllNodes: Fetching page nodes for workspace ${workspaceId}`);
+    console.log(
+      `[Display] getAllNodes: Fetching page nodes for workspace ${workspaceId}`
+    );
     const nodes = await query<Node>(
       "SELECT * FROM nodes WHERE workspace = $ws AND parent IS NONE ORDER BY page_name",
       { ws: workspaceId }
@@ -69,23 +86,25 @@ export const getAllNodes = cache(
   }
 );
 
-export const getJournalNodes = cache(
-  async (): Promise<Node[]> => {
-    // Journal detection is removed - return empty array
-    return [];
-  }
-);
+export const getJournalNodes = cache(async (): Promise<Node[]> => {
+  // Journal detection is removed - return empty array
+  return [];
+});
 
 export const getPageBlocks = cache(
   async (pageUuid: string): Promise<Node[]> => {
     const pageNodeId = nodeRecordId(pageUuid);
-    console.log(`[Display] getPageBlocks: Fetching direct children for page ${pageUuid}`);
+    console.log(
+      `[Display] getPageBlocks: Fetching direct children for page ${pageUuid}`
+    );
 
     const blocks = await query<Node>(
       `SELECT * FROM ${pageNodeId} <- parent ORDER BY order`
     );
 
-    console.log(`[Display] getPageBlocks: Found ${blocks.length} direct children`);
+    console.log(
+      `[Display] getPageBlocks: Found ${blocks.length} direct children`
+    );
     return blocks;
   }
 );
@@ -93,7 +112,9 @@ export const getPageBlocks = cache(
 export const getAllBlocksForPage = cache(
   async (workspaceId: string, pageName: string): Promise<Node[]> => {
     // Get all blocks for this page (excludes the page node itself)
-    console.log(`[Display] getAllBlocksForPage: Fetching blocks for page "${pageName}" in workspace ${workspaceId}`);
+    console.log(
+      `[Display] getAllBlocksForPage: Fetching blocks for page "${pageName}" in workspace ${workspaceId}`
+    );
 
     // Step 1: Get page node
     const pageResult = await query<Node>(
@@ -102,12 +123,16 @@ export const getAllBlocksForPage = cache(
     );
 
     if (pageResult.length === 0) {
-      console.log(`[Display] getAllBlocksForPage: Page not found for "${pageName}"`);
+      console.log(
+        `[Display] getAllBlocksForPage: Page not found for "${pageName}"`
+      );
       return [];
     }
 
     const pageNode = pageResult[0];
-    const pageNodeId = nodeRecordId(pageNode.uuid || getNodeUuidFromRecord(pageNode.id));
+    const pageNodeId = nodeRecordId(
+      pageNode.uuid || getNodeUuidFromRecord(pageNode.id)
+    );
 
     // Step 2: Get all descendants via recursive application logic
     // SurrealDB doesn't support RECURSIVE modifier, so we traverse with BFS in app layer
@@ -129,12 +154,16 @@ export const getAllBlocksForPage = cache(
 
       // Add children to queue for further traversal
       for (const child of children) {
-        const childId = nodeRecordId(child.uuid || getNodeUuidFromRecord(child.id));
+        const childId = nodeRecordId(
+          child.uuid || getNodeUuidFromRecord(child.id)
+        );
         queue.push(childId);
       }
     }
 
-    console.log(`[Display] getAllBlocksForPage: Found ${allBlocks.length} blocks for page "${pageName}"`);
+    console.log(
+      `[Display] getAllBlocksForPage: Found ${allBlocks.length} blocks for page "${pageName}"`
+    );
     return allBlocks;
   }
 );
@@ -142,20 +171,30 @@ export const getAllBlocksForPage = cache(
 // Get all blocks for a page with their HTML from KeyDB
 export const getAllBlocksForPageWithHTML = cache(
   async (workspaceId: string, pageName: string): Promise<NodeWithHTML[]> => {
-    console.log(`[Display] getAllBlocksForPageWithHTML: Fetching blocks with HTML for page "${pageName}"`);
+    console.log(
+      `[Display] getAllBlocksForPageWithHTML: Fetching blocks with HTML for page "${pageName}"`
+    );
     const blocks = await getAllBlocksForPage(workspaceId, pageName);
 
     if (blocks.length === 0) {
-      console.log(`[Display] getAllBlocksForPageWithHTML: No blocks found for page "${pageName}"`);
+      console.log(
+        `[Display] getAllBlocksForPageWithHTML: No blocks found for page "${pageName}"`
+      );
       return [];
     }
 
     // Batch fetch HTML from KeyDB
     const uuids = blocks.map((b) => getNodeUuidFromRecord(b.id));
-    console.log(`[Display] getAllBlocksForPageWithHTML: Batch fetching HTML for ${uuids.length} blocks from KeyDB`);
+    console.log(
+      `[Display] getAllBlocksForPageWithHTML: Batch fetching HTML for ${uuids.length} blocks from KeyDB`
+    );
     const htmlMap = await getBlockHTMLBatch(workspaceId, uuids);
-    const htmlCount = Array.from(htmlMap.values()).filter(h => h !== null).length;
-    console.log(`[Display] getAllBlocksForPageWithHTML: Retrieved HTML for ${htmlCount}/${uuids.length} blocks`);
+    const htmlCount = Array.from(htmlMap.values()).filter(
+      (h) => h !== null
+    ).length;
+    console.log(
+      `[Display] getAllBlocksForPageWithHTML: Retrieved HTML for ${htmlCount}/${uuids.length} blocks`
+    );
 
     return blocks.map((block) =>
       normalizeNode({
@@ -166,18 +205,15 @@ export const getAllBlocksForPageWithHTML = cache(
   }
 );
 
-function getNodeUuidFromRecord(recordId: string | unknown): string {
-  const idStr = String(recordId);
-  return idStr.replace("nodes:", "");
-}
-
 export const getPageBacklinks = cache(
   async (pageUuid: string): Promise<Node[]> => {
     // TODO: Find all blocks that reference this page via [[pageName]]
     // Requires scanning HTML content in KeyDB for page references
     // Could be optimized with a separate references table indexed during ingestion
     // For now, return empty - implement with proper indexing later
-    console.log(`[Display] getPageBacklinks: TODO - Backlink resolution for page ${pageUuid}`);
+    console.log(
+      `[Display] getPageBacklinks: TODO - Backlink resolution for page ${pageUuid}`
+    );
     return [];
   }
 );
@@ -188,7 +224,9 @@ export const getBlockBacklinks = cache(
     // Requires scanning HTML content in KeyDB for block references
     // Could be optimized with a separate references table indexed during ingestion
     // For now, return empty - implement with proper indexing later
-    console.log(`[Display] getBlockBacklinks: TODO - Backlink resolution for block ${blockUuid}`);
+    console.log(
+      `[Display] getBlockBacklinks: TODO - Backlink resolution for block ${blockUuid}`
+    );
     return [];
   }
 );
@@ -199,13 +237,42 @@ export const getBlockBacklinks = cache(
  * This leverages the parent field's RELATE edge structure for efficient tree building
  */
 export const getPageTree = cache(
-  async (pageUuid: string): Promise<TreeNode | null> => {
+  async (pageUuid: string, workspaceId?: string): Promise<TreeNode | null> => {
     console.log(`[Display] getPageTree: Building tree for page ${pageUuid}`);
 
-    // Fetch the page node using proper SurrealDB syntax
+    if (USE_GRAPH_QUERY && workspaceId) {
+      console.log(
+        `[Display] getPageTree: Using optimized graph query (1 query instead of 547)`
+      );
+
+      // NEW: Use SurrealDB graph traversal (much faster!)
+      const flatNodes = await buildTreeWithGraphQuery(pageUuid, workspaceId);
+      if (flatNodes.length === 0) {
+        console.log(
+          `[Display] getPageTree: No nodes found for page ${pageUuid}`
+        );
+        return null;
+      }
+
+      // Build tree from flat list
+      const tree = buildTreeFromFlatList(flatNodes, pageUuid, workspaceId);
+      if (tree) {
+        const nodeCount = countNodes(tree);
+        console.log(
+          `[Display] getPageTree: Tree built with ${nodeCount} total nodes using graph query`
+        );
+      }
+      return tree;
+    }
+
+    // FALLBACK: Old sequential query approach (for safety/debugging)
+    console.log(`[Display] getPageTree: Using fallback sequential query`);
     const pageNodeId = nodeRecordId(pageUuid);
     console.log(`[Display] getPageTree: Fetching node with id: ${pageNodeId}`);
-    const pageNodeResult = await query<Node>(`SELECT * FROM type::thing('nodes', $uuid)`, { uuid: pageUuid });
+    const pageNodeResult = await query<Node>(
+      `SELECT * FROM type::thing('nodes', $uuid)`,
+      { uuid: pageUuid }
+    );
 
     if (pageNodeResult.length === 0) {
       console.log(`[Display] getPageTree: Page node not found: ${pageNodeId}`);
@@ -213,20 +280,33 @@ export const getPageTree = cache(
     }
 
     const rawNode = pageNodeResult[0];
-    console.log(`[Display] getPageTree: Raw node id=${rawNode.id}, uuid=${rawNode.uuid}, page_name=${rawNode.page_name}`);
+    console.log(
+      `[Display] getPageTree: Raw node id=${rawNode.id}, uuid=${rawNode.uuid}, page_name=${rawNode.page_name}`
+    );
     const pageNode = normalizeNode(rawNode);
-    console.log(`[Display] getPageTree: Normalized - uuid=${pageNode.uuid}, id=${pageNode.id}, page_name=${pageNode.page_name}`);
+    console.log(
+      `[Display] getPageTree: Normalized - uuid=${pageNode.uuid}, id=${pageNode.id}, page_name=${pageNode.page_name}`
+    );
 
-    // Build tree recursively using graph queries with cycle detection
+    // Build tree recursively using sequential queries with cycle detection
     const visitedUuids = new Set<string>();
     const cyclesDetected: Array<{ nodeUuid: string; nodeTitle: string }> = [];
-    const tree = await buildTreeWithGraphTraversal(pageNode, visitedUuids, [pageUuid], cyclesDetected);
+    const tree = await buildTreeWithGraphTraversal(
+      pageNode,
+      visitedUuids,
+      [pageUuid],
+      cyclesDetected
+    );
     const nodeCount = countNodes(tree);
-    console.log(`[Display] getPageTree: Tree built with ${nodeCount} total nodes`);
+    console.log(
+      `[Display] getPageTree: Tree built with ${nodeCount} total nodes`
+    );
 
     if (cyclesDetected.length > 0) {
       console.warn(
-        `[Display] getPageTree: Detected and broke ${cyclesDetected.length} cycles in tree:\n${cyclesDetected
+        `[Display] getPageTree: Detected and broke ${
+          cyclesDetected.length
+        } cycles in tree:\n${cyclesDetected
           .map((c) => `  - Node ${c.nodeUuid} (${c.nodeTitle})`)
           .join("\n")}`
       );
@@ -235,6 +315,102 @@ export const getPageTree = cache(
     return tree;
   }
 );
+
+/**
+ * Build hierarchical tree from flat list of nodes with parent references
+ * Converts a flat array into a nested TreeNode structure based on parent pointers
+ */
+function buildTreeFromFlatList(
+  nodes: Node[],
+  pageUuid: string,
+  workspace: any
+): TreeNode | null {
+  if (nodes.length === 0) return null;
+
+  // Find the root page node
+  const pageNode = nodes.find((n) => {
+    const uuid = n.uuid || getNodeUuidFromRecord(n.id);
+    return uuid === pageUuid;
+  });
+
+  if (!pageNode) {
+    console.log(
+      `[Display] buildTreeFromFlatList: Page node ${pageUuid} not found in nodes list`
+    );
+    return null;
+  }
+
+  // Create map for fast lookup
+  const nodeMap = new Map<string, Node>();
+  nodes.forEach((n) => {
+    const uuid = n.uuid || getNodeUuidFromRecord(n.id);
+    nodeMap.set(uuid, n);
+  });
+
+  // Build tree recursively
+  function buildNode(node: Node): TreeNode {
+    const nodeUuid = node.uuid || getNodeUuidFromRecord(node.id);
+    const children: TreeNode[] = [];
+
+    // Find all children of this node
+    nodes.forEach((n) => {
+      const parentUuid = n.parent
+        ? typeof n.parent === "string"
+          ? n.parent.replace("nodes:", "")
+          : getNodeUuidFromRecord(n.parent)
+        : null;
+      if (parentUuid === nodeUuid) {
+        children.push(buildNode(n));
+      }
+    });
+
+    return {
+      node,
+      children: children.sort(
+        (a, b) => (a.node.order || 0) - (b.node.order || 0)
+      ),
+    };
+  }
+
+  return buildNode(pageNode);
+}
+
+/**
+ * Fetch all nodes for a page using SurrealDB graph query
+ * Returns flat list of nodes with parent references
+ * Much faster than sequential queries (1 query vs 547)
+ */
+export async function buildTreeWithGraphQuery(
+  pageUuid: string,
+  workspaceId: string
+): Promise<any[]> {
+  const pageNodeId = nodeRecordId(pageUuid);
+  console.log(
+    `[Display] buildTreeWithGraphQuery: Fetching full tree for page ${pageUuid} using RELATE graph`
+  );
+
+  // Use SurrealDB graph traversal via RELATE edges
+  // Query the page node and ALL descendants using <-parent* syntax
+  // This traverses the graph in reverse (from parent to children)
+  const allNodes = await query(
+    `
+    SELECT *
+    FROM ${pageNodeId}
+    UNION
+    SELECT * FROM <-parent* FROM ${pageNodeId}
+    WHERE workspace = $ws
+    ORDER BY parent, \`order\`
+    `,
+    { ws: workspaceId }
+  );
+
+  console.log(
+    `[Display] buildTreeWithGraphQuery: Fetched ${allNodes.length} nodes for tree building using graph traversal`
+  );
+
+  // Normalize nodes before returning
+  return allNodes.map((n) => normalizeNode(JSON.parse(JSON.stringify(n))));
+}
 
 /**
  * Build tree recursively using SurrealDB graph traversal
@@ -261,9 +437,9 @@ async function buildTreeWithGraphTraversal(
     const cyclePathStr = ancestorPath.join(" -> ");
     console.warn(
       `[Display] buildTreeWithGraphTraversal: Cycle detected!\n` +
-      `  Affected node: ${nodeUuid} (${node.title})\n` +
-      `  Cycle path: ${cyclePathStr} -> ${nodeUuid}\n` +
-      `  Fix: Break the parent relationship of one node in this cycle or check for data corruption.`
+        `  Affected node: ${nodeUuid} (${node.title})\n` +
+        `  Cycle path: ${cyclePathStr} -> ${nodeUuid}\n` +
+        `  Fix: Break the parent relationship of one node in this cycle or check for data corruption.`
     );
     cyclesDetected.push({ nodeUuid, nodeTitle: node.title });
 
@@ -276,7 +452,9 @@ async function buildTreeWithGraphTraversal(
 
   // Mark this node as visited
   visitedUuids.add(nodeUuid);
-  console.log(`[Display] buildTreeWithGraphTraversal: Fetching children for nodeId=${nodeId}`);
+  console.log(
+    `[Display] buildTreeWithGraphTraversal: Fetching children for nodeId=${nodeId}`
+  );
 
   // Fetch children by querying nodes where parent = this node
   const graphResults = await query<Node[]>(
@@ -288,20 +466,31 @@ async function buildTreeWithGraphTraversal(
     childrenData = graphResults.map((child) =>
       normalizeNode(child as unknown as Node)
     );
-    console.log(`[Display] buildTreeWithGraphTraversal: Found ${childrenData.length} children for ${nodeUuid}`);
+    console.log(
+      `[Display] buildTreeWithGraphTraversal: Found ${childrenData.length} children for ${nodeUuid}`
+    );
     if (childrenData.length > 0) {
-      console.log(`[Display] buildTreeWithGraphTraversal: First child - uuid=${childrenData[0].uuid}, id=${childrenData[0].id}, title=${childrenData[0].title}`);
+      console.log(
+        `[Display] buildTreeWithGraphTraversal: First child - uuid=${childrenData[0].uuid}, id=${childrenData[0].id}, title=${childrenData[0].title}`
+      );
     }
   }
 
   if (childrenData.length === 0) {
-    console.log(`[Display] buildTreeWithGraphTraversal: No children found for ${nodeUuid}`);
+    console.log(
+      `[Display] buildTreeWithGraphTraversal: No children found for ${nodeUuid}`
+    );
   }
 
   // Recursively build subtrees for all children in parallel
   const childTrees = await Promise.all(
     childrenData.map((child) =>
-      buildTreeWithGraphTraversal(child, visitedUuids, [...ancestorPath, nodeUuid], cyclesDetected)
+      buildTreeWithGraphTraversal(
+        child,
+        visitedUuids,
+        [...ancestorPath, nodeUuid],
+        cyclesDetected
+      )
     )
   );
 
@@ -323,7 +512,7 @@ function countNodes(tree: TreeNode): number {
  */
 export const getPageTreeWithHTML = cache(
   async (pageUuid: string, workspaceId: string): Promise<TreeNode | null> => {
-    const tree = await getPageTree(pageUuid);
+    const tree = await getPageTree(pageUuid, workspaceId);
     if (!tree) return null;
 
     // Collect all node UUIDs in the tree
@@ -337,7 +526,9 @@ export const getPageTreeWithHTML = cache(
     }
     collectUuids(tree);
 
-    console.log(`[Display] getPageTreeWithHTML: Fetching HTML for ${uuids.length} nodes from KeyDB`);
+    console.log(
+      `[Display] getPageTreeWithHTML: Fetching HTML for ${uuids.length} nodes from KeyDB`
+    );
 
     // Batch fetch all HTML from KeyDB
     const htmlMap = await getBlockHTMLBatch(workspaceId, uuids);
@@ -366,13 +557,17 @@ export const getPageTreeWithHTML = cache(
  * Avoids fetching all blocks - only processes blocks that exist in tree
  */
 export const getBlocksWithHeadings = cache(
-  async (pageUuid: string): Promise<Node[]> => {
-    console.log(`[Display] getBlocksWithHeadings: Fetching blocks with headings for page ${pageUuid}`);
+  async (pageUuid: string, workspaceId?: string): Promise<Node[]> => {
+    console.log(
+      `[Display] getBlocksWithHeadings: Fetching blocks with headings for page ${pageUuid}`
+    );
 
     // Get the full tree
-    const tree = await getPageTree(pageUuid);
+    const tree = await getPageTree(pageUuid, workspaceId);
     if (!tree) {
-      console.log(`[Display] getBlocksWithHeadings: No tree found for page ${pageUuid}`);
+      console.log(
+        `[Display] getBlocksWithHeadings: No tree found for page ${pageUuid}`
+      );
       return [];
     }
 
@@ -390,7 +585,92 @@ export const getBlocksWithHeadings = cache(
     }
 
     collectHeadingBlocks(tree);
-    console.log(`[Display] getBlocksWithHeadings: Found ${blocksWithHeadings.length} blocks with heading metadata`);
+    console.log(
+      `[Display] getBlocksWithHeadings: Found ${blocksWithHeadings.length} blocks with heading metadata`
+    );
     return blocksWithHeadings;
+  }
+);
+
+// TOC Item type for table of contents
+export interface TOCItem {
+  uuid: string;
+  title: string;
+  level: number;
+  children: TOCItem[];
+}
+
+/**
+ * Build hierarchical TOC tree from flat list of headings
+ * Headings are ordered by level (h1, h2, h3)
+ */
+function buildTOCHierarchy(
+  flatHeadings: Array<{ uuid: string; title: string; level: number }>
+): TOCItem[] {
+  if (flatHeadings.length === 0) return [];
+
+  const items: TOCItem[] = [];
+  const stack: TOCItem[] = [];
+
+  for (const heading of flatHeadings) {
+    const item: TOCItem = {
+      uuid: heading.uuid,
+      title: heading.title,
+      level: heading.level,
+      children: [],
+    };
+
+    // Find parent by level
+    while (stack.length > 0 && stack[stack.length - 1].level >= item.level) {
+      stack.pop();
+    }
+
+    if (stack.length === 0) {
+      // Top-level item
+      items.push(item);
+    } else {
+      // Add as child to current parent
+      stack[stack.length - 1].children.push(item);
+    }
+
+    stack.push(item);
+  }
+
+  return items;
+}
+
+/**
+ * Get table of contents for a page
+ * Returns hierarchical list of headings found in page blocks
+ */
+export const getTOCForPage = cache(
+  async (pageUuid: string, workspaceId: string): Promise<TOCItem[]> => {
+    console.log(`[Display] getTOCForPage: Building TOC for page ${pageUuid}`);
+
+    // Get all blocks with headings
+    const blocksWithHeadings = await getBlocksWithHeadings(
+      pageUuid,
+      workspaceId
+    );
+
+    // Extract headings in order
+    const flatHeadings = blocksWithHeadings
+      .filter((block) => block.metadata?.heading?.text)
+      .map((block) => {
+        const heading = block.metadata!.heading!;
+        return {
+          uuid: block.uuid || block.id,
+          title: heading.text,
+          level: heading.level,
+        };
+      });
+
+    // Build hierarchical structure
+    const tocItems = buildTOCHierarchy(flatHeadings);
+    console.log(
+      `[Display] getTOCForPage: Built TOC with ${tocItems.length} root items`
+    );
+
+    return tocItems;
   }
 );

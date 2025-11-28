@@ -96,8 +96,58 @@ fi
 
 echo
 
+# Step 1.5: Initialize schema
+echo "=== Step 1.5/3: Initializing Database Schema ==="
+echo
+
+SCHEMA_FILE="${PROJECT_ROOT}/modules/db/schema.surql"
+
+if [[ ! -f "${SCHEMA_FILE}" ]]; then
+    echo "❌ Schema file not found: ${SCHEMA_FILE}"
+    exit 1
+fi
+
+echo "→ Loading schema from: ${SCHEMA_FILE}"
+
+# Load schema into SurrealDB
+# Use surrealdb cli tool if available, otherwise use surreal binary
+if command -v surreal &> /dev/null; then
+    # Using surreal binary from PATH
+    surreal import \
+        --conn "${SURREAL_URL}" \
+        --user "${SURREAL_USER}" \
+        --pass "${SURREAL_PASS}" \
+        --ns "${SURREAL_NS}" \
+        --db "${SURREAL_DB}" \
+        "${SCHEMA_FILE}"
+else
+    echo "⚠️  surreal CLI not found in PATH"
+    echo "   Attempting alternative method via Docker..."
+
+    # Try via docker exec if SurrealDB container is running
+    if docker ps | grep -q "surrealdb"; then
+        cat "${SCHEMA_FILE}" | docker exec -i "$(docker ps | grep surrealdb | awk '{print $1}')" surreal query \
+            --conn "ws://localhost:8000" \
+            --user "${SURREAL_USER}" \
+            --pass "${SURREAL_PASS}" \
+            --ns "${SURREAL_NS}" \
+            --db "${SURREAL_DB}" > /dev/null 2>&1
+
+        if [[ $? -ne 0 ]]; then
+            echo "❌ Failed to load schema via Docker"
+            exit 1
+        fi
+    else
+        echo "❌ Could not load schema - surreal CLI not found and Docker container not accessible"
+        exit 1
+    fi
+fi
+
+echo "✅ Schema initialized successfully"
+echo
+
 # Step 2: Check KeyDB (optional)
-echo "=== Step 2/3: Checking KeyDB (Optional) ==="
+echo "=== Step 2/4: Checking KeyDB (Optional) ==="
 echo
 
 max_attempts=10

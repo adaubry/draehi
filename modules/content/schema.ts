@@ -61,17 +61,17 @@ export function nodeRecordId(uuid: string): string {
 export function normalizeNode(node: Node): Node {
   // Convert RecordId objects to strings for Client Component serialization
   let idValue = node.id;
-  if (idValue && typeof idValue === 'object') {
+  if (idValue && typeof idValue === "object") {
     idValue = String(idValue);
   }
 
   let workspaceValue = node.workspace;
-  if (workspaceValue && typeof workspaceValue === 'object') {
+  if (workspaceValue && typeof workspaceValue === "object") {
     workspaceValue = String(workspaceValue);
   }
 
   let parentValue = node.parent;
-  if (parentValue && typeof parentValue === 'object') {
+  if (parentValue && typeof parentValue === "object") {
     parentValue = String(parentValue);
   }
 
@@ -82,7 +82,8 @@ export function normalizeNode(node: Node): Node {
     parent: parentValue,
     uuid: node.uuid || getNodeUuidFromRecord(idValue),
     pageName: node.pageName || node.page_name,
-    parentUuid: node.parentUuid !== undefined ? node.parentUuid : (parentValue || null),
+    parentUuid:
+      node.parentUuid !== undefined ? node.parentUuid : parentValue || null,
   };
 }
 
@@ -104,7 +105,7 @@ export function hasMetadata(node: Node): boolean {
  * Check if a node has a heading in metadata (for TOC entry)
  */
 export function hasHeading(node: Node): boolean {
-  return !!(node.metadata?.heading?.text);
+  return !!node.metadata?.heading?.text;
 }
 
 /**
@@ -117,13 +118,12 @@ export function createMetadataIfNeeded(
 ): Record<string, unknown> | undefined {
   // Filter out empty values (empty arrays, undefined, empty strings, etc)
   const filtered = Object.fromEntries(
-    Object.entries(fields)
-      .filter(([_, value]) => {
-        if (value === undefined || value === null) return false;
-        if (Array.isArray(value) && value.length === 0) return false;
-        if (typeof value === 'string' && value.trim() === '') return false;
-        return true;
-      })
+    Object.entries(fields).filter(([_, value]) => {
+      if (value === undefined || value === null) return false;
+      if (Array.isArray(value) && value.length === 0) return false;
+      if (typeof value === "string" && value.trim() === "") return false;
+      return true;
+    })
   );
 
   // Only return metadata if we have at least one field with content

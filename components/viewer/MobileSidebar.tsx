@@ -1,6 +1,6 @@
 "use client";
 
-import { ensurePageName } from '@/modules/content/schema';
+import { ensurePageName } from "@/modules/content/schema";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -65,12 +65,14 @@ function TreeItem({
   const pathname = usePathname();
   const { node, children } = treeNode;
 
-  const segments = ensurePageName(node).split("/").map((s) =>
-    s
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^\w\-]/g, "")
-  );
+  const segments = ensurePageName(node)
+    .split("/")
+    .map((s) =>
+      s
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^\w\-]/g, "")
+    );
   const href = `/${workspaceSlug}/${segments.join("/")}`;
   const isActive = pathname === href;
 
@@ -123,33 +125,10 @@ export function MobileSidebar({ nodes, workspaceSlug }: MobileSidebarProps) {
       {/* Hamburger Button - Fixed Bottom Right */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed bottom-6 right-6 z-30 w-12 h-12 flex items-center justify-center bg-gray-900 hover:bg-gray-800 text-white rounded-full shadow-lg transition-colors"
+        className="lg:hidden fixed  z-30 flex items-center justify-"
         aria-label="Toggle navigation menu"
         aria-expanded={isOpen}
-      >
-        <svg
-          className="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          {isOpen ? (
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          ) : (
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          )}
-        </svg>
-      </button>
+      ></button>
 
       {/* Drawer Overlay */}
       {isOpen && (
@@ -200,21 +179,21 @@ export function MobileSidebar({ nodes, workspaceSlug }: MobileSidebarProps) {
             <Link
               href="/dashboard"
               onClick={closeDrawer}
-              className="block px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors text-center"
+              className="block px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors "
             >
               Dashboard
             </Link>
             <Link
               href={`/${workspaceSlug}`}
               onClick={closeDrawer}
-              className="block px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors text-center"
+              className="block px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors "
             >
               Home
             </Link>
             <Link
               href={`/${workspaceSlug}/all-pages`}
               onClick={closeDrawer}
-              className={`block px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-center ${
+              className={`block px-3 py-1.5 rounded-md text-xs font-medium transition-colors  ${
                 isOnAllPagesRoute
                   ? "bg-gray-100 text-gray-900"
                   : "text-gray-700 hover:bg-gray-50"

@@ -8,6 +8,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed - 2025-11-28 (Cycle Detection Logging)
+
+- **Improved Cycle Detection in Tree Traversal**: Now provides detailed path information for debugging parent relationship issues
+  - Logs complete cycle path (e.g., `A -> B -> C -> A`) when detected
+  - Accumulates all detected cycles during traversal
+  - Shows consolidated warning at end with all affected nodes
+  - Provides guidance: "Break the parent relationship of one node in this cycle"
+  - Still breaks cycles to prevent infinite loops, with better visibility
+
 ### Fixed - 2025-11-28 (Block Anchor Navigation Header Offset)
 
 - **Header Offset on Hash Navigation**: Blocks scrolled to via URL hash or TOC clicks no longer hidden by sticky header

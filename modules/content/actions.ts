@@ -22,28 +22,29 @@ import crypto from "crypto";
 /**
  * Extract FIRST heading from rendered HTML for TOC metadata
  * Only extracts the first h1/h2/h3 - that's all we need to display in TOC
+ * Returns plain text (all HTML tags stripped)
  */
 function extractFirstHeadingFromHTML(html: string): {
   level: number;
   text: string;
 } | null {
-  const headingRegex = /<h([1-3])(?:\s[^>]*)?>([^<]+)<\/h\1>/i;
+  // Match h1/h2/h3 tags - capture everything inside including nested HTML
+  const headingRegex = /<h([1-3])(?:\s[^>]*)?>(.+?)<\/h\1>/i;
   const match = headingRegex.exec(html);
 
   if (!match) return null;
 
   const level = parseInt(match[1]);
+  // Strip ALL HTML tags to get plain text
   let text = match[2]
-    .replace(/<[^>]+>/g, "") // Strip any nested HTML
+    .replace(/<[^>]+>/g, "") // Remove ALL HTML tags (links, bold, italic, etc)
     .trim();
 
-  // Clean up markdown and common syntax from text
+  // Clean up any remaining markdown syntax
   text = text
     .replace(/^#+\s*/, "") // Remove leading # markdown
     .replace(/\[\[([^\]]+)\]\]/g, "$1") // Convert [[Link]] to Link
     .replace(/\{\{([^}]+)\}\}/g, "$1") // Convert {{macro}} to macro
-    .replace(/\*\*([^*]+)\*\*/g, "$1") // Convert **bold** to bold
-    .replace(/\*([^*]+)\*/g, "$1") // Convert *italic* to italic
     .trim();
 
   return text ? { level, text } : null;

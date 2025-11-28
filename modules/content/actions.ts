@@ -6,7 +6,7 @@ import {
   clearWorkspaceCache,
   setPageBlockOrder,
 } from "@/lib/keydb";
-import { type Node, type NewNode, nodeRecordId } from "./schema";
+import { type Node, type NewNode, nodeRecordId, createMetadataIfNeeded } from "./schema";
 import { extractNamespaceAndSlug } from "@/lib/utils";
 import { exportLogseqNotes } from "../logseq/export";
 import { parseLogseqOutput, processAssets } from "../logseq/parse";
@@ -271,8 +271,11 @@ export async function ingestLogseqGraph(
         ? (htmlPage.title || "").trim() || mdPage.pageName
         : mdPage.pageName;
 
-      // Pages don't have HTML stored in KeyDB, so no heading metadata needed
-      // Headings are only extracted for blocks during HTML processing
+      // Only create metadata if we have actual tags
+      const pageMetadata = createMetadataIfNeeded({
+        tags: htmlPage?.metadata?.tags,
+      });
+
       allNodeData.push({
         uuid: pageUuid,
         data: {
@@ -282,9 +285,7 @@ export async function ingestLogseqGraph(
           slug,
           title: pageTitle,
           order: 0,
-          metadata: {
-            tags: htmlPage?.metadata?.tags || [],
-          },
+          ...(pageMetadata && { metadata: pageMetadata }),
         },
       });
       pageCount++;
@@ -325,14 +326,10 @@ export async function ingestLogseqGraph(
           mdPage.pageName
         );
 
-        // Block node data - Extract heading from final HTML for TOC
+        // Block node data - Extract heading from final HTML for metadata
         // This is the cleanest HTML after all processing
-        const metadata: Record<string, unknown> = {};
         const heading = extractFirstHeadingFromHTML(blockHTML);
-        let hasTocEntry = false;
         if (heading) {
-          metadata.heading = heading;
-          hasTocEntry = true;
           console.log(
             `[Ingestion] Block heading extracted: "${heading.text}" (h${heading.level})`
           );
@@ -343,6 +340,11 @@ export async function ingestLogseqGraph(
             `[Ingestion] Block has no h1/h2/h3 heading. HTML preview: ${htmlPreview}`
           );
         }
+
+        // Only create metadata if we have a heading
+        const blockMetadata = createMetadataIfNeeded({
+          heading,
+        });
 
         // Make block UUID globally unique by including workspace and page
         const globalBlockUuid = crypto
@@ -368,8 +370,7 @@ export async function ingestLogseqGraph(
             page_name: mdPage.pageName,
             slug,
             order: block.order,
-            metadata,
-            has_toc_entry: hasTocEntry,
+            ...(blockMetadata && { metadata: blockMetadata }),
           },
         });
 

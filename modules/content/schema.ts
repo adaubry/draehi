@@ -20,7 +20,6 @@ export interface Node {
     heading?: { level: number; text: string }; // First heading for TOC display
   };
   html?: string | null; // HTML content (stored in KeyDB, included when needed)
-  has_toc_entry?: boolean; // Optimization flag: true if block has a heading for TOC
   created_at: string;
   updated_at: string;
 }
@@ -90,4 +89,43 @@ export function normalizeNode(node: Node): Node {
 // Helper to ensure pageName is always available
 export function ensurePageName(node: Node): string {
   return node.pageName || node.page_name;
+}
+
+/**
+ * Check if a node has any actual metadata content
+ * Returns false if metadata is undefined, null, or empty object {}
+ */
+export function hasMetadata(node: Node): boolean {
+  if (!node.metadata) return false;
+  return Object.keys(node.metadata).length > 0;
+}
+
+/**
+ * Check if a node has a heading in metadata (for TOC entry)
+ */
+export function hasHeading(node: Node): boolean {
+  return !!(node.metadata?.heading?.text);
+}
+
+/**
+ * Create metadata object only with non-empty values
+ * Used during ingestion to avoid creating { metadata: {} } for nodes without content
+ * Returns undefined if all values are empty/null
+ */
+export function createMetadataIfNeeded(
+  fields: Record<string, unknown>
+): Record<string, unknown> | undefined {
+  // Filter out empty values (empty arrays, undefined, empty strings, etc)
+  const filtered = Object.fromEntries(
+    Object.entries(fields)
+      .filter(([_, value]) => {
+        if (value === undefined || value === null) return false;
+        if (Array.isArray(value) && value.length === 0) return false;
+        if (typeof value === 'string' && value.trim() === '') return false;
+        return true;
+      })
+  );
+
+  // Only return metadata if we have at least one field with content
+  return Object.keys(filtered).length > 0 ? filtered : undefined;
 }

@@ -11,7 +11,7 @@
     "docker:setup": "BUILD_MODE=dev ./scripts/docker-setup.sh",
     "docker:setup:prod": "BUILD_MODE=prod ./scripts/docker-setup.sh",
     "docker:stop": "docker compose kill",
-    "docker:clean": "./scripts/docker-setup.sh --clean && npm run db:flush",
+    "docker:clean": "./scripts/docker-setup.sh clean",
     "docker:shell:keydb": "docker exec -it draehi-keydb bash",
     "docker:shell:minio": "docker exec -it draehi-minio bash"
   },

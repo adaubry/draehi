@@ -339,24 +339,24 @@ export const getPageTreeWithHTML = cache(
 );
 
 /**
- * Get all blocks with TOC entries (has_toc_entry=true) for a page
- * Optimized query that only fetches blocks with headings
+ * Get all blocks with heading metadata for a page
+ * Optimized: only blocks with metadata.heading are returned
  * Useful for building table of contents from block headings instead of just page heading
  */
-export const getBlocksWithTocEntries = cache(
+export const getBlocksWithHeadings = cache(
   async (pageUuid: string): Promise<Node[]> => {
-    console.log(`[Display] getBlocksWithTocEntries: Fetching blocks with TOC entries for page ${pageUuid}`);
+    console.log(`[Display] getBlocksWithHeadings: Fetching blocks with headings for page ${pageUuid}`);
 
     const pageNodeId = nodeRecordId(pageUuid);
 
-    // Query for all descendants with has_toc_entry=true using RELATE edge traversal
-    // This is much more efficient than fetching all blocks and filtering in memory
+    // Query for all descendants with metadata headings using RELATE edge traversal
+    // Only blocks with actual heading metadata will match
     const results = await query<Node[]>(
-      `SELECT * FROM (SELECT <-parent FROM ${pageNodeId}) WHERE has_toc_entry = true ORDER BY \`order\` LIMIT 1000`
+      `SELECT * FROM (SELECT <-parent FROM ${pageNodeId}) WHERE metadata.heading.text EXISTS ORDER BY \`order\` LIMIT 1000`
     );
 
     const blocks = results.map((block) => normalizeNode(block as unknown as Node));
-    console.log(`[Display] getBlocksWithTocEntries: Found ${blocks.length} blocks with TOC entries`);
+    console.log(`[Display] getBlocksWithHeadings: Found ${blocks.length} blocks with heading metadata`);
     return blocks;
   }
 );

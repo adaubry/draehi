@@ -79,6 +79,7 @@ export function normalizeNode(node: Node): Node {
     ...node,
     id: idValue,
     workspace: workspaceValue,
+    parent: parentValue,
     uuid: node.uuid || getNodeUuidFromRecord(idValue),
     pageName: node.pageName || node.page_name,
     parentUuid: node.parentUuid !== undefined ? node.parentUuid : (parentValue || null),

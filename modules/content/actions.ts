@@ -299,23 +299,8 @@ export async function ingestLogseqGraph(
         ? (htmlPage.title || "").trim() || mdPage.pageName
         : mdPage.pageName;
 
-      // Extract first heading from page HTML for TOC
-      let pageHeading = null;
-      if (htmlPage && htmlPage.html) {
-        pageHeading = extractFirstHeadingFromHTML(htmlPage.html);
-        console.log(
-          `[Ingestion] Extracted heading for ${mdPage.pageName}: ${pageHeading ? `${pageHeading.text} (h${pageHeading.level})` : "none"}`
-        );
-      } else {
-        // Fallback: create synthetic heading from title if no HTML heading found
-        if (pageTitle && pageTitle !== mdPage.pageName) {
-          pageHeading = { level: 1, text: pageTitle };
-          console.log(
-            `[Ingestion] Using title as heading for ${mdPage.pageName}: ${pageTitle}`
-          );
-        }
-      }
-
+      // Pages don't have HTML stored in KeyDB, so no heading metadata needed
+      // Headings are only extracted for blocks (in updateNodeHeadingFromHTML)
       allNodeData.push({
         uuid: pageUuid,
         data: {
@@ -327,14 +312,11 @@ export async function ingestLogseqGraph(
           order: 0,
           metadata: {
             tags: htmlPage?.metadata?.tags || [],
-            heading: pageHeading || undefined,
           },
         },
       });
       pageCount++;
-      console.log(
-        `[Ingestion] Created page node: ${mdPage.pageName} (uuid: ${pageUuid}, heading: ${pageHeading ? pageHeading.text : "none"})`
-      );
+      console.log(`[Ingestion] Created page node: ${mdPage.pageName} (uuid: ${pageUuid})`);
 
       if (mdPage.blocks.length === 0) {
         const noBlocksMsg = `Page ${mdPage.pageName} has no blocks (property-only page)`;

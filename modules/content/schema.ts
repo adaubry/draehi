@@ -43,12 +43,16 @@ export type NewNode = {
 
 // Extract UUID from SurrealDB record ID
 // Handles both formats: "nodes:uuid" and "nodes:⟨uuid⟩"
+// Also handles malformed IDs that might have other table prefixes
 export function getNodeUuidFromRecord(recordId: string | unknown): string {
   const idStr = String(recordId);
-  // Remove "nodes:" prefix
-  let uuid = idStr.replace("nodes:", "");
+
+  // Remove any table prefix (nodes:, deployment_history:, etc.)
+  let uuid = idStr.split(":").pop() || idStr;
+
   // Remove angle brackets if present (SurrealDB wraps some IDs with ⟨⟩)
   uuid = uuid.replace(/^⟨/, "").replace(/⟩$/, "");
+
   return uuid;
 }
 

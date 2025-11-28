@@ -257,8 +257,10 @@ async function buildTreeWithGraphTraversal(
 
   // Fetch children by querying nodes where parent = this node
   // This is simpler and more direct than trying to traverse the RELATE edge
+  // Use parameterized query with proper SurrealDB syntax for record references
   const graphResults = await query<Node[]>(
-    `SELECT * FROM nodes WHERE parent = ${nodeId} ORDER BY \`order\``
+    `SELECT * FROM nodes WHERE parent = $parentId ORDER BY \`order\``,
+    { parentId: nodeRecordId(nodeUuid) }
   );
 
   let childrenData: Node[] = [];

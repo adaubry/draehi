@@ -219,9 +219,18 @@ export const getPageTree = cache(
 
     // Build tree recursively using graph queries with cycle detection
     const visitedUuids = new Set<string>();
-    const tree = await buildTreeWithGraphTraversal(pageNode, visitedUuids);
+    const cyclesDetected: Array<{ nodeUuid: string; nodeTitle: string }> = [];
+    const tree = await buildTreeWithGraphTraversal(pageNode, visitedUuids, [pageUuid], cyclesDetected);
     const nodeCount = countNodes(tree);
     console.log(`[Display] getPageTree: Tree built with ${nodeCount} total nodes`);
+
+    if (cyclesDetected.length > 0) {
+      console.warn(
+        `[Display] getPageTree: Detected and broke ${cyclesDetected.length} cycles in tree:\n${cyclesDetected
+          .map((c) => `  - Node ${c.nodeUuid} (${c.nodeTitle})`)
+          .join("\n")}`
+      );
+    }
 
     return tree;
   }
@@ -229,22 +238,36 @@ export const getPageTree = cache(
 
 /**
  * Build tree recursively using SurrealDB graph traversal
- * Fetches children via RELATE parent relationships: <-parent AS children
- * Includes cycle detection to prevent infinite loops
+ * Fetches children by querying nodes where parent = this node
+ * Includes cycle detection to prevent infinite loops and track cycles for reporting
+ *
+ * @param node - The current node to process
+ * @param visitedUuids - Set of already visited node UUIDs in this traversal
+ * @param ancestorPath - Array of ancestor UUIDs (for cycle detection path)
+ * @param cyclesDetected - Array to accumulate detected cycles for reporting
  */
 async function buildTreeWithGraphTraversal(
   node: Node,
-  visitedUuids: Set<string>
+  visitedUuids: Set<string>,
+  ancestorPath: string[],
+  cyclesDetected: Array<{ nodeUuid: string; nodeTitle: string }>
 ): Promise<TreeNode> {
   // Get UUID safely - handle both string and RecordId objects
   const nodeUuid = node.uuid || getNodeUuidFromRecord(node.id);
   const nodeId = nodeRecordId(nodeUuid);
 
-  // Cycle detection: if we've already visited this node, return empty tree
+  // Cycle detection: if this node is already in the visited set, we have a cycle
   if (visitedUuids.has(nodeUuid)) {
+    const cyclePathStr = ancestorPath.join(" -> ");
     console.warn(
-      `[Display] buildTreeWithGraphTraversal: Cycle detected! Node ${nodeUuid} is already in the tree. Skipping to prevent infinite loop.`
+      `[Display] buildTreeWithGraphTraversal: Cycle detected!\n` +
+      `  Affected node: ${nodeUuid} (${node.title})\n` +
+      `  Cycle path: ${cyclePathStr} -> ${nodeUuid}\n` +
+      `  Fix: Break the parent relationship of one node in this cycle or check for data corruption.`
     );
+    cyclesDetected.push({ nodeUuid, nodeTitle: node.title });
+
+    // Return the node but with empty children to break the cycle
     return {
       node,
       children: [],
@@ -256,7 +279,6 @@ async function buildTreeWithGraphTraversal(
   console.log(`[Display] buildTreeWithGraphTraversal: Fetching children for nodeId=${nodeId}`);
 
   // Fetch children by querying nodes where parent = this node
-  // This is simpler and more direct than trying to traverse the RELATE edge
   const graphResults = await query<Node[]>(
     `SELECT * FROM nodes WHERE parent = ${nodeId} ORDER BY \`order\``
   );
@@ -279,7 +301,7 @@ async function buildTreeWithGraphTraversal(
   // Recursively build subtrees for all children in parallel
   const childTrees = await Promise.all(
     childrenData.map((child) =>
-      buildTreeWithGraphTraversal(child, visitedUuids)
+      buildTreeWithGraphTraversal(child, visitedUuids, [...ancestorPath, nodeUuid], cyclesDetected)
     )
   );
 

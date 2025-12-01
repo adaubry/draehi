@@ -70,6 +70,10 @@
 
 ### 2.2 Flashcards Table
 
+**Design Decision: Match ts-fsrs Card Structure**
+
+We use the exact [ts-fsrs Card type](https://github.com/open-spaced-repetition/ts-fsrs) to ensure compatibility with the library:
+
 ```sql
 DEFINE TABLE flashcards SCHEMALESS;
 
@@ -78,25 +82,21 @@ DEFINE FIELD user ON flashcards TYPE record<users>;
 DEFINE FIELD node ON flashcards TYPE record<nodes>;  -- The card node
 -- Note: workspace derived via node.workspace (not stored)
 
--- FSRS state variables
-DEFINE FIELD stability ON flashcards TYPE number DEFAULT 0;        -- Memory stability (S) in days
-DEFINE FIELD difficulty ON flashcards TYPE number DEFAULT 5.0;     -- Card difficulty (D) 0-10
-DEFINE FIELD elapsed_days ON flashcards TYPE number DEFAULT 0;     -- Days since last review
-DEFINE FIELD scheduled_days ON flashcards TYPE number DEFAULT 0;   -- Current interval length
-DEFINE FIELD reps ON flashcards TYPE number DEFAULT 0;             -- Total review count
-DEFINE FIELD lapses ON flashcards TYPE number DEFAULT 0;           -- Number of lapses (forgettings)
+-- ts-fsrs Card structure (exact match)
+DEFINE FIELD due ON flashcards TYPE datetime DEFAULT time::now();
+DEFINE FIELD stability ON flashcards TYPE number DEFAULT 0;
+DEFINE FIELD difficulty ON flashcards TYPE number DEFAULT 0;
+DEFINE FIELD elapsed_days ON flashcards TYPE number DEFAULT 0;
+DEFINE FIELD scheduled_days ON flashcards TYPE number DEFAULT 0;
+DEFINE FIELD reps ON flashcards TYPE number DEFAULT 0;
+DEFINE FIELD lapses ON flashcards TYPE number DEFAULT 0;
+DEFINE FIELD state ON flashcards TYPE string DEFAULT 'New';
+-- States: 'New' | 'Learning' | 'Review' | 'Relearning' (ts-fsrs enum)
+DEFINE FIELD last_review ON flashcards TYPE option<datetime>;
 
--- State machine
-DEFINE FIELD state ON flashcards TYPE string DEFAULT 'uninitiated';
--- States: 'uninitiated' | 'new' | 'learning' | 'review' | 'relearning'
-
--- Timestamps
-DEFINE FIELD last_review ON flashcards TYPE option<datetime>;      -- Last review timestamp
-DEFINE FIELD due ON flashcards TYPE datetime DEFAULT time::now();  -- Next review due date
-
--- Compressed review history
-DEFINE FIELD review_log ON flashcards TYPE option<object>;
--- Structure: { base: timestamp, deltas: [int], ratings: [int] }
+-- Compressed review history (gzipped ts-fsrs ReviewLog[])
+DEFINE FIELD review_log ON flashcards TYPE option<bytes>;
+-- Stores gzip-compressed array of ReviewLog objects
 
 -- Metadata
 DEFINE FIELD created_at ON flashcards TYPE datetime DEFAULT time::now();
@@ -106,6 +106,33 @@ DEFINE FIELD updated_at ON flashcards TYPE datetime DEFAULT time::now();
 DEFINE INDEX user_due ON flashcards COLUMNS user, due;
 DEFINE INDEX user_node_unique ON flashcards COLUMNS user, node UNIQUE;
 DEFINE INDEX node_idx ON flashcards COLUMNS node;
+```
+
+**TypeScript Interface (matches ts-fsrs):**
+
+```typescript
+import type { Card, ReviewLog, State } from 'ts-fsrs';
+
+interface FlashcardRecord {
+  user: string;           // record<users>
+  node: string;           // record<nodes>
+
+  // ts-fsrs Card fields (exact match)
+  due: Date;
+  stability: number;
+  difficulty: number;
+  elapsed_days: number;
+  scheduled_days: number;
+  reps: number;
+  lapses: number;
+  state: State;           // 'New' | 'Learning' | 'Review' | 'Relearning'
+  last_review?: Date;
+
+  // Our additions
+  review_log?: Uint8Array;  // gzipped ReviewLog[]
+  created_at: Date;
+  updated_at: Date;
+}
 ```
 
 ### 2.3 User-Flashcard Relation
@@ -129,436 +156,318 @@ WHERE ->reviews->flashcards.due <= time::now();
 
 ---
 
-## 3. FSRS Algorithm Implementation
+## 3. FSRS Algorithm Implementation (ts-fsrs Library)
 
-### 3.1 FSRS Core Formula
+**Design Decision: Use ts-fsrs Instead of Manual Implementation**
 
-**Retrievability (R)** - Probability of recall:
-```
-R(t, S) = e^(-t/S)
+We use the [ts-fsrs library](https://github.com/open-spaced-repetition/ts-fsrs) instead of implementing FSRS manually:
+- ✅ Battle-tested, production-ready
+- ✅ Handles all FSRS math (stability, difficulty, intervals)
+- ✅ Automatic state transitions
+- ✅ Built-in ReviewLog generation
+- ✅ TypeScript native
 
-where:
-  t = elapsed_days (time since last review)
-  S = stability (memory strength in days)
-```
+### 3.1 Installation
 
-**Next Interval Calculation:**
-```
-I = S × (desired_retention^(1/decay) - 1)
-
-where:
-  S = current stability
-  desired_retention = 0.9 (target 90% recall)
-  decay = -0.5 (FSRS constant)
+```bash
+npm install ts-fsrs
+# or
+pnpm add ts-fsrs
 ```
 
-### 3.2 State Transitions
+### 3.2 Basic Usage
 
-```
-uninitiated  →  [first review]  →  new
-                                    ↓
-new          →  [rating 1-4]    →  learning
-                                    ↓
-learning     →  [rating ≥3]     →  review
-             →  [rating <3]     →  relearning
-                                    ↓
-review       →  [rating ≥3]     →  review (longer interval)
-             →  [rating <3]     →  relearning
-                                    ↓
-relearning   →  [rating ≥3]     →  review
-             →  [rating <3]     →  relearning (increment lapses)
-```
+```typescript
+import { FSRS, createEmptyCard, Rating, generatorParameters } from 'ts-fsrs';
 
-### 3.3 FSRS Parameters (w1-w19)
+// Initialize FSRS with default or user-specific params
+const params = generatorParameters({
+  request_retention: 0.9,
+  maximum_interval: 36500,
+  w: [0.4072, 1.1829, ...] // Default or optimized weights
+});
 
-**Default FSRS-4.5 weights** (global for all users):
+const f = new FSRS(params);
 
-```javascript
-const FSRS_PARAMS = {
-  w: [
-    0.4072,  // w1  - initial difficulty decay
-    1.1829,  // w2  - difficulty coefficient
-    3.1262,  // w3  - difficulty constant
-    15.4722, // w4  - initial stability for rating 1 (Again)
-    7.2102,  // w5  - initial stability for rating 2 (Hard)
-    0.5316,  // w6  - initial stability for rating 3 (Good)
-    1.0651,  // w7  - initial stability for rating 4 (Easy)
-    0.0234,  // w8  - stability decay
-    0.6657,  // w9  - stability growth for rating 1
-    0.1944,  // w10 - stability growth for rating 2
-    1.4722,  // w11 - stability growth for rating 3
-    2.9296,  // w12 - stability growth for rating 4
-    0.1517,  // w13 - difficulty coefficient
-    0.1104,  // w14 - difficulty decay
-    0.0721,  // w15 - difficulty growth
-    2.1492,  // w16 - lapse threshold
-    0.0158,  // w17 - lapse multiplier
-    0.0062,  // w18 - retrievability multiplier
-    0.2092   // w19 - retrievability threshold
-  ],
-  request_retention: 0.9,     // Target 90% recall
-  maximum_interval: 36500,    // 100 years (effectively infinite)
-  learning_steps: [1, 10],    // 1min, 10min for learning state
-  relearning_steps: [10]      // 10min for relearning
-};
+// Create a new card
+const card = createEmptyCard();
+
+// User reviews the card
+const now = new Date();
+const schedulingCards = f.repeat(card, now);
+
+// User rates "Good" (3)
+const { card: updatedCard, log: reviewLog } = schedulingCards[Rating.Good];
+
+// Save to database
+await saveFlashcard(updatedCard, reviewLog);
 ```
 
-### 3.4 Core FSRS Functions
+### 3.3 Rating Enum
 
-**Calculate Initial Stability** (for new cards):
-```javascript
-function init_stability(rating) {
-  // rating: 1=Again, 2=Hard, 3=Good, 4=Easy
-  return w[rating + 3]; // w4, w5, w6, w7
+```typescript
+enum Rating {
+  Again = 1,  // Forgot completely
+  Hard = 2,   // Difficult to recall
+  Good = 3,   // Recalled with effort
+  Easy = 4    // Instant recall
 }
 ```
 
-**Calculate Initial Difficulty**:
-```javascript
-function init_difficulty(rating) {
-  return Math.max(1, Math.min(10,
-    w[2] - w[1] * (rating - 3)
-  ));
+### 3.4 State Enum
+
+```typescript
+enum State {
+  New = 0,
+  Learning = 1,
+  Review = 2,
+  Relearning = 3
 }
 ```
 
-**Update Stability after review**:
-```javascript
-function next_stability(current_stability, current_difficulty, rating, retrievability) {
-  const hard_penalty = (rating === 2) ? w[13] : 1;
-  const easy_bonus = (rating === 4) ? w[14] : 1;
+### 3.5 Review Processing with ts-fsrs
 
-  return current_stability * (
-    1 + Math.exp(w[6]) *
-    (11 - current_difficulty) *
-    Math.pow(current_stability, w[7]) *
-    (Math.exp((1 - retrievability) * w[8]) - 1) *
-    hard_penalty *
-    easy_bonus
-  );
-}
-```
+```typescript
+async function processReview(
+  flashcardId: string,
+  rating: Rating,
+  timestamp: Date
+) {
+  // Fetch current card state from database
+  const flashcard = await db.select(`flashcards:${flashcardId}`);
 
-**Update Difficulty**:
-```javascript
-function next_difficulty(current_difficulty, rating) {
-  const difficulty_delta = w[4] - (rating - 3);
-  return Math.max(1, Math.min(10,
-    current_difficulty + difficulty_delta
-  ));
-}
-```
+  // Convert database record to ts-fsrs Card
+  const card: Card = {
+    due: flashcard.due,
+    stability: flashcard.stability,
+    difficulty: flashcard.difficulty,
+    elapsed_days: flashcard.elapsed_days,
+    scheduled_days: flashcard.scheduled_days,
+    reps: flashcard.reps,
+    lapses: flashcard.lapses,
+    state: flashcard.state as State,
+    last_review: flashcard.last_review
+  };
 
-**Calculate Next Interval**:
-```javascript
-function next_interval(stability) {
-  const new_interval = stability * 9; // For 90% retention
-  return Math.min(new_interval, FSRS_PARAMS.maximum_interval);
-}
-```
+  // Get user's FSRS parameters (default or optimized)
+  const params = await getUserFSRSParams(flashcard.user);
+  const f = new FSRS(params);
 
-### 3.5 Review Processing Algorithm
+  // Calculate next state
+  const schedulingCards = f.repeat(card, timestamp);
+  const { card: nextCard, log: reviewLog } = schedulingCards[rating];
 
-```javascript
-async function processReview(flashcardId, rating, timestamp) {
-  const card = await db.select(`flashcards:${flashcardId}`);
+  // Decompress existing review history
+  const existingLogs = await decompressReviewLog(flashcard.review_log);
+  const allLogs = [...existingLogs, reviewLog];
 
-  // Calculate elapsed time
-  const elapsed_days = card.last_review
-    ? (timestamp - card.last_review) / 86400000  // ms to days
-    : 0;
+  // Compress updated review history
+  const compressedLogs = await compressReviewLog(allLogs);
 
-  // Calculate retrievability
-  const retrievability = card.stability > 0
-    ? Math.exp(-elapsed_days / card.stability)
-    : 0;
-
-  let new_state, new_stability, new_difficulty, new_interval;
-
-  switch (card.state) {
-    case 'uninitiated':
-      // First ever review
-      new_state = 'new';
-      new_stability = init_stability(rating);
-      new_difficulty = init_difficulty(rating);
-      new_interval = next_interval(new_stability);
-      break;
-
-    case 'new':
-      new_state = 'learning';
-      new_stability = init_stability(rating);
-      new_difficulty = init_difficulty(rating);
-      new_interval = FSRS_PARAMS.learning_steps[0]; // 1 minute
-      break;
-
-    case 'learning':
-      if (rating >= 3) {
-        new_state = 'review';
-        new_stability = next_stability(card.stability, card.difficulty, rating, retrievability);
-        new_difficulty = next_difficulty(card.difficulty, rating);
-        new_interval = next_interval(new_stability);
-      } else {
-        new_state = 'relearning';
-        new_stability = card.stability * 0.5; // Halve stability on failure
-        new_difficulty = next_difficulty(card.difficulty, rating);
-        new_interval = FSRS_PARAMS.relearning_steps[0]; // 10 minutes
-      }
-      break;
-
-    case 'review':
-      if (rating >= 3) {
-        new_state = 'review';
-        new_stability = next_stability(card.stability, card.difficulty, rating, retrievability);
-        new_difficulty = next_difficulty(card.difficulty, rating);
-        new_interval = next_interval(new_stability);
-      } else {
-        new_state = 'relearning';
-        new_stability = card.stability * 0.5;
-        new_difficulty = next_difficulty(card.difficulty, rating);
-        new_interval = FSRS_PARAMS.relearning_steps[0];
-        // Increment lapses
-      }
-      break;
-
-    case 'relearning':
-      if (rating >= 3) {
-        new_state = 'review';
-        new_stability = next_stability(card.stability, card.difficulty, rating, retrievability);
-        new_difficulty = next_difficulty(card.difficulty, rating);
-        new_interval = next_interval(new_stability);
-      } else {
-        new_state = 'relearning';
-        new_stability = card.stability * 0.5;
-        new_difficulty = next_difficulty(card.difficulty, rating);
-        new_interval = FSRS_PARAMS.relearning_steps[0];
-      }
-      break;
-  }
-
-  // Update flashcard
+  // Update database
   await db.query(`
     UPDATE flashcards:${flashcardId} SET
-      state = $state,
+      due = $due,
       stability = $stability,
       difficulty = $difficulty,
-      scheduled_days = $scheduled_days,
       elapsed_days = $elapsed_days,
-      reps = reps + 1,
-      lapses = lapses + $lapse_increment,
-      last_review = $timestamp,
-      due = $due,
+      scheduled_days = $scheduled_days,
+      reps = $reps,
+      lapses = $lapses,
+      state = $state,
+      last_review = $last_review,
       review_log = $review_log,
       updated_at = time::now()
   `, {
-    state: new_state,
-    stability: new_stability,
-    difficulty: new_difficulty,
-    scheduled_days: new_interval,
-    elapsed_days: elapsed_days,
-    lapse_increment: (rating < 3) ? 1 : 0,
-    timestamp: timestamp,
-    due: new Date(timestamp.getTime() + new_interval * 86400000), // days to ms
-    review_log: compressReviewLog(card.review_log, timestamp, rating)  // timestamp auto-converted to seconds
+    ...nextCard,
+    review_log: compressedLogs
   });
+
+  return nextCard;
 }
 ```
 
+**Key Benefits:**
+- ✅ No manual FSRS math
+- ✅ Automatic state transitions
+- ✅ Built-in ReviewLog generation
+- ✅ Just call `repeat()` and save result
+
 ---
 
-## 4. State Management
+## 4. State Management (ts-fsrs Handles This)
 
 ### 4.1 State Definitions
 
-| State | Description | FSRS Use | Due Interval |
-|-------|-------------|----------|--------------|
-| `uninitiated` | Never reviewed, lazy-created | Pre-FSRS | Immediate (now) |
-| `new` | First review completed | Initial learning | 1 minute |
-| `learning` | Short-term learning phase | Active learning | 1-10 minutes |
-| `review` | Long-term retention | Graduated card | Days to months |
-| `relearning` | Failed review, relearning | Recovery | 10 minutes → days |
+ts-fsrs uses 4 states (no custom `uninitiated` state):
 
-### 4.2 State Transition Rules
+| State | ts-fsrs Value | Description | Typical Interval |
+|-------|---------------|-------------|------------------|
+| `New` | 0 | Never reviewed (lazy-created) | Immediate (now) |
+| `Learning` | 1 | Short-term learning | 1-10 minutes |
+| `Review` | 2 | Long-term retention | Days to months |
+| `Relearning` | 3 | Failed review, relearning | 10 minutes → days |
 
-**uninitiated → new**
-- Trigger: First review submitted (any rating)
-- FSRS: Calculate initial S and D
+**Design Decision:** All cards start as `state: 'New'` (no uninitiated). Lazy creation sets `state: 'New'` by default.
 
-**new → learning**
-- Trigger: Second review submitted
-- FSRS: Apply learning_steps intervals
+### 4.2 State Transitions (Automatic)
 
-**learning → review**
-- Trigger: Rating ≥ 3 (Good/Easy)
-- FSRS: Graduate to long intervals
+ts-fsrs handles all state transitions via the `repeat()` function:
 
-**learning → relearning**
-- Trigger: Rating < 3 (Again/Hard)
-- FSRS: Apply relearning_steps, increment lapses
+```typescript
+const schedulingCards = f.repeat(card, now);
 
-**review → review**
-- Trigger: Rating ≥ 3
-- FSRS: Increase interval based on stability
+// ts-fsrs returns 4 possible outcomes:
+schedulingCards[Rating.Again]  // State may change to Relearning
+schedulingCards[Rating.Hard]   // State progression
+schedulingCards[Rating.Good]   // State progression
+schedulingCards[Rating.Easy]   // State progression
+```
 
-**review → relearning**
-- Trigger: Rating < 3
-- FSRS: Halve stability, increment lapses
+**We don't manage state transitions** - ts-fsrs does it automatically based on:
+- Current state
+- User rating
+- FSRS parameters
+- Card history
 
-**relearning → review**
-- Trigger: Rating ≥ 3
-- FSRS: Return to graduated intervals
+### 4.3 Lapse Handling (Automatic)
 
-**relearning → relearning**
-- Trigger: Rating < 3
-- FSRS: Continue relearning steps
+ts-fsrs automatically:
+- Increments `lapses` counter when rating < 3 in Review state
+- Adjusts `stability` based on FSRS algorithm
+- Transitions to `Relearning` state
+- Applies appropriate intervals
 
-### 4.3 Lapse Handling
-
-**Definition:** Lapse = forgetting a card (rating < 3 in review/relearning state)
-
-**Effects:**
-- Increment `lapses` counter
-- Halve `stability` (S = S × 0.5)
-- Reset to `relearning` state
-- Apply short relearning interval
+**No manual lapse logic needed.**
 
 ---
 
-## 5. Review History Compression
+## 5. Review History Compression (Gzip)
 
 ### 5.1 Compression Strategy
 
-**Problem:** Storing full review history for 10,000 cards × 100 reviews = 1M records
+**Problem:** Storing full ts-fsrs ReviewLog objects for 10,000 cards × 100 reviews
 
-**Solution:** Compressed object storage using:
-1. **Aliases** - Short property names
-2. **Delta Encoding** - Store timestamp diffs, not absolutes
-3. **Run-Length Encoding** - Compress repeated ratings (optional)
+**Solution:** Gzip compression of ReviewLog arrays
 
-### 5.2 Compressed Format
+**Design Decision: Simplicity Over Custom Encoding**
 
-```javascript
-{
-  b: 1703001600,           // base timestamp (UNIX seconds, not ms)
-  d: [0, 86400, 172800],   // deltas in seconds
-  r: [3, 3, 4]             // ratings (1-4)
-}
-```
+We use **gzip** instead of custom delta encoding because:
+- ✅ **Simple**: One function call (gzip/gunzip)
+- ✅ **Standard**: Built-in Node.js compression
+- ✅ **Effective**: ~70-80% compression on JSON
+- ✅ **Compatible**: Works with ts-fsrs ReviewLog objects directly
+- ✅ **Debuggable**: Decompress → inspect full objects
 
-**Design Decision: Seconds vs Milliseconds**
+### 5.2 ReviewLog Structure (from ts-fsrs)
 
-We use UNIX timestamps in **seconds** (not milliseconds) because:
-- Flashcard reviews don't need sub-second precision
-- **50% storage savings** (4 bytes vs 8 bytes per timestamp)
-- 10x better compression than Anki's SQLite revlog (~5 bytes/review vs ~40-50 bytes/review)
-- Still compatible with FSRS optimizer (converts to ms on export)
-
-**Example:**
-```javascript
-// Original reviews
-[
-  { timestamp: 1703001600, rating: 3 }, // Dec 20, 2024 00:00:00 UTC
-  { timestamp: 1703088000, rating: 3 }, // Dec 21, 2024 00:00:00 UTC
-  { timestamp: 1703174400, rating: 4 }  // Dec 22, 2024 00:00:00 UTC
-]
-
-// Compressed (delta encoding + aliases)
-{
-  b: 1703001600,           // base: Dec 20, 2024 00:00:00
-  d: [0, 86400, 172800],   // deltas: +0s, +1 day, +2 days
-  r: [3, 3, 4]
-}
-
-// Storage per 100 reviews:
-// - Base: 4 bytes
-// - Deltas: 400 bytes (4 bytes × 100)
-// - Ratings: 100 bytes (1 byte × 100)
-// - Total: ~500 bytes = 5 bytes/review
-//
-// Compare to Anki SQLite: ~40-50 bytes/review → 10x improvement
+```typescript
+type ReviewLog = {
+  rating: Rating;      // 1-4
+  state: State;        // 0-3
+  due: Date;
+  stability: number;
+  difficulty: number;
+  elapsed_days: number;
+  scheduled_days: number;
+  review: Date;
+};
 ```
 
 ### 5.3 Compression Functions
 
-```javascript
-function compressReviewLog(existingLog, newTimestamp, newRating) {
-  // Convert timestamp to UNIX seconds if in milliseconds
-  const timestampSeconds = newTimestamp > 1e10
-    ? Math.floor(newTimestamp / 1000)
-    : newTimestamp;
+```typescript
+import { gzip, gunzip } from 'zlib';
+import { promisify } from 'util';
+import type { ReviewLog } from 'ts-fsrs';
 
-  if (!existingLog) {
-    return {
-      b: timestampSeconds,
-      d: [0],
-      r: [newRating]
-    };
+const gzipAsync = promisify(gzip);
+const gunzipAsync = promisify(gunzip);
+
+/**
+ * Compress array of ReviewLog objects
+ */
+async function compressReviewLog(logs: ReviewLog[]): Promise<Uint8Array> {
+  if (!logs || logs.length === 0) {
+    return new Uint8Array(0);
   }
 
-  const delta = timestampSeconds - existingLog.b;
-
-  return {
-    b: existingLog.b,
-    d: [...existingLog.d, delta],
-    r: [...existingLog.r, newRating]
-  };
+  const json = JSON.stringify(logs);
+  const compressed = await gzipAsync(json);
+  return new Uint8Array(compressed);
 }
 
-function decompressReviewLog(compressedLog) {
-  if (!compressedLog) return [];
+/**
+ * Decompress to array of ReviewLog objects
+ */
+async function decompressReviewLog(compressed: Uint8Array): Promise<ReviewLog[]> {
+  if (!compressed || compressed.length === 0) {
+    return [];
+  }
 
-  return compressedLog.d.map((delta, i) => ({
-    timestamp: compressedLog.b + delta,  // UNIX seconds
-    rating: compressedLog.r[i]
-  }));
-}
-
-// Export to FSRS optimizer format (requires milliseconds)
-function exportToFSRSFormat(compressedLog) {
-  if (!compressedLog) return [];
-
-  return compressedLog.d.map((delta, i) => ({
-    timestamp: (compressedLog.b + delta) * 1000,  // Convert to ms
-    rating: compressedLog.r[i]
-  }));
+  const decompressed = await gunzipAsync(compressed);
+  const json = decompressed.toString('utf-8');
+  return JSON.parse(json);
 }
 ```
 
-### 5.4 Optional: RLE Enhancement
+### 5.4 Usage in Review Processing
 
-For users with consistent ratings (many 3's in a row):
+```typescript
+async function processReview(flashcardId: string, rating: Rating, timestamp: Date) {
+  const flashcard = await db.select(`flashcards:${flashcardId}`);
+
+  // ... ts-fsrs repeat() logic ...
+
+  const { card: nextCard, log: newReviewLog } = schedulingCards[rating];
+
+  // Decompress existing logs
+  const existingLogs = await decompressReviewLog(flashcard.review_log);
+
+  // Append new review
+  const allLogs = [...existingLogs, newReviewLog];
+
+  // Compress for storage
+  const compressedLogs = await compressReviewLog(allLogs);
+
+  // Save to database
+  await db.update(`flashcards:${flashcardId}`, {
+    ...nextCard,
+    review_log: compressedLogs,
+    updated_at: new Date()
+  });
+}
+```
+
+### 5.5 Compression Efficiency
+
+**Example with 100 reviews:**
 
 ```javascript
-{
-  b: 1703001600,
-  d: [0, 86400, 172800, 259200, 345600],
-  r: [3, 3, 3, 3, 4]
-}
+// Uncompressed ReviewLog array (JSON)
+const logs: ReviewLog[] = [ /* 100 reviews */ ];
+const uncompressed = JSON.stringify(logs);
+// Size: ~15KB (150 bytes per review × 100)
 
-// With RLE (future optimization)
-{
-  b: 1703001600,
-  d: [0, 86400, 172800, 259200, 345600],
-  rle: [[3, 4], [4, 1]]  // [rating, count]
-}
+// Gzipped
+const compressed = await gzipAsync(uncompressed);
+// Size: ~3-4KB (70-75% compression)
 ```
 
-**Decision:** Implement RLE in Phase 3 if storage becomes issue (unlikely with seconds-based compression).
+**Comparison:**
 
-### 5.5 Comparison with Industry Standards
+| Approach | Bytes/Review | Implementation | Storage (100 reviews) |
+|----------|--------------|----------------|----------------------|
+| **Uncompressed JSON** | ~150 | Simple | 15KB |
+| **Gzip (our choice)** | ~30-40 | Simple | 3-4KB |
+| **Custom delta** | ~5 | Complex | 0.5KB |
 
-| System | Storage/Review | Technique | Notes |
-|--------|---------------|-----------|-------|
-| **Anki SQLite** | 40-50 bytes | Uncompressed rows | One row per review, indexed |
-| **Draehi (MVP)** | ~5 bytes | Delta + alias | 10x better than Anki |
-| **TimescaleDB** | ~1-2 bytes | Delta-of-delta + Simple-8b | Overkill for flashcards |
-| **MessagePack** | ~3 bytes | Binary format | Phase 2+ if needed |
-
-**Why our approach is optimal:**
-- Simple to implement (pure JSON, no external libs)
-- 10x compression vs industry standard (Anki)
-- Good enough for 10,000+ reviews per user
-- Easy to debug and inspect
-- Compatible with FSRS optimizer via conversion function
+**Why gzip wins for MVP:**
+- Good enough compression (70-75%)
+- Zero custom code (stdlib)
+- Full ReviewLog objects preserved
+- Easy debugging (decompress → inspect)
+- Compatible with WASM optimizer export
 
 ---
 
@@ -1000,70 +909,89 @@ GET /api/flashcards/stats
 
 ---
 
-## 10. Implementation Checklist
+## 10. Implementation Checklist (REVISED with ts-fsrs)
 
-### Phase 1: Database & Schema (Week 1)
-- [ ] Add flashcards table to `modules/db/schema.surql`
+**Timeline: 2-3 weeks** (down from 6-8 weeks!)
+
+### Phase 1: Core Integration (Week 1)
+
+**Database & Schema:**
+- [ ] Install ts-fsrs: `pnpm add ts-fsrs`
+- [ ] Add flashcards table to `modules/db/schema.surql` (ts-fsrs Card structure)
 - [ ] Add reviews RELATION table
-- [ ] Update TypeScript types in `modules/content/schema.ts`
-- [ ] Create `modules/flashcards/schema.ts` with FSRS types
+- [ ] Create `modules/flashcards/schema.ts` (import from ts-fsrs)
 - [ ] Run migrations on dev database
 
-### Phase 2: FSRS Algorithm (Week 2)
-- [ ] Create `modules/flashcards/fsrs.ts`
-- [ ] Implement FSRS core functions (stability, difficulty, interval)
-- [ ] Implement state machine transitions
-- [ ] Add unit tests for FSRS calculations
-- [ ] Implement review history compression
-
-### Phase 3: Backend Queries (Week 2-3)
+**Review Processing:**
 - [ ] Create `modules/flashcards/queries.ts`
-- [ ] Implement `initializeFlashcards()` lazy creation
-- [ ] Implement `getDueFlashcards()` with priority sorting
+  - [ ] `initializeFlashcards()` - lazy creation with state='New'
+  - [ ] `getDueFlashcards()` - query due cards
 - [ ] Create `modules/flashcards/actions.ts`
-- [ ] Implement `submitReview()` server action
+  - [ ] `submitReview()` - calls ts-fsrs `repeat()`, saves result
+- [ ] Implement gzip compression helpers (zlib)
 - [ ] Add input validation (Zod schemas)
 
-### Phase 4: Graph Distance (Week 3)
-- [ ] Research SurrealDB graph traversal for parent edges
-- [ ] Implement `getRelatedCardNodes()` query
-- [ ] Create `modules/flashcards/family.ts`
-- [ ] Implement family grouping algorithm
-- [ ] Test with sample workspace data
+### Phase 2: Frontend UI (Week 2)
 
-### Phase 5: Frontend UI (Week 4)
+**Review Interface:**
 - [ ] Create `/[workspaceSlug]/flashcards` route
 - [ ] Build `ReviewSession` client component
-- [ ] Build `FlashcardRenderer` with cloze support
-- [ ] Add rating buttons (1-4 difficulty scale)
-- [ ] Show progress (X cards remaining)
-- [ ] Mobile-responsive design
+  - [ ] Rating buttons (Again/Hard/Good/Easy)
+  - [ ] Show question, hide answer
+  - [ ] Progress indicator (X cards remaining)
+- [ ] Build `FlashcardRenderer` component
+  - [ ] Render cloze syntax with click-to-reveal
+  - [ ] Handle Q&A format
+- [ ] Mobile-responsive design (320px minimum)
 
-### Phase 6: Cloze Rendering (Week 4-5)
+**Cloze Processing:**
 - [ ] Update `modules/logseq/process-references.ts`
-- [ ] Add `processCloze()` function
-- [ ] Parse `{{cloze text}}` and `{{c1 text}}` syntax
-- [ ] Render as clickable spans with hidden content
-- [ ] Add CSS for reveal animations
+- [ ] Parse `{{cloze text}}` → `<span class="cloze-hidden">`
+- [ ] Parse `{{c1 text}}` → `<span class="cloze-1">`
+- [ ] Add CSS for cloze reveal animations
 
-### Phase 7: Integration Testing (Week 5)
-- [ ] Test lazy initialization with large workspace
-- [ ] Test FSRS calculations across state transitions
-- [ ] Test review history compression/decompression
-- [ ] Test family grouping with real graph data
+### Phase 3: Testing & Polish (Week 3)
+
+**Integration Testing:**
+- [ ] Test lazy initialization with 1000+ cards
+- [ ] Test ts-fsrs integration (correct state transitions)
+- [ ] Test gzip compression/decompression
 - [ ] Mobile device testing
 
-### Phase 8: Polish & Launch (Week 6)
+**UI Polish:**
 - [ ] Add loading states
 - [ ] Add error handling
-- [ ] Add stats dashboard
+- [ ] Show stats (cards reviewed today, due tomorrow)
 - [ ] Performance optimization
-- [ ] Documentation updates
+
+**Deployment:**
+- [ ] Add CORS headers to `next.config.ts` (for Phase 4)
 - [ ] Deploy to production
+- [ ] Monitor performance
+
+### Phase 4: Optimizer (Post-Launch - Optional)
+
+**Client-Side WASM Optimizer:**
+- [ ] Install `@open-spaced-repetition/binding`
+- [ ] Add pnpm wasm32 architecture support
+- [ ] Configure Next.js headers (COOP/COEP)
+- [ ] Build `OptimizerModal` component
+- [ ] Add "Optimize My Learning" button to dashboard
+- [ ] Server action to save optimized weights
+- [ ] Auto-suggest optimization at 100/200/400 reviews
+
+**What We Skipped:**
+- ❌ Manual FSRS implementation (4-5 days saved)
+- ❌ State machine coding (2-3 days saved)
+- ❌ Unit tests for FSRS math (1-2 days saved)
+- ❌ Python optimizer setup (2-3 days saved)
+- ❌ Custom delta encoding (1 day saved)
+
+**Total time saved: ~2-3 weeks** by using ts-fsrs!
 
 ---
 
-## 11. FSRS Weight Optimization (Advanced)
+## 11. FSRS Weight Optimization (Client-Side WASM)
 
 ### 11.1 Why Optimize Weights?
 
@@ -1080,36 +1008,71 @@ GET /api/flashcards/stats
 
 ### 11.2 The Optimization Process
 
-**Tool:** [fsrs-optimizer](https://github.com/open-spaced-repetition/fsrs-optimizer) (Python library)
+**Design Decision: Client-Side WASM (not Python)**
 
-**Input Data Format:**
-```csv
-card_id,review_time,review_rating,review_state,review_duration
-abc123,1703001600000,3,2,5000
-abc123,1703088000000,4,2,3000
-def456,1703001700000,2,1,8000
+We use [@open-spaced-repetition/binding](https://github.com/open-spaced-repetition/ts-fsrs/tree/main/examples/nextjs) (WASM) instead of Python optimizer:
+- ✅ Runs in user's browser (no server compute)
+- ✅ No Python dependency
+- ✅ Follows Next.js example architecture
+- ✅ Real-time progress updates
+- ✅ Privacy-friendly (data stays client-side)
+
+### 11.3 Installation
+
+```bash
+npm install @open-spaced-repetition/binding
+# or
+pnpm add @open-spaced-repetition/binding
 ```
 
-**Required Columns:**
-- `card_id` - Flashcard identifier (string or int)
-- `review_time` - Timestamp in milliseconds (UTC) - we convert from our seconds format
-- `review_rating` - Rating as 1-4 (1=Again, 2=Hard, 3=Good, 4=Easy)
-
-**Optional Columns:**
-- `review_state` - State as 0-3 (0=New, 1=Learning, 2=Review, 3=Relearning)
-- `review_duration` - Time spent reviewing in milliseconds
-
-**Output:**
+**For pnpm users**, update `package.json`:
 ```json
 {
-  "w": [0.4072, 1.1829, 3.1262, ...],  // Optimized 19 weights
-  "request_retention": 0.9
+  "pnpm": {
+    "supportedArchitectures": {
+      "cpu": ["current", "wasm32"]
+    }
+  }
 }
 ```
 
-### 11.3 Integration into Draehi
+### 11.4 Next.js Configuration (REQUIRED)
 
-**Database Schema Addition:**
+**`next.config.ts`:**
+
+```typescript
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  // Prevent bundling WASM binding on server
+  serverExternalPackages: ['@open-spaced-repetition/binding'],
+
+  // Enable SharedArrayBuffer for WASM
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'require-corp',
+          },
+        ],
+      },
+    ];
+  },
+};
+
+export default nextConfig;
+```
+
+**Critical:** CORS headers are **required** for WASM SharedArrayBuffer support.
+
+### 11.5 Database Schema Addition
 
 ```sql
 -- Add to users table
@@ -1118,135 +1081,95 @@ DEFINE FIELD last_optimization ON users TYPE option<datetime>;
 DEFINE FIELD total_reviews ON users TYPE number DEFAULT 0;
 ```
 
-**Optimization Workflow:**
-
-```javascript
-async function shouldOptimizeWeights(userId) {
-  const user = await db.select(`users:${userId}`);
-
-  // Minimum threshold: 100 reviews (conservative, research shows 16 works)
-  if (user.total_reviews < 100) return false;
-
-  // Optimize when reviews double: 100, 200, 400, 800, etc.
-  const lastOptAt = user.last_optimization_review_count || 0;
-  if (user.total_reviews >= lastOptAt * 2) return true;
-
-  // Or monthly if active
-  const daysSinceOpt = user.last_optimization
-    ? (Date.now() - user.last_optimization) / 86400000
-    : 999;
-  if (daysSinceOpt >= 30 && user.total_reviews > lastOptAt + 50) return true;
-
-  return false;
-}
-```
-
-### 11.4 Export Review Logs for Optimization
-
-```javascript
-async function exportReviewLogsCSV(userId) {
-  const flashcards = await db.query(`
-    SELECT * FROM ->reviews->flashcards WHERE in = users:${userId}
-  `);
-
-  const rows = [];
-
-  for (const card of flashcards) {
-    // Decompress review history and convert to FSRS format
-    const reviews = exportToFSRSFormat(card.review_log);
-
-    for (const review of reviews) {
-      rows.push({
-        card_id: card.node,
-        review_time: review.timestamp,  // Already in milliseconds from exportToFSRSFormat
-        review_rating: review.rating,
-        review_state: stateToInt(card.state),  // 0-3 mapping
-        review_duration: 0  // Optional: track if needed
-      });
-    }
-  }
-
-  return rows; // Convert to CSV format
-}
-
-function stateToInt(state) {
-  const mapping = {
-    'new': 0,
-    'learning': 1,
-    'review': 2,
-    'relearning': 3,
-    'uninitiated': 0  // Treat as new
-  };
-  return mapping[state] || 0;
-}
-```
-
-### 11.5 Run Optimizer (Server-Side Python)
-
-```python
-# scripts/optimize-fsrs-weights.py
-from fsrs_optimizer import Optimizer
-import sys
-import json
-
-def optimize_weights(csv_path):
-    optimizer = Optimizer()
-    optimizer.define_model()
-
-    # Load review data
-    optimizer.load_data(csv_path)
-
-    # Train model
-    optimizer.train()
-
-    # Get optimized parameters
-    params = optimizer.get_parameters()
-
-    return params
-
-if __name__ == "__main__":
-    csv_path = sys.argv[1]
-    result = optimize_weights(csv_path)
-    print(json.dumps(result))
-```
-
-**Node.js Wrapper:**
+### 11.6 Client-Side Optimizer Component
 
 ```typescript
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { writeFile } from 'fs/promises';
+// components/flashcards/OptimizerModal.tsx
+'use client';
 
-const execAsync = promisify(exec);
+import { useState } from 'react';
+import { formatDataForOptimizer } from '@open-spaced-repetition/binding';
 
-async function optimizeUserWeights(userId: string) {
-  // Export review logs to CSV
-  const reviews = await exportReviewLogsCSV(userId);
-  const csvPath = `/tmp/reviews_${userId}.csv`;
-  await writeFile(csvPath, toCSV(reviews));
+export function OptimizerModal({ userId }: { userId: string }) {
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [progress, setProgress] = useState(0);
 
-  // Run Python optimizer
-  const { stdout } = await execAsync(
-    `python3 scripts/optimize-fsrs-weights.py ${csvPath}`
+  async function runOptimization() {
+    setIsOptimizing(true);
+
+    // Fetch user's review history
+    const flashcards = await fetch(`/api/flashcards/${userId}/all`).then(r => r.json());
+
+    // Decompress review logs
+    const reviewLogs = [];
+    for (const card of flashcards) {
+      const logs = await decompressReviewLog(card.review_log);
+      for (const log of logs) {
+        reviewLogs.push({
+          card_id: card.node,
+          review_time: log.review.getTime(),
+          review_rating: log.rating,
+          review_state: log.state,
+          review_duration: 0
+        });
+      }
+    }
+
+    // Run WASM optimizer
+    const { default: init, train } = await import('@open-spaced-repetition/binding');
+    await init();
+
+    const csvData = convertToCSV(reviewLogs);
+
+    // Train with progress callback
+    const result = await train(csvData, {
+      onProgress: (percent) => setProgress(percent)
+    });
+
+    // Save optimized weights
+    await fetch(`/api/users/${userId}/weights`, {
+      method: 'POST',
+      body: JSON.stringify({ weights: result.w })
+    });
+
+    setIsOptimizing(false);
+  }
+
+  return (
+    <div>
+      <button onClick={runOptimization} disabled={isOptimizing}>
+        {isOptimizing ? `Optimizing... ${progress}%` : 'Optimize My Learning'}
+      </button>
+    </div>
   );
+}
+```
 
-  const optimized = JSON.parse(stdout);
+### 11.7 Server Action to Save Weights
 
-  // Store optimized weights in database
+```typescript
+// modules/flashcards/actions.ts
+'use server';
+
+import { db } from '@/lib/surreal';
+
+export async function saveOptimizedWeights(userId: string, weights: number[]) {
+  if (weights.length !== 19) {
+    throw new Error('Invalid weights: must be array of 19 numbers');
+  }
+
   await db.query(`
     UPDATE users:${userId} SET
       fsrs_weights = $weights,
       last_optimization = time::now(),
       last_optimization_review_count = total_reviews
-  `, {
-    weights: optimized.w
-  });
+  `, { weights });
 
-  return optimized;
+  return { success: true };
 }
 ```
 
-### 11.6 Use User-Specific Weights
+### 11.8 Use User-Specific Weights
 
 ```javascript
 async function getFSRSParams(userId) {

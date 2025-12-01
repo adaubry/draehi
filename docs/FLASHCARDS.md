@@ -539,19 +539,23 @@ Cards within same subtree = same family.
 
 ### 6.2 Required Query Interface
 
-**Input:** `flashcard_node_id` (current card being reviewed)
+**Input:** `flashcard_node_ids[]` (array of N card nodes to find relationships between)
 
-**Output:** List of related card nodes with graph distance
+**Output:** List of related card nodes sorted by collective proximity to ALL input nodes
 
 ```javascript
-// Hypothetical perfect query
-const relatedCards = await getRelatedCardNodes(nodeId, maxDistance = 3);
+// Hypothetical perfect query - takes MULTIPLE nodes as input
+const relatedCards = await getRelatedCardNodes(
+  nodeIds: ["nodes:abc", "nodes:def", "nodes:ghi"],
+  maxDistance: 3
+);
 
-// Returns:
+// Returns nodes sorted by how close they are to ALL input nodes collectively
+// Distance = average/minimum distance to all input nodes
 [
-  { node_id: "nodes:abc123", distance: 1 },  // sibling
-  { node_id: "nodes:def456", distance: 2 },  // cousin
-  { node_id: "nodes:ghi789", distance: 1 }   // parent's other child
+  { node_id: "nodes:xyz", avg_distance: 1.3, min_distance: 1 },
+  { node_id: "nodes:uvw", avg_distance: 1.7, min_distance: 1 },
+  { node_id: "nodes:rst", avg_distance: 2.0, min_distance: 2 }
 ]
 ```
 
@@ -559,46 +563,67 @@ const relatedCards = await getRelatedCardNodes(nodeId, maxDistance = 3);
 - Traverse `parent` edges bidirectionally (up and down tree)
 - Include backlinks (nodes that reference this node via `[[page]]`)
 - Filter nodes with flashcard metadata only
-- Return distance metric (hop count)
+- Calculate distance from candidate node to EACH input node
+- Sort by proximity metric (avg or min distance to input set)
+- This enables finding "common neighborhood" of multiple cards
 
 ### 6.3 Family Grouping Algorithm
 
 ```javascript
 async function getFlashcardsByFamily(userId, workspaceId) {
   const dueCards = await getDueFlashcards(userId);
-  const families = new Map();
+  const dueNodeIds = dueCards.map(card => card.node);
 
-  for (const card of dueCards) {
-    // Get related cards within distance 3
-    const relatedNodes = await getRelatedCardNodes(card.node, 3);
+  // Find nodes that are collectively close to ALL due cards
+  // This creates "clusters" of related flashcards
+  const relatedNodes = await getRelatedCardNodes(dueNodeIds, maxDistance = 3);
 
-    // Find if any related node already has a family assigned
-    let familyId = null;
-    for (const related of relatedNodes) {
-      if (families.has(related.node_id)) {
-        familyId = families.get(related.node_id);
-        break;
-      }
-    }
+  // Build adjacency graph from proximity data
+  const graph = buildProximityGraph(relatedNodes);
 
-    // Create new family if none found
-    if (!familyId) {
-      familyId = card.node; // Use first card as family root
-    }
+  // Use graph clustering to identify families
+  // Cards with avg_distance < 2.0 form tight clusters
+  const families = clusterByProximity(graph, threshold = 2.0);
 
-    // Assign card to family
-    families.set(card.node, familyId);
-  }
-
-  // Group cards by family
+  // Map each due card to its family cluster
   const grouped = {};
   for (const card of dueCards) {
-    const family = families.get(card.node);
-    if (!grouped[family]) grouped[family] = [];
-    grouped[family].push(card);
+    const familyId = families.get(card.node) || card.node;
+    if (!grouped[familyId]) grouped[familyId] = [];
+    grouped[familyId].push(card);
   }
 
   return grouped;
+}
+
+function buildProximityGraph(relatedNodes) {
+  // Build graph where edges = proximity score
+  const graph = new Map();
+  for (const node of relatedNodes) {
+    graph.set(node.node_id, {
+      avg_distance: node.avg_distance,
+      min_distance: node.min_distance,
+      neighbors: [] // populated based on shared proximity
+    });
+  }
+  return graph;
+}
+
+function clusterByProximity(graph, threshold) {
+  // Simple clustering: nodes with avg_distance < threshold are in same family
+  // More sophisticated: use community detection algorithms (Louvain, etc.)
+  const families = new Map();
+  let familyCounter = 0;
+
+  for (const [nodeId, data] of graph.entries()) {
+    if (data.avg_distance < threshold) {
+      if (!families.has(nodeId)) {
+        families.set(nodeId, `family_${familyCounter++}`);
+      }
+    }
+  }
+
+  return families;
 }
 ```
 
@@ -990,6 +1015,265 @@ GET /api/flashcards/stats
 - [ ] Performance optimization
 - [ ] Documentation updates
 - [ ] Deploy to production
+
+---
+
+## 11. FSRS Weight Optimization (Advanced)
+
+### 11.1 Why Optimize Weights?
+
+**Default vs. Personalized Weights:**
+- FSRS ships with default w1-w19 weights (population averages)
+- These work for most users but are not personalized
+- Each person has unique learning patterns (memory strength, retention curves)
+- Optimized weights = algorithm tailored to YOUR brain
+
+**Performance Gains:**
+- Research shows improvement after as few as **16 reviews** ([Anki Issue #3094](https://github.com/ankitects/anki/issues/3094))
+- Better interval predictions = fewer reviews needed for same retention
+- Reduced study time (10-20% improvement typical)
+
+### 11.2 The Optimization Process
+
+**Tool:** [fsrs-optimizer](https://github.com/open-spaced-repetition/fsrs-optimizer) (Python library)
+
+**Input Data Format:**
+```csv
+card_id,review_time,review_rating,review_state,review_duration
+abc123,1703001600000,3,2,5000
+abc123,1703088000000,4,2,3000
+def456,1703001700000,2,1,8000
+```
+
+**Required Columns:**
+- `card_id` - Flashcard identifier (string or int)
+- `review_time` - Timestamp in milliseconds (UTC)
+- `review_rating` - Rating as 1-4 (1=Again, 2=Hard, 3=Good, 4=Easy)
+
+**Optional Columns:**
+- `review_state` - State as 0-3 (0=New, 1=Learning, 2=Review, 3=Relearning)
+- `review_duration` - Time spent reviewing in milliseconds
+
+**Output:**
+```json
+{
+  "w": [0.4072, 1.1829, 3.1262, ...],  // Optimized 19 weights
+  "request_retention": 0.9
+}
+```
+
+### 11.3 Integration into Draehi
+
+**Database Schema Addition:**
+
+```sql
+-- Add to users table
+DEFINE FIELD fsrs_weights ON users TYPE option<array>;
+DEFINE FIELD last_optimization ON users TYPE option<datetime>;
+DEFINE FIELD total_reviews ON users TYPE number DEFAULT 0;
+```
+
+**Optimization Workflow:**
+
+```javascript
+async function shouldOptimizeWeights(userId) {
+  const user = await db.select(`users:${userId}`);
+
+  // Minimum threshold: 100 reviews (conservative, research shows 16 works)
+  if (user.total_reviews < 100) return false;
+
+  // Optimize when reviews double: 100, 200, 400, 800, etc.
+  const lastOptAt = user.last_optimization_review_count || 0;
+  if (user.total_reviews >= lastOptAt * 2) return true;
+
+  // Or monthly if active
+  const daysSinceOpt = user.last_optimization
+    ? (Date.now() - user.last_optimization) / 86400000
+    : 999;
+  if (daysSinceOpt >= 30 && user.total_reviews > lastOptAt + 50) return true;
+
+  return false;
+}
+```
+
+### 11.4 Export Review Logs for Optimization
+
+```javascript
+async function exportReviewLogsCSV(userId) {
+  const flashcards = await db.query(`
+    SELECT * FROM ->reviews->flashcards WHERE in = users:${userId}
+  `);
+
+  const rows = [];
+
+  for (const card of flashcards) {
+    // Decompress review history
+    const reviews = decompressReviewLog(card.review_log);
+
+    for (const review of reviews) {
+      rows.push({
+        card_id: card.node,
+        review_time: review.timestamp,
+        review_rating: review.rating,
+        review_state: stateToInt(card.state),  // 0-3 mapping
+        review_duration: 0  // Optional: track if needed
+      });
+    }
+  }
+
+  return rows; // Convert to CSV format
+}
+
+function stateToInt(state) {
+  const mapping = {
+    'new': 0,
+    'learning': 1,
+    'review': 2,
+    'relearning': 3,
+    'uninitiated': 0  // Treat as new
+  };
+  return mapping[state] || 0;
+}
+```
+
+### 11.5 Run Optimizer (Server-Side Python)
+
+```python
+# scripts/optimize-fsrs-weights.py
+from fsrs_optimizer import Optimizer
+import sys
+import json
+
+def optimize_weights(csv_path):
+    optimizer = Optimizer()
+    optimizer.define_model()
+
+    # Load review data
+    optimizer.load_data(csv_path)
+
+    # Train model
+    optimizer.train()
+
+    # Get optimized parameters
+    params = optimizer.get_parameters()
+
+    return params
+
+if __name__ == "__main__":
+    csv_path = sys.argv[1]
+    result = optimize_weights(csv_path)
+    print(json.dumps(result))
+```
+
+**Node.js Wrapper:**
+
+```typescript
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { writeFile } from 'fs/promises';
+
+const execAsync = promisify(exec);
+
+async function optimizeUserWeights(userId: string) {
+  // Export review logs to CSV
+  const reviews = await exportReviewLogsCSV(userId);
+  const csvPath = `/tmp/reviews_${userId}.csv`;
+  await writeFile(csvPath, toCSV(reviews));
+
+  // Run Python optimizer
+  const { stdout } = await execAsync(
+    `python3 scripts/optimize-fsrs-weights.py ${csvPath}`
+  );
+
+  const optimized = JSON.parse(stdout);
+
+  // Store optimized weights in database
+  await db.query(`
+    UPDATE users:${userId} SET
+      fsrs_weights = $weights,
+      last_optimization = time::now(),
+      last_optimization_review_count = total_reviews
+  `, {
+    weights: optimized.w
+  });
+
+  return optimized;
+}
+```
+
+### 11.6 Use User-Specific Weights
+
+```javascript
+async function getFSRSParams(userId) {
+  const user = await db.select(`users:${userId}`);
+
+  // Use personalized weights if available
+  if (user.fsrs_weights && user.fsrs_weights.length === 19) {
+    return {
+      w: user.fsrs_weights,
+      request_retention: 0.9,
+      maximum_interval: 36500,
+      learning_steps: [1, 10],
+      relearning_steps: [10]
+    };
+  }
+
+  // Fall back to default weights
+  return FSRS_PARAMS_DEFAULT;
+}
+
+// In processReview():
+const params = await getFSRSParams(userId);
+const w = params.w;  // Use these weights in FSRS calculations
+```
+
+### 11.7 Optimization Triggers
+
+**Automatic Triggers:**
+1. **Review count milestones:** 100, 200, 400, 800, 1600 reviews
+2. **Monthly schedule:** If 30+ days since last optimization and 50+ new reviews
+3. **Manual trigger:** User clicks "Optimize My Learning" button
+
+**Background Job:**
+```javascript
+// cron job: daily at 3 AM
+async function dailyOptimizationCheck() {
+  const users = await db.query(`
+    SELECT id, total_reviews, last_optimization
+    FROM users
+    WHERE total_reviews >= 100
+  `);
+
+  for (const user of users) {
+    if (await shouldOptimizeWeights(user.id)) {
+      // Queue optimization job (run async, don't block)
+      await queueJob('optimize_weights', { userId: user.id });
+    }
+  }
+}
+```
+
+### 11.8 Implementation Timeline
+
+**Phase 1 (MVP):** Use default FSRS weights for all users
+
+**Phase 2 (Post-Launch):**
+- Add `fsrs_weights` field to users table
+- Implement CSV export function
+- Add Python optimizer script
+- Background job for automatic optimization
+
+**Phase 3 (Advanced):**
+- UI dashboard showing optimization history
+- A/B test: default vs optimized weights performance
+- Parameter drift detection (re-optimize if learning patterns change)
+
+### 11.9 Resources
+
+- [FSRS Optimizer GitHub](https://github.com/open-spaced-repetition/fsrs-optimizer)
+- [Anki FSRS FAQ](https://faqs.ankiweb.net/frequently-asked-questions-about-fsrs.html)
+- [Optimization Discussion (Anki Forums)](https://forums.ankiweb.net/t/how-many-reviews-for-accurate-optimization/53320)
+- [Minimum Review Research](https://github.com/ankitects/anki/issues/3094)
 
 ---
 

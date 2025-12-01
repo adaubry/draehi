@@ -77,10 +77,10 @@ We use the exact [ts-fsrs Card type](https://github.com/open-spaced-repetition/t
 ```sql
 DEFINE TABLE flashcards SCHEMALESS;
 
--- Core relationships
-DEFINE FIELD user ON flashcards TYPE record<users>;
+-- Core relationship (node only - user link via RELATION table)
 DEFINE FIELD node ON flashcards TYPE record<nodes>;  -- The card node
 -- Note: workspace derived via node.workspace (not stored)
+-- Note: user relationship via reviews RELATION table (Section 2.3)
 
 -- ts-fsrs Card structure (exact match)
 DEFINE FIELD due ON flashcards TYPE datetime DEFAULT time::now();
@@ -103,9 +103,9 @@ DEFINE FIELD created_at ON flashcards TYPE datetime DEFAULT time::now();
 DEFINE FIELD updated_at ON flashcards TYPE datetime DEFAULT time::now();
 
 -- Indexes for query performance
-DEFINE INDEX user_due ON flashcards COLUMNS user, due;
-DEFINE INDEX user_node_unique ON flashcards COLUMNS user, node UNIQUE;
-DEFINE INDEX node_idx ON flashcards COLUMNS node;
+DEFINE INDEX due_idx ON flashcards COLUMNS due;
+DEFINE INDEX node_idx ON flashcards COLUMNS node UNIQUE;
+-- Note: user+node uniqueness enforced at application level via RELATION checks
 ```
 
 **TypeScript Interface (matches ts-fsrs):**
@@ -114,8 +114,8 @@ DEFINE INDEX node_idx ON flashcards COLUMNS node;
 import type { Card, ReviewLog, State } from 'ts-fsrs';
 
 interface FlashcardRecord {
-  user: string;           // record<users>
-  node: string;           // record<nodes>
+  // Core relationship
+  node: string;           // record<nodes> (user link via reviews RELATION)
 
   // ts-fsrs Card fields (exact match)
   due: Date;
@@ -137,21 +137,41 @@ interface FlashcardRecord {
 
 ### 2.3 User-Flashcard Relation
 
+**Design Decision: Graph Relation Instead of Direct FK**
+
+We use a RELATION table to link users to flashcards, rather than storing a `user` field directly in flashcards:
+- ✅ Flashcards are independent records (no user ownership)
+- ✅ Same flashcard node can have multiple user-specific review states
+- ✅ Cleaner data model for workspace-scoped content
+- ✅ Efficient graph traversal queries
+
 ```sql
 DEFINE TABLE reviews TYPE RELATION IN users OUT flashcards;
 ```
 
-**Usage:**
-```sql
--- Create relation when flashcard created
-RELATE users:userId->reviews->flashcards:cardId;
+**Flashcard Creation Flow:**
+```
+1. User starts flashcard session
+2. System identifies card nodes (from Logseq content)
+3. For each node: check if RELATION exists for (user, node)
+4. If missing:
+   a. CREATE flashcard record (node, state='New', ...)
+   b. RELATE users:userId->reviews->flashcards:cardId
+5. Uniqueness: enforced by checking RELATION existence before creation
+```
 
+**Query Examples:**
+```sql
 -- Query user's flashcards
 SELECT ->reviews->flashcards FROM users:userId;
 
--- Query flashcards due now
+-- Query flashcards due now for user
 SELECT ->reviews->flashcards FROM users:userId
 WHERE ->reviews->flashcards.due <= time::now();
+
+-- Check if RELATION exists (for uniqueness check)
+SELECT * FROM users:userId->reviews->flashcards
+WHERE out.node = $nodeId;
 ```
 
 ---
@@ -230,6 +250,7 @@ enum State {
 ```typescript
 async function processReview(
   flashcardId: string,
+  userId: string,
   rating: Rating,
   timestamp: Date
 ) {
@@ -250,7 +271,7 @@ async function processReview(
   };
 
   // Get user's FSRS parameters (default or optimized)
-  const params = await getUserFSRSParams(flashcard.user);
+  const params = await getUserFSRSParams(userId);
   const f = new FSRS(params);
 
   // Calculate next state
@@ -414,7 +435,7 @@ async function decompressReviewLog(compressed: Uint8Array): Promise<ReviewLog[]>
 ### 5.4 Usage in Review Processing
 
 ```typescript
-async function processReview(flashcardId: string, rating: Rating, timestamp: Date) {
+async function processReview(flashcardId: string, userId: string, rating: Rating, timestamp: Date) {
   const flashcard = await db.select(`flashcards:${flashcardId}`);
 
   // ... ts-fsrs repeat() logic ...
@@ -647,10 +668,9 @@ GET /api/flashcards/init
 Query: SELECT * FROM nodes WHERE workspace = $id AND metadata.properties.card != NULL
   ↓
 For each card node:
-  Check if flashcards record exists for (user, node)
-  If not: CREATE flashcard with state='uninitiated', due=now()
-  ↓
-RELATE users:id->reviews->flashcards:id
+  Check if RELATION exists: users:id->reviews->flashcards (WHERE flashcards.node = card_node)
+  If not: CREATE flashcard with state='New', due=now() (no user field)
+           RELATE users:id->reviews->flashcards:new_id
   ↓
 Return all uninitiated cards (first review batch)
 ```
@@ -662,7 +682,7 @@ User submits rating (1-4) for flashcard
   ↓
 POST /api/flashcards/:id/review { rating, timestamp }
   ↓
-processReview(flashcardId, rating, timestamp)
+processReview(flashcardId, userId, rating, timestamp)
   ↓
 Calculate new FSRS state (S, D, interval, due date)
   ↓
@@ -739,18 +759,21 @@ const missingNodes = allCardNodes.filter(
 for (const node of missingNodes) {
   const cardId = `flashcards:${generateId()}`;
 
+  // Create flashcard record (no user field - linked via RELATION)
   await db.create(cardId, {
-    user: `users:${userId}`,
     node: node.id,
-    state: 'uninitiated',
+    state: 'New',
     stability: 0,
-    difficulty: 5.0,
+    difficulty: 0,
+    elapsed_days: 0,
+    scheduled_days: 0,
     reps: 0,
     lapses: 0,
     due: new Date(),
     created_at: new Date()
   });
 
+  // Create user→flashcard relationship
   await db.query(`
     RELATE users:${userId}->reviews->${cardId}
   `);
